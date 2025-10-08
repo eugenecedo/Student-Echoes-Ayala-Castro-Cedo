@@ -145,6 +145,7 @@ function createPostObject(text, imageDataURL){
     editedAt: null
   };
   posts.unshift(p);
+  if(!users[currentUser].stats) users[currentUser].stats = {posts:0,likes:0,comments:0};
   users[currentUser].stats.posts++;
   saveUsers(); savePosts(); renderPosts(); clearDraft(); showToast('✅ Post shared successfully!'); updateCounts(); renderProfilePosts();
 }
@@ -164,29 +165,33 @@ function renderPosts(filter=''){
     const el = document.createElement('div');
     el.className = 'card post';
     const userObj = users[post.user] || {bio:'',pic:''};
-    const avatar = userObj.pic || https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)};
+    const avatar = userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`;
     const liked = currentUser && post.likedBy.includes(currentUser);
+
+    // build comments html safely
+    const commentsHtml = (post.comments || []).map(c => `<p><strong>@${escapeHtml(c.user)}</strong>: ${escapeHtml(c.text)}</p>`).join('');
+
     el.innerHTML = `
       <div class="meta">
         <img class="user-avatar" src="${avatar}" alt="avatar">
         <div style="flex:1">
           <div style="display:flex;gap:8px;align-items:center">
-            <div class="username" onclick="showProfile('${post.user}')">${post.user}</div>
+            <div class="username" onclick="showProfile('${escapeHtml(post.user)}')">${escapeHtml(post.user)}</div>
             <div style="font-size:12px;color:var(--muted)">${new Date(post.createdAt).toLocaleString()} ${post.editedAt ? '(edited)' : ''}</div>
           </div>
           <div class="bio muted">${escapeHtml(userObj.bio || '')}</div>
         </div>
       </div>
       <div class="post-content"><div class="text">${escapeHtml(post.text)}</div>
-        ${post.image ? <img class="media" src="${post.image}" alt="post image"> : ''}
+        ${post.image ? `<img class="media" src="${post.image}" alt="post image">` : ''}
       </div>
       <div class="actions" style="display:flex;gap:12px;margin-top:10px">
         <button onclick="toggleLike(${post.id})">${liked ? '💔 Unlike' : '❤️ Like'} (${post.likedBy.length})</button>
         <button onclick="toggleCommentsArea(${post.id})">💬 Comment (${post.comments.length})</button>
-        ${post.user === currentUser ? <button onclick="onEditPost(${post.id})">✏️ Edit</button> <button onclick="onDeletePost(${post.id})" class="danger">🗑 Delete</button> : ''}
+        ${post.user === currentUser ? `<button onclick="onEditPost(${post.id})">✏️ Edit</button> <button onclick="onDeletePost(${post.id})" class="danger">🗑 Delete</button>` : ''}
       </div>
       <div id="comments-area-${post.id}" class="comments" style="display:none">
-        ${post.comments.map(c => <p><strong>@${c.user}</strong>: ${escapeHtml(c.text)}</p>).join('')}
+        ${commentsHtml}
         <div class="comment-input" style="display:flex;gap:8px;margin-top:8px">
           <input id="comment-input-${post.id}" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(${post.id})" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)">
           <button onclick="addComment(${post.id})" class="small-btn">Send</button>
@@ -208,10 +213,13 @@ function toggleLike(postId){
   const idx = post.likedBy.indexOf(currentUser);
   if(idx >= 0){
     post.likedBy.splice(idx,1);
-    users[post.user].stats.likes = Math.max(0, users[post.user].stats.likes - 1);
+    if(users[post.user] && users[post.user].stats) users[post.user].stats.likes = Math.max(0, users[post.user].stats.likes - 1);
   } else {
     post.likedBy.push(currentUser);
-    users[post.user].stats.likes = (users[post.user].stats.likes || 0) + 1;
+    if(users[post.user]){
+      if(!users[post.user].stats) users[post.user].stats = {posts:0,likes:0,comments:0};
+      users[post.user].stats.likes = (users[post.user].stats.likes || 0) + 1;
+    }
   }
   savePosts(); saveUsers(); renderPosts(); renderProfilePosts(); updateCounts();
 }
@@ -227,7 +235,9 @@ function addComment(postId){
   const text = input.value.trim();
   if(!text) return;
   const post = posts.find(p => p.id === postId);
+  if(!post) return;
   post.comments.push({ user: currentUser, text, at: new Date().toISOString() });
+  if(!users[currentUser].stats) users[currentUser].stats = {posts:0,likes:0,comments:0};
   users[currentUser].stats.comments = (users[currentUser].stats.comments || 0) + 1;
   savePosts(); saveUsers();
   input.value = '';
@@ -248,7 +258,7 @@ function onDeletePost(postId){
   if(posts[idx].user !== currentUser) return showToast('Cannot delete');
   if(!confirm('Delete this post?')) return;
   posts.splice(idx,1);
-  users[currentUser].stats.posts = Math.max(0, users[currentUser].stats.posts - 1);
+  if(users[currentUser] && users[currentUser].stats) users[currentUser].stats.posts = Math.max(0, users[currentUser].stats.posts - 1);
   savePosts(); saveUsers(); renderPosts(); renderProfilePosts(); showToast('🗑 Post deleted'); updateCounts();
 }
 
@@ -266,7 +276,7 @@ function refreshProfileUI(viewUser){
   const u = viewUser || currentUser;
   if(!u) return;
   const userObj = users[u] || {bio:'',pic:''};
-  const pic = userObj.pic || https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(u)};
+  const pic = userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(u)}`;
   document.getElementById('miniUser').textContent = u;
   document.getElementById('miniBio').textContent = userObj.bio || '';
   document.getElementById('composerAvatar').src = pic;
@@ -277,6 +287,7 @@ function refreshProfileUI(viewUser){
   document.getElementById('profileUsername').value = u;
   document.getElementById('bio').value = userObj.bio || '';
 
+  if(!users[u].stats) users[u].stats = {posts:0,likes:0,comments:0};
   const postsCount = users[u].stats.posts || 0;
   const likes = users[u].stats.likes || 0;
   const comments = users[u].stats.comments || 0;
@@ -323,9 +334,9 @@ function renderProfilePosts(viewUser){
     const div = document.createElement('div');
     div.className = 'grid-item';
     if(p.image){
-      div.innerHTML = <img src="${p.image}" alt="post">;
+      div.innerHTML = `<img src="${p.image}" alt="post">`;
     } else {
-      div.innerHTML = <div style="padding:12px"><div style="font-weight:700;color:var(--muted)">${escapeHtml((p.text||'').slice(0,120) || '(no image)') }</div></div>;
+      div.innerHTML = `<div style="padding:12px"><div style="font-weight:700;color:var(--muted)">${escapeHtml((p.text||'').slice(0,120) || '(no image)')}</div></div>`;
     }
     div.onclick = ()=> openPostModal(p);
     grid.appendChild(div);
@@ -335,24 +346,27 @@ function renderProfilePosts(viewUser){
 /* modal */
 function openPostModal(post){
   const modalRoot = document.getElementById('viewModal');
+  const likedText = post.likedBy.includes(currentUser) ? '💔 Unlike' : '❤️ Like';
+  const avatar = (users[post.user] && users[post.user].pic) ? users[post.user].pic : `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`;
+
   modalRoot.innerHTML = `
     <div class="modal" id="modal-${post.id}">
       <div class="modal-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div>
-            <div style="font-weight:700">${post.user}</div>
+            <div style="font-weight:700">${escapeHtml(post.user)}</div>
             <div style="font-size:12px;color:var(--muted)">${new Date(post.createdAt).toLocaleString()} ${post.editedAt ? '(edited)' : ''}</div>
           </div>
           <div><button class="small-btn" onclick="closePostModal(${post.id})">Close</button></div>
         </div>
         <div style="margin-bottom:8px;color:var(--white)">${escapeHtml(post.text)}</div>
-        ${post.image ? <img src="${post.image}" alt="post image" style="max-width:100%;border-radius:8px"> : ''}
+        ${post.image ? `<img src="${post.image}" alt="post image" style="max-width:100%;border-radius:8px">` : ''}
         <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
-          <button onclick="toggleLike(${post.id})">${post.likedBy.includes(currentUser) ? '💔 Unlike' : '❤️ Like'} (${post.likedBy.length})</button>
+          <button onclick="toggleLike(${post.id})">${likedText} (${post.likedBy.length})</button>
           <button onclick="toggleCommentsArea(${post.id})">💬 Comments (${post.comments.length})</button>
         </div>
         <div id="modal-comments-${post.id}" style="margin-top:8px">
-          ${post.comments.map(c=>`<div style="padding:6px 0"><strong>@${c.user}</strong>: ${escapeHtml(c.text)}</div>`).join('')}
+          ${(post.comments || []).map(c=>`<div style="padding:6px 0"><strong>@${escapeHtml(c.user)}</strong>: ${escapeHtml(c.text)}</div>`).join('')}
         </div>
       </div>
     </div>
@@ -377,6 +391,7 @@ function updateCounts(){
   const pCount = posts.filter(p=>p.user === currentUser).length;
   const likeCount = posts.filter(p => p.user === currentUser).reduce((s,p)=>s + p.likedBy.length,0);
   const commentCount = posts.reduce((s,p)=> s + p.comments.filter(c=>c.user === currentUser).length,0);
+  if(!users[currentUser].stats) users[currentUser].stats = {posts:0,likes:0,comments:0};
   users[currentUser].stats.posts = pCount;
   users[currentUser].stats.likes = likeCount;
   users[currentUser].stats.comments = commentCount;
@@ -427,8 +442,8 @@ document.addEventListener('change', (e)=>{
 /* notify dot toggler (demo) */
 function toggleNotifDot(btn){
   const d = document.getElementById('notifDot');
-  if(d.style.display === 'none' || !d.style.display) { d.style.display = 'inline-block'; showToast('You have new notifications'); }
-  else { d.style.display = 'none'; showToast('Notifications cleared'); }
+  if(d.style.display === 'none' || !d.style.display) { d.style.display='inline-block'; showToast('You have new notifications'); }
+  else { d.style.display='none'; showToast('Notifications cleared'); }
 }
 
 /* Scroll hide/show nav logic (hidden when scrolling down) */
