@@ -140,6 +140,8 @@ function clearDraft(){
   if(currentUser) localStorage.removeItem(LS_DRAFT + '_' + currentUser);
   document.getElementById('txtPost').value = '';
   document.getElementById('filePost').value = '';
+  const cb = document.getElementById('anonMode');
+  if(cb) cb.checked = false;
   document.getElementById('draftNotice').textContent = '';
 }
 
@@ -150,21 +152,23 @@ function onCreatePost(){
   if(!currentUser) return showToast('Please login first');
   const text = document.getElementById('txtPost').value.trim();
   const file = document.getElementById('filePost').files[0];
+  const isAnon = document.getElementById('anonMode')?.checked || false;
   if(!text && !file) return showToast('Write something or attach an image');
 
   if(file){
     const reader = new FileReader();
-    reader.onload = () => createPostObject(text, reader.result);
+    reader.onload = () => createPostObject(text, reader.result, isAnon);
     reader.readAsDataURL(file);
   } else {
-    createPostObject(text, null);
+    createPostObject(text, null, isAnon);
   }
 }
 
-function createPostObject(text, imageDataURL){
+function createPostObject(text, imageDataURL, isAnon=false){
   const p = {
     id: Date.now(),
-    user: currentUser,
+    user: isAnon ? 'Anonymous' : currentUser,
+    anonymous: isAnon,
     text: text,
     image: imageDataURL,
     likedBy: [],
@@ -192,18 +196,26 @@ function renderPosts(filter=''){
   filtered.forEach(post => {
     const el = document.createElement('div');
     el.className = 'card post';
-    const userObj = users[post.user] || {bio:'',pic:''};
-    const avatar = userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`;
+    // if anonymous, don't try to pull user's pic or bio
+    const userObj = post.anonymous ? {bio:'',pic:''} : (users[post.user] || {bio:'',pic:''});
+    const avatar = post.anonymous
+      ? 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
+      : (userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`);
     const liked = currentUser && post.likedBy.includes(currentUser);
 
     const commentsHtml = (post.comments || []).map(c => `<p><strong>@${escapeHtml(c.user)}</strong>: ${escapeHtml(c.text)}</p>`).join('');
+
+    // username rendering: unlinkable if anonymous
+    const usernameHtml = post.anonymous
+      ? `<div class="username">${escapeHtml('Anonymous')}</div>`
+      : `<div class="username" onclick="showProfile('${escapeHtml(post.user)}')">${escapeHtml(post.user)}</div>`;
 
     el.innerHTML = `
       <div class="meta">
         <img class="user-avatar" src="${avatar}" alt="avatar">
         <div style="flex:1">
           <div style="display:flex;gap:8px;align-items:center">
-            <div class="username" onclick="showProfile('${escapeHtml(post.user)}')">${escapeHtml(post.user)}</div>
+            ${usernameHtml}
             <div style="font-size:12px;color:var(--muted)">${new Date(post.createdAt).toLocaleString()} ${post.editedAt ? '(edited)' : ''}</div>
           </div>
           <div class="bio muted">${escapeHtml(userObj.bio || '')}</div>
@@ -215,7 +227,7 @@ function renderPosts(filter=''){
       <div class="actions" style="display:flex;gap:12px;margin-top:10px">
         <button onclick="toggleLike(${post.id})">${liked ? '💔 Unlike' : '❤️ Like'} (${post.likedBy.length})</button>
         <button onclick="toggleCommentsArea(${post.id})">💬 Comment (${post.comments.length})</button>
-        ${post.user === currentUser ? `<button onclick="onEditPost(${post.id})">✏️ Edit</button> <button onclick="onDeletePost(${post.id})" class="danger">🗑 Delete</button>` : ''}
+        ${(!post.anonymous && post.user === currentUser) || (post.user === currentUser) ? `<button onclick="onEditPost(${post.id})">✏️ Edit</button> <button onclick="onDeletePost(${post.id})" class="danger">🗑 Delete</button>` : ''}
         <button onclick="openPostModalById(${post.id})" class="small-btn">View</button>
       </div>
       <div id="comments-area-${post.id}" class="comments" style="display:none">
@@ -295,6 +307,8 @@ function onDeletePost(postId){
    ----------------------- */
 function showProfile(username){
   if(!username) username = currentUser;
+  // Don't allow showing profile for the generic "Anonymous"
+  if(username === 'Anonymous') return showToast('Anonymous profiles are not available');
   if(!users[username]) return showToast('User not found');
   showPage('profile');
   refreshProfileUI(username);
@@ -378,14 +392,20 @@ function renderProfilePosts(viewUser){
 function openPostModal(post){
   const modalRoot = document.getElementById('viewModal');
   const likedText = post.likedBy.includes(currentUser) ? '💔 Unlike' : '❤️ Like';
-  const avatar = (users[post.user] && users[post.user].pic) ? users[post.user].pic : `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`;
+  const avatar = post.anonymous
+    ? 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
+    : ((users[post.user] && users[post.user].pic) ? users[post.user].pic : `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`);
+
+  const usernameLine = post.anonymous
+    ? `<div style="font-weight:700">${escapeHtml('Anonymous')}</div>`
+    : `<div style="font-weight:700;cursor:pointer" onclick="showProfile('${escapeHtml(post.user)}')">${escapeHtml(post.user)}</div>`;
 
   modalRoot.innerHTML = `
     <div class="modal" id="modal-${post.id}">
       <div class="modal-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div>
-            <div style="font-weight:700">${escapeHtml(post.user)}</div>
+            ${usernameLine}
             <div style="font-size:12px;color:var(--muted)">${new Date(post.createdAt).toLocaleString()} ${post.editedAt ? '(edited)' : ''}</div>
           </div>
           <div><button class="small-btn" onclick="closePostModal(${post.id})">Close</button></div>
@@ -535,14 +555,14 @@ function renderExplore(){
   filtered.forEach(p => {
     const div = document.createElement('div');
     div.className = 'card';
-    const userObj = users[p.user] || {bio:'',pic:''};
-    const pic = userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(p.user)}`;
+    const userObj = p.anonymous ? {bio:'',pic:''} : (users[p.user] || {bio:'',pic:''});
+    const pic = p.anonymous ? 'https://cdn-icons-png.flaticon.com/512/847/847969.png' : (userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(p.user)}`);
     div.innerHTML = `
       <div style="display:flex;gap:12px;align-items:flex-start">
         <img src="${pic}" style="width:48px;height:48px;border-radius:10px;object-fit:cover" />
         <div style="flex:1">
           <div style="display:flex;gap:8px;align-items:center">
-            <div style="font-weight:700;cursor:pointer" onclick="showProfile('${escapeHtml(p.user)}')">${escapeHtml(p.user)}</div>
+            ${p.anonymous ? `<div style="font-weight:700">${escapeHtml('Anonymous')}</div>` : `<div style="font-weight:700;cursor:pointer" onclick="showProfile('${escapeHtml(p.user)}')">${escapeHtml(p.user)}</div>`}
             <div style="font-size:12px;color:var(--muted)">${new Date(p.createdAt).toLocaleString()}</div>
           </div>
           <div style="margin-top:6px">${escapeHtml(p.text)}</div>
@@ -660,7 +680,6 @@ function renderSavedItems(){
 function ensureSavedInit(){ if(!Array.isArray(savedMarket)) savedMarket = []; }
 ensureSavedInit();
 
-/* small helper to open profile editing (simple UX) */
 function enterEditProfile(){
   showPage('profile');
   document.getElementById('bio').focus();

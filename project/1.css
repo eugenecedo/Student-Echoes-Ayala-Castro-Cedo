@@ -101,3 +101,13 @@ body.nav-visible-top .app-wrap{ padding-top:110px; }
 .market-card{ display:flex; gap:12px; align-items:center }
 .market-card img{ width:84px;height:64px;border-radius:8px;object-fit:cover }
 .fav{ background:transparent;border:1px dashed rgba(255,255,255,0.06);padding:6px;border-radius:8px;cursor:pointer }
+
+/* Anonymous mode checkbox */
+#anonMode {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* end */
