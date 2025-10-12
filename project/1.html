@@ -108,10 +108,7 @@
             <div style="display:flex;flex-direction:column;gap:8px">
               <button class="small-btn" onclick="showPage('feed')">Home</button>
               <button class="small-btn" onclick="showPage('profile')">Profile & Settings</button>
-              <button class="small-btn" onclick="showPage('explore')">Explore</button>
-              <button class="small-btn" onclick="showPage('market')">Marketplace</button>
-              <button class="small-btn" onclick="renderSavedPosts()">Saved Posts</button>
-              <button class="small-btn" onclick="renderChats()">Messages</button>
+              <button class="small-btn" onclick="showToast('Explore coming soon')">Explore</button>
             </div>
           </div>
         </aside>
@@ -127,9 +124,14 @@
                   <textarea id="txtPost" placeholder="What's on your mind?" oninput="saveDraft()" ></textarea>
                   <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
                     <input id="filePost" type="file" accept="image/*" style="color:var(--white)" />
-                    <div style="margin-left:auto;display:flex;gap:8px">
-                      <button class="small-btn" onclick="clearDraft()">Clear</button>
-                      <button class="primary" onclick="onCreatePost()">Post</button>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex:1;gap:8px">
+                      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">
+                        <input type="checkbox" id="anonMode"> Post anonymously
+                      </label>
+                      <div style="margin-left:auto;display:flex;gap:8px">
+                        <button class="small-btn" onclick="clearDraft()">Clear</button>
+                        <button class="primary" onclick="onCreatePost()">Post</button>
+                      </div>
                     </div>
                   </div>
                   <div id="draftNotice" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
@@ -270,10 +272,5 @@
 
   <!-- modal area & toast -->
   <div id="viewModal" style="display:none"></div>
-  <div id="toast"></div>
-
-  <!-- Notifications / Chats hidden containers -->
-  <div id="notificationsModal" class="modal hidden"></div>
-
-</body>
-</html>
+  </body>
+  </html>

@@ -1,31 +1,48 @@
+<<<<<<< HEAD
 // storage keys (extended)
+=======
+// storage keys
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
 const LS_USERS = 'se_users';
 const LS_POSTS = 'se_posts';
 const LS_CURRENT = 'se_current';
 const LS_DRAFT = 'se_draft';
 const LS_SAVED_ITEMS = 'se_saved_items';
+<<<<<<< HEAD
 const LS_SAVED_POSTS = 'se_saved_posts';
 const LS_CHATS = 'se_chats';
 const LS_MARKET = 'se_market';
 const LS_THEME = 'se_theme';
+=======
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
 
 // app state
 let users = JSON.parse(localStorage.getItem(LS_USERS) || '{}');
 let posts = JSON.parse(localStorage.getItem(LS_POSTS) || '[]');
 let savedMarket = JSON.parse(localStorage.getItem(LS_SAVED_ITEMS) || '[]');
+<<<<<<< HEAD
 let savedPosts = JSON.parse(localStorage.getItem(LS_SAVED_POSTS) || '[]');
 let marketItems = JSON.parse(localStorage.getItem(LS_MARKET) || 'null');
 let chats = JSON.parse(localStorage.getItem(LS_CHATS) || '{}');
 let currentUser = localStorage.getItem(LS_CURRENT) || null;
 
 // default market items
+=======
+let currentUser = localStorage.getItem(LS_CURRENT) || null;
+
+// sample market items (persisted if user interacts)
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
 const MARKET_ITEMS_DEFAULT = [
   { id: 'm1', title: 'Used Math Textbook', desc: 'Calculus 1, good condition', price: '₱250', img: 'https://picsum.photos/seed/book1/400/300' },
   { id: 'm2', title: 'Laptop Sleeve', desc: '15-inch, padded', price: '₱350', img: 'https://picsum.photos/seed/sleeve/400/300' },
   { id: 'm3', title: 'Sticker Pack', desc: 'College-themed stickers', price: '₱80', img: 'https://picsum.photos/seed/stickers/400/300' },
   { id: 'm4', title: 'USB Flash Drive', desc: '32GB, fast', price: '₱150', img: 'https://picsum.photos/seed/usb/400/300' }
 ];
+<<<<<<< HEAD
 marketItems = marketItems || MARKET_ITEMS_DEFAULT;
+=======
+let marketItems = JSON.parse(localStorage.getItem('se_market') || 'null') || MARKET_ITEMS_DEFAULT;
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
 
 /* -----------------------
    Toast & UI utilities
@@ -39,6 +56,7 @@ function showToast(msg, timeout=2200){
 
 function saveUsers(){ localStorage.setItem(LS_USERS, JSON.stringify(users)); }
 function savePosts(){ localStorage.setItem(LS_POSTS, JSON.stringify(posts)); }
+<<<<<<< HEAD
 function saveMarketState(){ localStorage.setItem(LS_MARKET, JSON.stringify(marketItems)); }
 function saveSavedItems(){ localStorage.setItem(LS_SAVED_ITEMS, JSON.stringify(savedMarket)); }
 function saveSavedPosts(){ localStorage.setItem(LS_SAVED_POSTS, JSON.stringify(savedPosts)); }
@@ -52,6 +70,15 @@ function setCurrent(u) {
   } else {
     localStorage.removeItem(LS_CURRENT);
   }
+=======
+function saveMarketState(){ localStorage.setItem('se_market', JSON.stringify(marketItems)); }
+function saveSavedItems(){ localStorage.setItem(LS_SAVED_ITEMS, JSON.stringify(savedMarket)); }
+
+function setCurrent(user){
+  currentUser = user;
+  if(user) localStorage.setItem(LS_CURRENT, user);
+  else localStorage.removeItem(LS_CURRENT);
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
 }
 
 
@@ -105,9 +132,12 @@ function openApp(){
   renderMarket();
   renderExplore();
   renderSavedItems();
+<<<<<<< HEAD
   renderAnalytics();
   renderChatsListPreview();
   refreshNotifDot();
+=======
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
 }
 
 /* -----------------------
@@ -117,6 +147,7 @@ function clearActiveNav(){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
 }
 function showPage(page, instant=false){
+<<<<<<< HEAD
   const pages = ['feed','profile','explore','market','savedPostsPage','messagesPage'];
   pages.forEach(p => {
     const el = document.getElementById(p + 'Page') || document.getElementById(p);
@@ -131,6 +162,14 @@ function showPage(page, instant=false){
   document.getElementById('savedPostsPage').classList.add('hidden');
   document.getElementById('messagesPage').classList.add('hidden');
 
+=======
+  const pages = ['feed','profile','explore','market'];
+  pages.forEach(p => {
+    const el = document.getElementById(p + 'Page');
+    if(el) el.classList.add('hidden');
+  });
+
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
   clearActiveNav();
   if(page === 'profile'){
     document.getElementById('profilePage').classList.remove('hidden');
@@ -140,10 +179,15 @@ function showPage(page, instant=false){
   } else if(page === 'explore'){
     document.getElementById('explorePage').classList.remove('hidden');
     document.getElementById('navExplore').classList.add('active');
+<<<<<<< HEAD
+=======
+    document.querySelectorAll('#navBottom .nav-btn')[1]?.classList.add('active');
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
     renderExplore();
   } else if(page === 'market'){
     document.getElementById('marketPage').classList.remove('hidden');
     document.getElementById('navMarket').classList.add('active');
+<<<<<<< HEAD
     renderMarket();
     renderSavedItems();
   } else if(page === 'savedPostsPage'){
@@ -152,6 +196,11 @@ function showPage(page, instant=false){
   } else if(page === 'messagesPage'){
     document.getElementById('messagesPage').classList.remove('hidden');
     renderChats();
+=======
+    document.querySelectorAll('#navBottom .nav-btn')[2]?.classList.add('active');
+    renderMarket();
+    renderSavedItems();
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
   } else {
     document.getElementById('feedPage').classList.remove('hidden');
     document.getElementById('navHome').classList.add('active');
@@ -180,6 +229,8 @@ function clearDraft(){
   if(currentUser) localStorage.removeItem(LS_DRAFT + '_' + currentUser);
   document.getElementById('txtPost').value = '';
   document.getElementById('filePost').value = '';
+  const cb = document.getElementById('anonMode');
+  if(cb) cb.checked = false;
   document.getElementById('draftNotice').textContent = '';
 }
 
@@ -190,21 +241,23 @@ function onCreatePost(){
   if(!currentUser) return showToast('Please login first');
   const text = document.getElementById('txtPost').value.trim();
   const file = document.getElementById('filePost').files[0];
+  const isAnon = document.getElementById('anonMode')?.checked || false;
   if(!text && !file) return showToast('Write something or attach an image');
 
   if(file){
     const reader = new FileReader();
-    reader.onload = () => createPostObject(text, reader.result);
+    reader.onload = () => createPostObject(text, reader.result, isAnon);
     reader.readAsDataURL(file);
   } else {
-    createPostObject(text, null);
+    createPostObject(text, null, isAnon);
   }
 }
 
-function createPostObject(text, imageDataURL){
+function createPostObject(text, imageDataURL, isAnon=false){
   const p = {
     id: Date.now(),
-    user: currentUser,
+    user: isAnon ? 'Anonymous' : currentUser,
+    anonymous: isAnon,
     text: text,
     image: imageDataURL,
     likedBy: [],
@@ -232,19 +285,27 @@ function renderPosts(filter=''){
   filtered.forEach(post => {
     const el = document.createElement('div');
     el.className = 'card post';
-    const userObj = users[post.user] || {bio:'',pic:''};
-    const avatar = userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`;
+    // if anonymous, don't try to pull user's pic or bio
+    const userObj = post.anonymous ? {bio:'',pic:''} : (users[post.user] || {bio:'',pic:''});
+    const avatar = post.anonymous
+      ? 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
+      : (userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`);
     const liked = currentUser && post.likedBy.includes(currentUser);
     const saved = savedPosts.includes(post.id);
 
     const commentsHtml = (post.comments || []).map(c => `<p><strong>@${escapeHtml(c.user)}</strong>: ${escapeHtml(c.text)}</p>`).join('');
+
+    // username rendering: unlinkable if anonymous
+    const usernameHtml = post.anonymous
+      ? `<div class="username">${escapeHtml('Anonymous')}</div>`
+      : `<div class="username" onclick="showProfile('${escapeHtml(post.user)}')">${escapeHtml(post.user)}</div>`;
 
     el.innerHTML = `
       <div class="meta">
         <img class="user-avatar" src="${avatar}" alt="avatar">
         <div style="flex:1">
           <div style="display:flex;gap:8px;align-items:center">
-            <div class="username" onclick="showProfile('${escapeHtml(post.user)}')">${escapeHtml(post.user)}</div>
+            ${usernameHtml}
             <div style="font-size:12px;color:var(--muted)">${new Date(post.createdAt).toLocaleString()} ${post.editedAt ? '(edited)' : ''}</div>
           </div>
           <div class="bio muted">${escapeHtml(userObj.bio || '')}</div>
@@ -256,8 +317,12 @@ function renderPosts(filter=''){
       <div class="actions" style="display:flex;gap:12px;margin-top:10px">
         <button onclick="toggleLike(${post.id})">${liked ? '💔 Unlike' : '❤️ Like'} (${post.likedBy.length})</button>
         <button onclick="toggleCommentsArea(${post.id})">💬 Comment (${post.comments.length})</button>
+<<<<<<< HEAD
         ${post.user === currentUser ? `<button onclick="onEditPost(${post.id})">✏️ Edit</button> <button onclick="onDeletePost(${post.id})" class="danger">🗑 Delete</button>` : `<button onclick="openChatWith('${escapeHtml(post.user)}')" class="small-btn">💬 Message</button>`}
         <button onclick="toggleSavePost(${post.id})" class="small-btn">${saved ? '🔖 Saved' : '🔖 Save'}</button>
+=======
+        ${(!post.anonymous && post.user === currentUser) || (post.user === currentUser) ? `<button onclick="onEditPost(${post.id})">✏️ Edit</button> <button onclick="onDeletePost(${post.id})" class="danger">🗑 Delete</button>` : ''}
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
         <button onclick="openPostModalById(${post.id})" class="small-btn">View</button>
       </div>
       <div id="comments-area-${post.id}" class="comments" style="display:none">
@@ -342,6 +407,8 @@ function onDeletePost(postId){
    ----------------------- */
 function showProfile(username){
   if(!username) username = currentUser;
+  // Don't allow showing profile for the generic "Anonymous"
+  if(username === 'Anonymous') return showToast('Anonymous profiles are not available');
   if(!users[username]) return showToast('User not found');
   showPage('profile');
   refreshProfileUI(username);
@@ -425,14 +492,20 @@ function renderProfilePosts(viewUser){
 function openPostModal(post){
   const modalRoot = document.getElementById('viewModal');
   const likedText = post.likedBy.includes(currentUser) ? '💔 Unlike' : '❤️ Like';
-  const avatar = (users[post.user] && users[post.user].pic) ? users[post.user].pic : `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`;
+  const avatar = post.anonymous
+    ? 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
+    : ((users[post.user] && users[post.user].pic) ? users[post.user].pic : `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`);
+
+  const usernameLine = post.anonymous
+    ? `<div style="font-weight:700">${escapeHtml('Anonymous')}</div>`
+    : `<div style="font-weight:700;cursor:pointer" onclick="showProfile('${escapeHtml(post.user)}')">${escapeHtml(post.user)}</div>`;
 
   modalRoot.innerHTML = `
     <div class="modal" id="modal-${post.id}">
       <div class="modal-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div>
-            <div style="font-weight:700">${escapeHtml(post.user)}</div>
+            ${usernameLine}
             <div style="font-size:12px;color:var(--muted)">${new Date(post.createdAt).toLocaleString()} ${post.editedAt ? '(edited)' : ''}</div>
           </div>
           <div><button class="small-btn" onclick="closePostModal(${post.id})">Close</button></div>
@@ -562,6 +635,7 @@ function toggleNotifDot(btn){
 })();
 
 /* storage sync */
+<<<<<<< HEAD
 window.addEventListener('storage', ()=> { users = JSON.parse(localStorage.getItem(LS_USERS) || '{}'); posts = JSON.parse(localStorage.getItem(LS_POSTS) || '[]'); savedMarket = JSON.parse(localStorage.getItem(LS_SAVED_ITEMS) || '[]'); savedPosts = JSON.parse(localStorage.getItem(LS_SAVED_POSTS) || '[]'); chats = JSON.parse(localStorage.getItem(LS_CHATS) || '{}'); updateCounts(); });
 
 /* ============================
@@ -768,15 +842,64 @@ function openChats(){
 /* quick start chat button next to username */
 function openChatWithUser(user){
   openChatWith(user);
+=======
+window.addEventListener('storage', ()=> { users = JSON.parse(localStorage.getItem(LS_USERS) || '{}'); posts = JSON.parse(localStorage.getItem(LS_POSTS) || '[]'); savedMarket = JSON.parse(localStorage.getItem(LS_SAVED_ITEMS) || '[]'); updateCounts(); });
+
+/* ============================
+   EXPLORE (search across posts)
+   ============================ */
+function renderExplore(){
+  const q = document.getElementById('exploreSearch').value.trim().toLowerCase();
+  const resultsRoot = document.getElementById('exploreResults');
+  resultsRoot.innerHTML = '';
+  const filtered = posts.filter(p => {
+    if(!q) return true;
+    return p.user.toLowerCase().includes(q) || (p.text && p.text.toLowerCase().includes(q));
+  });
+  document.getElementById('exploreCount').textContent = filtered.length + ' results';
+  if(filtered.length === 0){
+    resultsRoot.innerHTML = '<div class="panel muted">No results</div>';
+    return;
+  }
+  filtered.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    const userObj = p.anonymous ? {bio:'',pic:''} : (users[p.user] || {bio:'',pic:''});
+    const pic = p.anonymous ? 'https://cdn-icons-png.flaticon.com/512/847/847969.png' : (userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(p.user)}`);
+    div.innerHTML = `
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <img src="${pic}" style="width:48px;height:48px;border-radius:10px;object-fit:cover" />
+        <div style="flex:1">
+          <div style="display:flex;gap:8px;align-items:center">
+            ${p.anonymous ? `<div style="font-weight:700">${escapeHtml('Anonymous')}</div>` : `<div style="font-weight:700;cursor:pointer" onclick="showProfile('${escapeHtml(p.user)}')">${escapeHtml(p.user)}</div>`}
+            <div style="font-size:12px;color:var(--muted)">${new Date(p.createdAt).toLocaleString()}</div>
+          </div>
+          <div style="margin-top:6px">${escapeHtml(p.text)}</div>
+          ${p.image ? `<img src="${p.image}" style="margin-top:8px;border-radius:8px;max-width:100%;">` : ''}
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="small-btn" onclick="toggleLike(${p.id})">${p.likedBy.includes(currentUser) ? '💔' : '❤️'} ${p.likedBy.length}</button>
+            <button class="small-btn" onclick="openPostModalById(${p.id})">View</button>
+          </div>
+        </div>
+      </div>
+    `;
+    resultsRoot.appendChild(div);
+  });
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
 }
 
 /* ============================
    MARKETPLACE (mini catalog)
    ============================ */
 function renderMarket(){
+<<<<<<< HEAD
   const q = document.getElementById('marketSearch') ? document.getElementById('marketSearch').value.trim().toLowerCase() : '';
   const root = document.getElementById('marketList');
   if(!root) return;
+=======
+  const q = document.getElementById('marketSearch').value.trim().toLowerCase();
+  const root = document.getElementById('marketList');
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
   root.innerHTML = '';
   const filtered = marketItems.filter(it => {
     if(!q) return true;
@@ -797,7 +920,11 @@ function renderMarket(){
         <div class="muted" style="margin-top:6px">${escapeHtml(it.desc)}</div>
         <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
           <button class="small-btn" onclick="viewMarketItem('${it.id}')">View</button>
+<<<<<<< HEAD
           <button class="fav" onclick="toggleSaveMarketItem('${it.id}')">${isSaved ? 'Saved ✓' : 'Save'}</button>
+=======
+          <button class="fav" onclick="toggleSaveItem('${it.id}')">${isSaved ? 'Saved ✓' : 'Save'}</button>
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
         </div>
       </div>
     `;
@@ -821,7 +948,11 @@ function viewMarketItem(id){
         <img src="${it.img}" style="width:100%;max-height:320px;object-fit:cover;border-radius:8px;margin-top:8px"/>
         <div style="margin-top:8px">${escapeHtml(it.desc)}</div>
         <div style="margin-top:12px;display:flex;gap:8px">
+<<<<<<< HEAD
           <button class="primary" onclick="toggleSaveMarketItem('${it.id}')">${savedMarket.includes(it.id) ? 'Unsave' : 'Save'}</button>
+=======
+          <button class="primary" onclick="toggleSaveItem('${it.id}')">${savedMarket.includes(it.id) ? 'Unsave' : 'Save'}</button>
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
           <button class="small-btn" onclick="fakeBuy('${it.id}')">Buy</button>
         </div>
       </div>
@@ -836,7 +967,11 @@ function fakeBuy(id){
   closeMarketModal();
 }
 
+<<<<<<< HEAD
 function toggleSaveMarketItem(id){
+=======
+function toggleSaveItem(id){
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
   const idx = savedMarket.indexOf(id);
   if(idx >= 0){
     savedMarket.splice(idx,1);
@@ -853,7 +988,10 @@ function toggleSaveMarketItem(id){
 function renderSavedItems(){
   const root = document.getElementById('savedList');
   const count = document.getElementById('savedCount');
+<<<<<<< HEAD
   if(!root) return;
+=======
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
   root.innerHTML = '';
   count.textContent = savedMarket.length + ' saved';
   if(savedMarket.length === 0){ root.innerHTML = '<div class="muted">No saved items yet</div>'; return; }
@@ -869,6 +1007,7 @@ function renderSavedItems(){
 }
 
 /* ============================
+<<<<<<< HEAD
    Chats helper to render list only (for quick button)
    ============================ */
 function renderChatsListPreview(){
@@ -904,6 +1043,13 @@ function ensureSavedInit(){ if(!Array.isArray(savedMarket)) savedMarket = []; if
 ensureSavedInit();
 
 /* small helper to open profile editing (simple UX) */
+=======
+   Saved helpers / initialization
+   ============================ */
+function ensureSavedInit(){ if(!Array.isArray(savedMarket)) savedMarket = []; }
+ensureSavedInit();
+
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
 function enterEditProfile(){
   showPage('profile');
   document.getElementById('bio').focus();
@@ -934,6 +1080,7 @@ window.updateProfilePic = updateProfilePic;
 window.openPostModal = openPostModal;
 window.closePostModal = closePostModal;
 window.openPostModalById = openPostModalById;
+<<<<<<< HEAD
 window.toggleSaveItem = toggleSaveMarketItem;
 window.viewMarketItem = viewMarketItem;
 window.toggleSavePost = toggleSavePost;
@@ -952,3 +1099,10 @@ saveMarketState();
 saveSavedItems();
 saveSavedPosts();
 saveChats();
+=======
+window.toggleSaveItem = toggleSaveItem;
+window.viewMarketItem = viewMarketItem;
+
+// persist market array if it's default and not already in storage
+saveMarketState();
+>>>>>>> aacb5b8f058a036c8577ee07331586d50fea0c1d
