@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Student Echoes — Upgraded (Full)</title>
   <link rel="stylesheet" href="1.css" />
-  <script src="1.js"></script>
+  <!-- keep your original script order; script.js is the upgraded merged file -->
+  <script src="1.js" defer></script>
 </head>
 <body class="nav-visible-top">
 
@@ -23,7 +24,6 @@
       </div>
 
       <div class="nav-center" style="gap:8px">
-        <!-- icon buttons -->
         <button class="nav-btn active" title="Home" id="navHome" onclick="showPage('feed')">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -36,6 +36,16 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7z"/><path d="M16 3H8v4h8V3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
 
+        <!-- TRENDING -->
+        <button class="nav-btn" title="Trending" id="navTrending" onclick="showPage('trending'); renderTrending()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 13l4-4 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        <!-- MESSAGES -->
+        <button class="nav-btn" title="Messages" id="navMessages" onclick="openMessagesModal()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
         <button class="nav-btn" title="Profile" id="navProfile" onclick="showPage('profile')">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -46,15 +56,12 @@
       </div>
 
       <div class="nav-right" style="gap:6px">
-        <button class="nav-btn" title="Toggle Theme" id="themeToggle" onclick="toggleTheme()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <button class="nav-btn" title="Notifications" onclick="openNotifications()">
+        <button class="nav-btn" title="Notifications" id="navNotifications" onclick="toggleNotifications()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="dot" id="notifDot" style="display:none"></span>
         </button>
-
+        <!-- THEME TOGGLE (optional) -->
+        <button class="nav-btn" title="Theme" id="themeToggle" onclick="toggleTheme()">🌓</button>
         <button class="nav-btn" title="Logout" onclick="logout()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -68,28 +75,36 @@
       <button class="nav-btn active" onclick="showPage('feed')"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="nav-btn" onclick="showPage('explore')"><svg viewBox="0 0 24 24"><path d="M21 10.5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z"/><path d="M14 14l6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="nav-btn" onclick="showPage('market')"><svg viewBox="0 0 24 24"><path d="M3 7h18v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7z"/><path d="M16 3H8v4h8V3z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="nav-btn" onclick="showPage('trending')"><svg viewBox="0 0 24 24"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 13l4-4 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="nav-btn" onclick="openMessagesModal()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="nav-btn" onclick="showPage('profile')"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="nav-btn" onclick="enterCompose()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
   </div>
 
-  <!-- MAIN APP -->
-  <div id="authWrap" class="auth-wrap" style="display:flex;">
-    <div class="auth-card panel" role="dialog" aria-labelledby="authTitle">
-      <h1 id="authTitle" style="margin:0;color:var(--white)">Student Echoes</h1>
-      <p class="muted" style="margin-top:8px">Sign up or login — your voice matters</p>
+  <!-- STORIES BAR (added) -->
+  <div id="storiesBar" class="stories-bar hidden" aria-label="stories"></div>
 
-      <input id="authUser" placeholder="Username" autocomplete="username" />
-      <input id="authPass" placeholder="Password" type="password" autocomplete="current-password" />
+  <!-- MAIN APP: keep your original auth & main app markup (unchanged) -->
+  <!-- AUTH PAGE (Upgraded: dark gradient + glass card) -->
+<div id="authWrap" class="auth-wrap fade-in">
+  <div class="auth-bg"></div>
+  <div class="auth-card glass-card" role="dialog" aria-labelledby="authTitle">
+    <h1 id="authTitle" class="auth-title">Student Echoes</h1>
+    <p class="auth-subtitle">Sign up or log in — your voice matters</p>
 
-      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px">
-        <button class="primary" onclick="onRegister()">Register</button>
-        <button class="small-btn" onclick="onLogin()">Log in</button>
-      </div>
+    <input id="authUser" class="auth-input" placeholder="Username" autocomplete="username" />
+    <input id="authPass" class="auth-input" placeholder="Password" type="password" autocomplete="current-password" />
 
-      <div id="authMsg" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
+    <div class="auth-buttons">
+      <button class="primary" onclick="onRegister()">Register</button>
+      <button class="small-btn" onclick="onLogin()">Log in</button>
     </div>
+
+    <div id="authMsg" class="auth-message"></div>
   </div>
+</div>
+
 
   <div id="mainApp" style="display:none;">
     <div class="app-wrap">
@@ -108,7 +123,9 @@
             <div style="display:flex;flex-direction:column;gap:8px">
               <button class="small-btn" onclick="showPage('feed')">Home</button>
               <button class="small-btn" onclick="showPage('profile')">Profile & Settings</button>
-              <button class="small-btn" onclick="showToast('Explore coming soon')">Explore</button>
+              <button class="small-btn" onclick="showPage('explore')">Explore</button>
+              <button class="small-btn" onclick="showPage('market')">Marketplace</button>
+              <button class="small-btn" onclick="showPage('trending')">Trending</button>
             </div>
           </div>
         </aside>
@@ -121,17 +138,13 @@
               <div style="display:flex;gap:10px;align-items:flex-start">
                 <img id="composerAvatar" src="" alt="avatar" class="profile-pic" style="width:48px;height:48px;border-radius:10px">
                 <div style="flex:1">
-                  <textarea id="txtPost" placeholder="What's on your mind?" oninput="saveDraft()" ></textarea>
+                  <textarea id="txtPost" placeholder="What's on your mind?" oninput="saveDraft()"></textarea>
                   <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
                     <input id="filePost" type="file" accept="image/*" style="color:var(--white)" />
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex:1;gap:8px">
-                      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">
-                        <input type="checkbox" id="anonMode"> Post anonymously
-                      </label>
-                      <div style="margin-left:auto;display:flex;gap:8px">
-                        <button class="small-btn" onclick="clearDraft()">Clear</button>
-                        <button class="primary" onclick="onCreatePost()">Post</button>
-                      </div>
+                    <div style="margin-left:auto;display:flex;gap:8px">
+                      <button class="small-btn" onclick="clearDraft()">Clear</button>
+                      <button class="primary" onclick="openEditorModal()">Post (rich)</button>
+                      <button class="primary" onclick="onCreatePost()">Post</button>
                     </div>
                   </div>
                   <div id="draftNotice" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
@@ -159,6 +172,7 @@
               <div style="display:flex;gap:8px;align-items:center">
                 <input id="marketSearch" placeholder="Search items..." style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)" oninput="renderMarket()" />
                 <button class="small-btn" onclick="renderMarket()">Search</button>
+                <button class="small-btn" onclick="openSellModal()">Sell Item</button>
               </div>
             </div>
 
@@ -173,30 +187,19 @@
             </div>
           </div>
 
+          <!-- TRENDING -->
+          <div id="trendingPage" class="page-section hidden">
+            <div class="panel" style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700">Trending</div>
+              <div class="muted">Top hashtags & posts</div>
+            </div>
+            <div id="trendingContent" style="margin-top:12px"></div>
+          </div>
+
           <!-- PROFILE -->
           <div id="profilePage" class="page-section hidden">
             <div class="panel" id="profileHeader">
-              <div style="display:flex;gap:12px;align-items:center">
-                <img id="profilePicBig" src="" class="profile-pic" alt="profile" style="width:88px;height:88px;border-radius:18px;">
-                <div style="flex:1">
-                  <h2 id="profileUser" style="margin:0;color:var(--white)">User</h2>
-                  <div id="profileBioMini" class="muted">Bio goes here</div>
-                  <div class="profile-stats" style="margin-top:8px">
-                    <div>Posts: <span id="statPosts">0</span></div>
-                    <div>Likes: <span id="statLikes">0</span></div>
-                    <div>Comments: <span id="statComments">0</span></div>
-                  </div>
-                </div>
-              </div>
-
-              <div style="display:flex;gap:8px;margin-left:auto">
-                <label style="cursor:pointer">
-                  <input id="profilePicInput" type="file" accept="image/*" style="display:none" />
-                  <button class="small-btn">Change Photo</button>
-                </label>
-                <button class="small-btn" onclick="enterEditProfile()">Edit Profile</button>
-                <button class="small-btn" onclick="showPage('feed')">Back</button>
-              </div>
+              <!-- populated by JS -->
             </div>
 
             <div class="panel" style="margin-top:12px">
@@ -218,26 +221,6 @@
               <div id="profileGrid" class="profile-grid" style="margin-top:12px"></div>
             </div>
           </div>
-
-          <!-- SAVED POSTS (modal-like section) -->
-          <div id="savedPostsPage" class="page-section hidden">
-            <div class="panel">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="font-weight:700">Saved Posts</div>
-                <div class="muted" id="savedPostsCount">0</div>
-              </div>
-            </div>
-            <div id="savedPostsList" style="margin-top:12px"></div>
-          </div>
-
-          <!-- MESSAGES -->
-          <div id="messagesPage" class="page-section hidden">
-            <div class="panel" style="display:flex;gap:12px;align-items:center">
-              <div style="font-weight:700">Messages</div>
-              <div class="muted" id="chatWithLabel" style="margin-left:8px"></div>
-            </div>
-            <div id="chatsRoot" style="margin-top:12px"></div>
-          </div>
         </main>
 
         <!-- right -->
@@ -257,10 +240,6 @@
             </div>
           </div>
 
-          <div class="panel" id="analyticsPanel" style="margin-top:16px">
-            <!-- Analytics will be rendered here -->
-          </div>
-
           <div class="panel" style="margin-top:16px">
             <div style="font-weight:700;margin-bottom:8px">Suggestions</div>
             <div class="muted">Follow classmates, join groups, and share your story.</div>
@@ -270,7 +249,21 @@
     </div>
   </div>
 
-  <!-- modal area & toast -->
+  <!-- MODALS -->
   <div id="viewModal" style="display:none"></div>
-  </body>
-  </html>
+
+  <!-- New modals added (initially hidden) -->
+  <div id="messagesModal" class="modal hidden" style="display:none"></div>
+  <div id="notificationsModal" class="modal hidden" style="display:none"></div>
+  <div id="sellModal" class="modal hidden" style="display:none"></div>
+  <div id="editorModal" class="modal hidden" style="display:none"></div>
+
+  <!-- toast -->
+  <div id="toast"></div>
+
+  <script>
+    /* small inline fallback to ensure navTrending button exists for older browsers that may load before script.js */
+    document.getElementById('navTrending')?.addEventListener('click', ()=>{ try{ window.renderTrending && window.renderTrending(); }catch(e){} });
+  </script>
+</body>
+</html>
