@@ -181,8 +181,76 @@ textarea{ width:100%; background:transparent; color:var(--white); border:1px sol
 
 /* profile grid */
 .profile-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:12px }
-@media(max-width:980px){ .profile-grid{ grid-template-columns: repeat(2, 1fr)} }
-@media(max-width:520px){ .profile-grid{ grid-template-columns: repeat(1, 1fr)} }
-.grid-item{ position:relative; overflow:hidden; border-radius:10px; background: #0f1112; cursor:pointer; min-height:88px }
-.grid-item img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform 300ms }
-.grid-item:hover img{ transform: scale(1.06) }
+@media(max-width:980px){ .profile-grid{ grid-template-columns: repeat(2, 1fr) } }
+@media(max-width:520px){ .profile-grid{ grid-template-columns: repeat(1, 1fr) } }
+
+.profile-pic{ width:48px;height:48px;border-radius:10px;object-fit:cover }
+
+.market-card{ display:flex; gap:12px; align-items:flex-start }
+.market-card img{ width:160px; height:100px; object-fit:cover; border-radius:8px }
+
+/* profile grid items */
+.grid-item{ position:relative; border-radius:8px; overflow:hidden; background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); cursor:pointer }
+
+/* misc small */
+.tag{ color:var(--accent); text-decoration:none }
+
+/* =======================
+   Mobile & UI Enhancements
+   ======================= */
+
+/* Floating Action Button (FAB) */
+#fabCompose {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--white);
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: transform 0.2s ease;
+  z-index: 9999;
+}
+#fabCompose:hover {
+  transform: scale(1.1);
+}
+
+/* Stories scroll on mobile */
+#storiesBar {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 8px 0;
+  scrollbar-width: thin;
+}
+#storiesBar::-webkit-scrollbar {
+  height: 6px;
+}
+#storiesBar::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 3px;
+}
+.story {
+  min-width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--white);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Smooth theme transition */
+body {
+  transition: background 0.25s ease, color 0.25s ease;
+}

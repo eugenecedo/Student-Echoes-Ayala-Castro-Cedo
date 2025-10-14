@@ -1,28 +1,36 @@
+/* =========================
+   Student Echoes - script.js
+   Upgraded: Marketplace -> Offline News
+   Keep original behavior for posts/profiles/etc.
+   ========================= */
+
+/* LocalStorage keys */
 const LS_USERS = 'se_users';
 const LS_POSTS = 'se_posts';
 const LS_CURRENT = 'se_current';
 const LS_DRAFT = 'se_draft';
 const LS_SAVED_ITEMS = 'se_saved_items';
-
-// new feature keys
 const LS_MESSAGES = 'se_messages';
 const LS_NOTIFS = 'se_notifications';
 const LS_STORIES = 'se_stories';
 const LS_THEME = 'se_theme';
-const LS_MARKET = 'se_market'; // keep compatibility
-// app state
+const LS_MARKET = 'se_market'; // reused for news items
+
+/* App state */
 let users = JSON.parse(localStorage.getItem(LS_USERS) || '{}');
 let posts = JSON.parse(localStorage.getItem(LS_POSTS) || '[]');
 let savedMarket = JSON.parse(localStorage.getItem(LS_SAVED_ITEMS) || '[]');
 let currentUser = localStorage.getItem(LS_CURRENT) || null;
-let messages = JSON.parse(localStorage.getItem(LS_MESSAGES) || '{}'); // {userA: {userB: [{...}]}}
-let notifications = JSON.parse(localStorage.getItem(LS_NOTIFS) || '{}'); // {username: [{type:'like', text, at, meta}]}
-let stories = JSON.parse(localStorage.getItem(LS_STORIES) || '[]'); // [{id,user,img,createdAt}]
+let messages = JSON.parse(localStorage.getItem(LS_MESSAGES) || '{}');
+let notifications = JSON.parse(localStorage.getItem(LS_NOTIFS) || '{}');
+let stories = JSON.parse(localStorage.getItem(LS_STORIES) || '[]');
+
+/* Sample offline news (used if no saved in localStorage) */
 let marketItems = JSON.parse(localStorage.getItem(LS_MARKET) || 'null') || [
-  { id: 'm1', title: 'Used Math Textbook', desc: 'Calculus 1, good condition', price: '₱250', img: 'https://picsum.photos/seed/book1/400/300' },
-  { id: 'm2', title: 'Laptop Sleeve', desc: '15-inch, padded', price: '₱350', img: 'https://picsum.photos/seed/sleeve/400/300' },
-  { id: 'm3', title: 'Sticker Pack', desc: 'College-themed stickers', price: '₱80', img: 'https://picsum.photos/seed/stickers/400/300' },
-  { id: 'm4', title: 'USB Flash Drive', desc: '32GB, fast', price: '₱150', img: 'https://picsum.photos/seed/usb/400/300' }
+  { id: 'news1', title: 'University to Open New Study Hall', desc: 'A new 24/7 study hall will open in Block C this semester.', price: 'Campus Bulletin', img: 'https://picsum.photos/seed/news1/400/300', seller: 'Campus Bulletin', url: '#' },
+  { id: 'news2', title: 'Hackathon Winners Announced', desc: 'Team Orion wins the annual inter-college hackathon.', price: 'Campus News', img: 'https://picsum.photos/seed/news2/400/300', seller: 'Campus News', url: '#' },
+  { id: 'news3', title: 'Library Hours Extended', desc: 'Library will be open till midnight during exam week.', price: 'Library', img: 'https://picsum.photos/seed/news3/400/300', seller: 'Library', url: '#' },
+  { id: 'news4', title: 'Student Art Exhibit Next Friday', desc: 'Showcasing student works at the campus gallery.', price: 'Arts Dept', img: 'https://picsum.photos/seed/news4/400/300', seller: 'Arts Dept', url: '#' }
 ];
 
 /* -----------------------
@@ -119,7 +127,7 @@ function showPage(page, instant=false){
     document.getElementById('explorePage').classList.remove('hidden');
     document.getElementById('navExplore')?.classList.add('active');
     renderExplore();
-  } else if(page === 'market'){
+  } else if(page === 'market'){ // News page
     document.getElementById('marketPage').classList.remove('hidden');
     document.getElementById('navMarket')?.classList.add('active');
     renderMarket();
@@ -155,7 +163,7 @@ function loadDraft(){
 function clearDraft(){
   if(currentUser) localStorage.removeItem(LS_DRAFT + '_' + currentUser);
   document.getElementById('txtPost').value = '';
-  document.getElementById('filePost').value = '';
+  const fp = document.getElementById('filePost'); if(fp) fp.value = '';
   document.getElementById('draftNotice').textContent = '';
 }
 
@@ -192,7 +200,6 @@ function createPostObject(text, imageDataURL){
   if(!users[currentUser].stats) users[currentUser].stats = {posts:0,likes:0,comments:0};
   users[currentUser].stats.posts++;
   saveUsers(); savePosts(); renderPosts(); clearDraft(); showToast('✅ Post shared successfully!'); updateCounts(); renderProfilePosts();
-  // notify followers about new post
   notifyFollowersNewPost(currentUser, p);
 }
 
@@ -200,7 +207,6 @@ function createPostObject(text, imageDataURL){
 function notifyFollowersNewPost(user, post){
   const u = users[user];
   if(!u || !u.following) return;
-  // find followers (inverse)
   Object.keys(users).forEach(username=>{
     const target = users[username];
     if(target && target.following && target.following.includes(user)){
@@ -269,7 +275,7 @@ function renderPosts(filter=''){
 }
 
 /* -----------------------
-   Like / comment / edit / delete (kept all original behavior, added notifications)
+   Like / comment / edit / delete
    ----------------------- */
 function toggleLike(postId){
   if(!currentUser) { showToast('Please login to like'); return; }
@@ -281,11 +287,7 @@ function toggleLike(postId){
     if(users[post.user] && users[post.user].stats) users[post.user].stats.likes = Math.max(0, users[post.user].stats.likes - 1);
   } else {
     post.likedBy.push(currentUser);
-    if(users[post.user]){
-      if(!users[post.user].stats) users[post.user].stats = {posts:0,likes:0,comments:0};
-      users[post.user].stats.likes = (users[post.user].stats.likes || 0) + 1;
-    }
-    // add notification to post owner
+    if(users[post.user]){ if(!users[post.user].stats) users[post.user].stats = {posts:0,likes:0,comments:0}; users[post.user].stats.likes = (users[post.user].stats.likes || 0) + 1; }
     if(post.user !== currentUser) addNotification(post.user, 'like', `${currentUser} liked your post`, {postId});
   }
   savePosts(); saveUsers(); renderPosts(); renderProfilePosts(); updateCounts(); renderTrending(); renderNotificationsDot();
@@ -315,7 +317,6 @@ function addComment(postId){
 function onEditPost(postId){
   const post = posts.find(p => p.id === postId);
   if(!post || post.user !== currentUser) return showToast('Cannot edit');
-  // open editor modal with existing text
   openEditorModal(postId);
 }
 function onDeletePost(postId){
@@ -329,7 +330,7 @@ function onDeletePost(postId){
 }
 
 /* -----------------------
-   Profile functions (kept, added follow UI)
+   Profile functions (kept)
    ----------------------- */
 function showProfile(username){
   if(!username) username = currentUser;
@@ -347,12 +348,11 @@ function refreshProfileUI(viewUser){
   document.getElementById('miniBio').textContent = userObj.bio || '';
   document.getElementById('composerAvatar').src = pic;
   document.getElementById('miniPic').src = pic;
-  document.getElementById('miniPicRight').src = pic;
+  document.getElementById('miniPicRight') && (document.getElementById('miniPicRight').src = pic);
   document.getElementById('profilePicBig')?.src && (document.getElementById('profilePicBig').src = pic);
   document.getElementById('profileUser') && (document.getElementById('profileUser').textContent = u);
   document.getElementById('profileUserRight') && (document.getElementById('profileUserRight').textContent = u);
   document.getElementById('profileBioMini') && (document.getElementById('profileBioMini').textContent = userObj.bio || "No bio yet");
-  document.getElementById('profileBioMiniRight') && (document.getElementById('profileBioMiniRight').textContent = userObj.bio || "No bio yet");
   document.getElementById('profileUsername') && (document.getElementById('profileUsername').value = u);
   document.getElementById('bio') && (document.getElementById('bio').value = userObj.bio || '');
 
@@ -401,7 +401,6 @@ function refreshProfileUI(viewUser){
     actions.style.gap = '8px';
     actions.style.marginLeft = 'auto';
 
-    // if viewing your own profile, show change photo/edit profile buttons
     if(u === currentUser){
       const changePhotoLabel = document.createElement('label');
       changePhotoLabel.style.cursor='pointer';
@@ -418,7 +417,6 @@ function refreshProfileUI(viewUser){
       backBtn.onclick = ()=> showPage('feed');
       actions.appendChild(backBtn);
     } else {
-      // follow/unfollow
       const followBtn = document.createElement('button');
       followBtn.className = 'primary';
       followBtn.id = 'followBtn';
@@ -460,7 +458,6 @@ function toggleFollow(targetUser){
   const idx = users[currentUser].following.indexOf(targetUser);
   if(idx >= 0){
     users[currentUser].following.splice(idx,1);
-    // remove follower from target
     const fIdx = users[targetUser].followers.indexOf(currentUser);
     if(fIdx >= 0) users[targetUser].followers.splice(fIdx,1);
     addNotification(targetUser, 'unfollow', `${currentUser} unfollowed you`, {});
@@ -496,7 +493,7 @@ function renderProfilePosts(viewUser){
   });
 }
 
-/* modal */
+/* modal for posts */
 function openPostModal(post){
   const modalRoot = document.getElementById('viewModal');
   const likedText = post.likedBy.includes(currentUser) ? '💔 Unlike' : '❤️ Like';
@@ -583,7 +580,7 @@ function escapeHtml(str){
 }
 
 /* -----------------------
-   Wire profile pic input (kept)
+   Wire profile pic input
    ----------------------- */
 document.addEventListener('change', (e)=>{
   if(e.target && e.target.id === 'profilePicInput') updateProfilePic(e);
@@ -596,8 +593,7 @@ document.addEventListener('change', (e)=>{
 (function init(){
   const cur = localStorage.getItem(LS_CURRENT);
   if(cur && users[cur]){ setCurrent(cur); openApp(); }
-  // wire saved market items
-  renderMarket();
+  renderMarket(); // show news on load
 })();
 
 /* notify dot toggler (demo) */
@@ -637,7 +633,7 @@ function toggleNotifDot(btn){
   adaptNav();
 })();
 
-/* storage sync (kept) */
+/* storage sync */
 window.addEventListener('storage', ()=> {
   users = JSON.parse(localStorage.getItem(LS_USERS) || '{}');
   posts = JSON.parse(localStorage.getItem(LS_POSTS) || '[]');
@@ -691,18 +687,37 @@ function renderExplore(){
 }
 
 /* =========================
-   MARKETPLACE (kept + sell modal)
+   NEWS (offline feed) - replaces Marketplace
    ========================= */
+
+/* loadNewsFeed: for offline mode, reloads the sample news (or keeps saved) */
+function loadNewsFeed(){
+  showToast("Loading campus headlines...");
+  // For offline mode we just restore the bundled sample headlines.
+  // If you later want to add API fetching, modify this function.
+  marketItems = [
+    { id: 'news1', title: 'University to Open New Study Hall', desc: 'A new 24/7 study hall will open in Block C this semester.', price: 'Campus Bulletin', img: 'https://picsum.photos/seed/news1/400/300', seller: 'Campus Bulletin', url: '#' },
+    { id: 'news2', title: 'Hackathon Winners Announced', desc: 'Team Orion wins the annual inter-college hackathon.', price: 'Campus News', img: 'https://picsum.photos/seed/news2/400/300', seller: 'Campus News', url: '#' },
+    { id: 'news3', title: 'Library Hours Extended', desc: 'Library will be open till midnight during exam week.', price: 'Library', img: 'https://picsum.photos/seed/news3/400/300', seller: 'Library', url: '#' },
+    { id: 'news4', title: 'Student Art Exhibit Next Friday', desc: 'Showcasing student works at the campus gallery.', price: 'Arts Dept', img: 'https://picsum.photos/seed/news4/400/300', seller: 'Arts Dept', url: '#' },
+    { id: 'news5', title: 'New Cafeteria Menu Launched', desc: 'Healthy options now available in the cafeteria.', price: 'Campus Dining', img: 'https://picsum.photos/seed/news5/400/300', seller: 'Campus Dining', url: '#' }
+  ];
+  saveMarketState();
+  renderMarket();
+  showToast('📰 Campus headlines updated');
+}
+
+/* renderMarket: shows news articles */
 function renderMarket(){
-  const q = document.getElementById('marketSearch').value.trim().toLowerCase();
+  const q = (document.getElementById('marketSearch')?.value || '').trim().toLowerCase();
   const root = document.getElementById('marketList');
   root.innerHTML = '';
   const filtered = marketItems.filter(it => {
     if(!q) return true;
-    return it.title.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q);
+    return it.title.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q) || (it.seller && it.seller.toLowerCase().includes(q));
   });
   if(filtered.length === 0){
-    root.innerHTML = '<div class="panel muted">No items found</div>';
+    root.innerHTML = '<div class="panel muted">No articles found</div>';
     return;
   }
   filtered.forEach(it => {
@@ -715,9 +730,9 @@ function renderMarket(){
         <div style="font-weight:700">${escapeHtml(it.title)} <span style="font-weight:600;color:var(--muted);font-size:13px">· ${escapeHtml(it.price)}</span></div>
         <div class="muted" style="margin-top:6px">${escapeHtml(it.desc)}</div>
         <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-          <button class="small-btn" onclick="viewMarketItem('${it.id}')">View</button>
+          <button class="small-btn" onclick="viewNewsItem('${it.id}')">View</button>
           <button class="fav" onclick="toggleSaveItem('${it.id}')">${isSaved ? 'Saved ✓' : 'Save'}</button>
-          <div style="margin-left:auto;font-size:12px;color:var(--muted)">Seller: ${escapeHtml(it.seller || 'School Market')}</div>
+          <div style="margin-left:auto;font-size:12px;color:var(--muted)">Source: ${escapeHtml(it.seller || 'News')}</div>
         </div>
       </div>
     `;
@@ -727,7 +742,8 @@ function renderMarket(){
   renderSavedItems();
 }
 
-function viewMarketItem(id){
+/* viewNewsItem: open article modal and allow opening url (if present) */
+function viewNewsItem(id){
   const it = marketItems.find(m=>m.id===id);
   if(!it) return;
   const modalRoot = document.getElementById('viewModal');
@@ -735,14 +751,14 @@ function viewMarketItem(id){
     <div class="modal">
       <div class="modal-card">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">${escapeHtml(it.title)} <span class="muted" style="font-weight:600;font-size:13px">· ${escapeHtml(it.price)}</span></div>
+          <div style="font-weight:700">${escapeHtml(it.title)}</div>
           <div><button class="small-btn" onclick="closeMarketModal()">Close</button></div>
         </div>
         <img src="${it.img}" style="width:100%;max-height:320px;object-fit:cover;border-radius:8px;margin-top:8px"/>
         <div style="margin-top:8px">${escapeHtml(it.desc)}</div>
         <div style="margin-top:12px;display:flex;gap:8px">
-          <button class="primary" onclick="toggleSaveItem('${it.id}')">${savedMarket.includes(it.id) ? 'Unsave' : 'Save'}</button>
-          <button class="small-btn" onclick="fakeBuy('${it.id}')">Buy</button>
+          <button class="primary" onclick="window.open('${it.url || '#'}','_blank')">Open Article</button>
+          <button class="small-btn" onclick="toggleSaveItem('${it.id}')">${savedMarket.includes(it.id) ? 'Unsave' : 'Save'}</button>
         </div>
       </div>
     </div>
@@ -751,19 +767,15 @@ function viewMarketItem(id){
 }
 function closeMarketModal(){ document.getElementById('viewModal').innerHTML=''; document.getElementById('viewModal').style.display='none'; }
 
-function fakeBuy(id){
-  showToast('🛒 Purchase simulated — this is a demo');
-  closeMarketModal();
-}
-
+/* save / unsave article */
 function toggleSaveItem(id){
   const idx = savedMarket.indexOf(id);
   if(idx >= 0){
     savedMarket.splice(idx,1);
-    showToast('Removed from saved items');
+    showToast('Removed from saved articles');
   } else {
     savedMarket.unshift(id);
-    showToast('Saved to your items');
+    showToast('Saved to your articles');
   }
   saveSavedItems();
   renderMarket();
@@ -775,66 +787,25 @@ function renderSavedItems(){
   const count = document.getElementById('savedCount');
   root.innerHTML = '';
   count.textContent = savedMarket.length + ' saved';
-  if(savedMarket.length === 0){ root.innerHTML = '<div class="muted">No saved items yet</div>'; return; }
+  if(savedMarket.length === 0){ root.innerHTML = '<div class="muted">No saved articles yet</div>'; return; }
   savedMarket.forEach(id => {
     const it = marketItems.find(m=>m.id===id);
     if(!it) return;
     const div = document.createElement('div');
     div.className = 'grid-item';
     div.innerHTML = `<img src="${it.img}" alt="${escapeHtml(it.title)}"/><div style="position:absolute;left:8px;bottom:8px;color:var(--white);font-weight:700">${escapeHtml(it.title)}</div>`;
-    div.onclick = ()=> viewMarketItem(it.id);
+    div.onclick = ()=> viewNewsItem(it.id);
     root.appendChild(div);
   });
 }
 
-/* =========================
-   Saved helpers / initialization
-   ========================= */
+/* ensure saved array */
 function ensureSavedInit(){ if(!Array.isArray(savedMarket)) savedMarket = []; }
 ensureSavedInit();
 
-/* small helper to open profile editing (simple UX) */
-function enterEditProfile(){
-  showPage('profile');
-  document.getElementById('bio').focus();
-}
-function cancelEditProfile(){
-  if(currentUser && users[currentUser]) document.getElementById('bio').value = users[currentUser].bio || '';
-  showToast('Edit cancelled');
-}
-
-/* expose some to window for inline handlers */
-window.showPage = showPage;
-window.onRegister = onRegister;
-window.onLogin = onLogin;
-window.onCreatePost = onCreatePost;
-window.clearDraft = clearDraft;
-window.saveDraft = saveDraft;
-window.enterCompose = enterCompose;
-window.logout = logout;
-window.toggleNotifDot = toggleNotifDot;
-window.toggleLike = toggleLike;
-window.toggleCommentsArea = toggleCommentsArea;
-window.addComment = addComment;
-window.onEditPost = onEditPost;
-window.onDeletePost = onDeletePost;
-window.showProfile = showProfile;
-window.updateBio = updateBio;
-window.updateProfilePic = updateProfilePic;
-window.openPostModal = openPostModal;
-window.closePostModal = closePostModal;
-window.openPostModalById = openPostModalById;
-window.toggleSaveItem = toggleSaveItem;
-window.viewMarketItem = viewMarketItem;
-window.renderMarket = renderMarket;
-window.renderExplore = renderExplore;
-
-/* persist market array if it's default and not already in storage */
-saveMarketState();
-
-/* =========================
-   Notifications system (simple)
-   ========================= */
+/* ------------------------
+   Notifications system
+   ------------------------ */
 function addNotification(username, type, text, meta={}){
   notifications[username] = notifications[username] || [];
   notifications[username].unshift({ type, text, meta, at: new Date().toISOString(), read: false });
@@ -860,327 +831,160 @@ function renderNotificationsDot(){
   const dot = document.getElementById('notifDot');
   if(!dot) return;
   const list = getNotifications(currentUser || '__guest__');
-  const unread = list.filter(n=>!n.read).length;
+  const unread = (list || []).filter(n=>!n.read).length;
   dot.style.display = unread > 0 ? 'inline-block' : 'none';
 }
 
-/* =========================
-   Messaging (basic)
-   ========================= */
-function openMessagesModal(){
-  if(!currentUser) return showToast('Please log in to view messages');
-  const modal = document.getElementById('messagesModal');
-  const usersList = Object.keys(users).filter(u=>u!==currentUser);
-  modal.innerHTML = `<div class="modal"><div class="modal-card" style="max-width:720px">
-    <div style="display:flex;gap:12px">
-      <div style="width:200px;border-right:1px solid rgba(255,255,255,0.04);padding-right:12px">
-        <h4>Chats</h4>
-        <div id="chatsList">${usersList.map(u=>`<div style="padding:8px;cursor:pointer" onclick="openChat('${u}')">${escapeHtml(u)}</div>`).join('')}</div>
-      </div>
-      <div style="flex:1;padding-left:12px">
-        <div id="chatWindow"><div class="muted">Select a user to chat</div></div>
-      </div>
-    </div>
-    <div style="margin-top:8px;text-align:right"><button class="small-btn" onclick="closeSimpleModal('messagesModal')">Close</button></div>
-  </div></div>`;
-  modal.style.display = 'block';
-}
-
-/* open chat with user */
-function openChat(peer){
-  const chatWindow = document.getElementById('chatWindow');
-  const convo = getConversation(currentUser, peer);
-  chatWindow.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto;padding:8px" id="chatBody">
-    ${convo.map(m=>`<div style="text-align:${m.from===currentUser?'right':'left'}"><div style="display:inline-block;background:${m.from===currentUser? 'var(--accent)': 'var(--card)'};padding:8px;border-radius:8px">${escapeHtml(m.text)}</div><div style="font-size:11px;color:var(--muted)">${new Date(m.at).toLocaleString()}</div></div>`).join('')}
-  </div>
-  <div style="display:flex;gap:8px;margin-top:8px">
-    <input id="chatInput" placeholder="Type a message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)"/>
-    <button class="primary" onclick="sendMessageTo('${peer}')">Send</button>
-  </div>`;
-  // scroll to bottom
-  setTimeout(()=>{ const el = document.getElementById('chatBody'); if(el) el.scrollTop = el.scrollHeight; },100);
-}
-function convKey(u1,u2){
-  return [u1,u2].sort().join('|');
-}
-function getConversation(u1,u2){
-  messages = JSON.parse(localStorage.getItem(LS_MESSAGES) || '{}');
-  const key = convKey(u1,u2);
-  return messages[key] || [];
-}
-function sendMessageTo(peer){
-  const input = document.getElementById('chatInput');
-  if(!input) return;
-  const text = input.value.trim();
-  if(!text) return;
-  const key = convKey(currentUser, peer);
-  messages[key] = messages[key] || [];
-  const msgObj = { from: currentUser, to: peer, text, at: new Date().toISOString() };
-  messages[key].push(msgObj);
-  saveMessages();
-  // notify recipient
-  addNotification(peer, 'message', `${currentUser} sent you a message`, {from: currentUser});
-  openChat(peer);
-}
-
-/* =========================
-   Stories (simple 24h expiry)
-   ========================= */
-function renderStories(){
-  // cleanup expired stories (>24h)
-  const now = Date.now();
-  stories = stories.filter(s => (now - new Date(s.createdAt).getTime()) < 24*60*60*1000);
-  saveStories();
-  const root = document.getElementById('storiesBar');
-  if(!root) return;
-  if(stories.length === 0){ root.classList.add('hidden'); return; }
-  root.classList.remove('hidden');
+/* ------------------------
+   Trending & tags (simple)
+   ------------------------ */
+function renderTrending(){
+  const root = document.getElementById('trendingContent');
   root.innerHTML = '';
-  stories.forEach(st=>{
+  // top posts by likes
+  const top = [...posts].sort((a,b)=> (b.likedBy.length||0) - (a.likedBy.length||0)).slice(0,6);
+  if(top.length === 0){ root.innerHTML = '<div class="panel muted">No trending posts yet</div>'; return; }
+  top.forEach(p=>{
     const div = document.createElement('div');
-    div.className = 'story';
-    div.title = `${st.user} • ${new Date(st.createdAt).toLocaleString()}`;
-    if(st.img){
-      div.style.backgroundImage = `url(${st.img})`;
-      div.style.backgroundSize = 'cover';
-      div.style.backgroundPosition = 'center';
-      div.textContent = '';
-    } else {
-      div.textContent = st.user[0].toUpperCase();
-    }
-    div.onclick = ()=> viewStory(st.id);
+    div.className = 'trending-card';
+    div.innerHTML = `<div style="font-weight:700">${escapeHtml(p.text || '(no text)')}</div><div style="font-size:12px;color:var(--muted)">by ${escapeHtml(p.user)} · ${p.likedBy.length} likes</div>`;
     root.appendChild(div);
   });
-}
-function viewStory(id){
-  const st = stories.find(s=>s.id===id);
-  if(!st) return;
-  const modal = document.getElementById('viewModal');
-  modal.innerHTML = `<div class="modal"><div class="modal-card">
-    <div style="display:flex;justify-content:space-between;align-items:center"><h3>${escapeHtml(st.user)}'s story</h3><button class="small-btn" onclick="closeViewModal()">Close</button></div>
-    <div style="margin-top:8px">${st.img ? `<img src="${st.img}" style="width:100%;border-radius:8px"/>` : `<div style="padding:20px;background:var(--card);border-radius:8px">${escapeHtml(st.user)}'s story</div>`}</div>
-  </div></div>`;
-  modal.style.display = 'block';
-}
-function closeViewModal(){ const m = document.getElementById('viewModal'); if(m) { m.innerHTML = ''; m.style.display='none'; } }
 
-function addStory(imageDataURL){
-  if(!currentUser) return showToast('Login to add story');
-  const st = { id: 's' + Date.now(), user: currentUser, img: imageDataURL, createdAt: new Date().toISOString() };
-  stories.unshift(st);
-  saveStories();
-  renderStories();
-  showToast('Story added (expires in 24h)');
+  // trending tags
+  const tagsRoot = document.getElementById('trendingTags');
+  if(tagsRoot){
+    const tags = {};
+    posts.forEach(p=>{
+      (p.text || '').match(/#([a-zA-Z0-9_]+)/g)?.forEach(t => { tags[t] = (tags[t]||0)+1; });
+    });
+    tagsRoot.innerHTML = Object.keys(tags).slice(0,8).map(t=>`<button class="small-btn" onclick="filterByTag('${encodeURIComponent(t)}')">${t} (${tags[t]})</button>`).join(' ');
+  }
 }
 
-/* -----------------------
-   Rich editor modal (basic)
-   ----------------------- */
-function openEditorModal(postId=null){
-  const modal = document.getElementById('editorModal');
-  const initialText = postId ? (posts.find(p=>p.id===postId)?.text || '') : document.getElementById('txtPost').value || '';
-  modal.innerHTML = `<div class="modal"><div class="modal-card">
-    <div style="display:flex;justify-content:space-between;align-items:center"><h3>${postId ? 'Edit Post' : 'Create Post'}</h3><button class="small-btn" onclick="closeEditorModal()">Close</button></div>
-    <div style="margin-top:8px">
-      <textarea id="editorTextarea" style="width:100%;min-height:120px;padding:10px;border-radius:8px;background:transparent;color:var(--white)">${escapeHtml(initialText)}</textarea>
-      <div style="margin-top:8px;display:flex;gap:8px">
-        <button class="small-btn" onclick="applyFormat('**')"><b>B</b></button>
-        <button class="small-btn" onclick="applyFormat('*')"><i>I</i></button>
-        <button class="small-btn" onclick="insertEmoji('😊')">😊</button>
-        <button class="primary" onclick="submitEditor(${postId || 'null'})">${postId ? 'Save' : 'Post'}</button>
-      </div>
-    </div>
-  </div></div>`;
-  modal.style.display = 'block';
+/* filter by hashtag */
+function filterByTag(tag){
+  try{ tag = decodeURIComponent(tag); }catch(e){}
+  const q = tag.replace('#','');
+  renderPosts(q);
+  showPage('feed');
 }
-function closeEditorModal(){ const m=document.getElementById('editorModal'); if(m) { m.innerHTML=''; m.style.display='none'; } }
-function applyFormat(tag){
-  const ta = document.getElementById('editorTextarea');
-  if(!ta) return;
-  const start = ta.selectionStart, end = ta.selectionEnd;
-  const sel = ta.value.substring(start,end);
-  ta.setRangeText(tag + sel + tag, start, end, 'end');
-  ta.focus();
+
+/* ------------------------
+   Stories (simple placeholder)
+   ------------------------ */
+function renderStories(){
+  const root = document.getElementById('storiesBar');
+  if(!root) return;
+  root.classList.remove('hidden');
+  root.innerHTML = '';
+  stories.forEach(s=>{
+    const b = document.createElement('div');
+    b.className = 'story';
+    b.textContent = s.user ? s.user[0].toUpperCase() : 'S';
+    b.title = s.user;
+    root.appendChild(b);
+  });
 }
-function insertEmoji(e){ const ta = document.getElementById('editorTextarea'); if(!ta) return; ta.setRangeText(e, ta.selectionStart, ta.selectionEnd, 'end'); ta.focus(); }
-function submitEditor(postId){
-  const ta = document.getElementById('editorTextarea');
-  const text = ta.value.trim();
-  if(!text) return showToast('Write something first');
+
+/* add story (kept skeleton) */
+function addStory(){ if(!currentUser) return showToast('Login to add story'); stories.unshift({id:'st'+Date.now(), user: currentUser, img:'', createdAt: new Date().toISOString()}); saveStories(); renderStories(); showToast('Story added'); }
+
+/* ------------------------
+   Misc small helpers / profile edit
+   ------------------------ */
+function enterEditProfile(){ showPage('profile'); document.getElementById('bio').focus(); }
+function cancelEditProfile(){ if(currentUser && users[currentUser]) document.getElementById('bio').value = users[currentUser].bio || ''; showToast('Edit cancelled'); }
+function updateProfileUsername(){ showToast('Username cannot be changed in this demo'); }
+
+/* ------------------------
+   Editor modal (simple)
+   ------------------------ */
+function openEditorModal(postId){
+  const modalRoot = document.getElementById('viewModal');
   if(postId){
     const post = posts.find(p=>p.id===postId);
     if(!post) return;
-    post.text = text;
-    post.editedAt = new Date().toISOString();
-    savePosts(); renderPosts(); renderProfilePosts(); showToast('✏️ Post edited');
+    modalRoot.innerHTML = `<div class="modal"><div class="modal-card"><h3>Edit post</h3><textarea id="editorText">${escapeHtml(post.text)}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="primary" onclick="saveEdit(${postId})">Save</button><button class="small-btn" onclick="closePostModal(${postId})">Cancel</button></div></div></div>`;
   } else {
-    // create new post using editor text (no image)
-    const p = { id: Date.now(), user: currentUser, text, image: null, likedBy: [], comments: [], createdAt: new Date().toISOString(), editedAt: null };
-    posts.unshift(p);
-    users[currentUser].stats.posts = (users[currentUser].stats.posts || 0) + 1;
-    savePosts(); saveUsers(); renderPosts(); showToast('✅ Post shared successfully!'); updateCounts(); renderProfilePosts();
+    modalRoot.innerHTML = `<div class="modal"><div class="modal-card"><h3>Compose</h3><textarea id="editorText"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="primary" onclick="saveNewFromEditor()">Post</button><button class="small-btn" onclick="closePostModal('editor')">Cancel</button></div></div></div>`;
   }
-  closeEditorModal();
-  renderTrending();
+  modalRoot.style.display = 'block';
+}
+function saveEdit(postId){
+  const txt = document.getElementById('editorText').value.trim();
+  const post = posts.find(p=>p.id===postId);
+  if(!post) return;
+  post.text = txt;
+  post.editedAt = new Date().toISOString();
+  savePosts(); renderPosts(); closePostModal(postId); showToast('Post updated');
+}
+function saveNewFromEditor(){
+  const txt = document.getElementById('editorText').value.trim();
+  if(!txt) return showToast('Write something');
+  createPostObject(txt, null);
+  closePostModal('editor');
 }
 
-/* -----------------------
-   Hashtag filter helper
-   ----------------------- */
-function filterByTag(tag){
-  // tag is URL-encoded or raw '#tag'
-  const raw = decodeURIComponent(tag);
-  // set search text and render
-  renderPosts();
-  // highlight results by filtering
-  const filtered = posts.filter(p => (p.text||'').includes(raw));
-  // temporarily render only filtered
-  const container = document.getElementById('postsList');
-  container.innerHTML = '';
-  filtered.forEach(post=>{
-    // reuse render logic by building DOM via temporary injection
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.innerHTML = `<div style="padding:12px"><div style="font-weight:700">${escapeHtml(post.user)}</div><div style="margin-top:8px">${escapeHtml(post.text)}</div></div>`;
-    container.appendChild(div);
-  });
-  showToast(`Filtered by ${raw}`);
-}
-
-/* -----------------------
-   Trending calculation & render
-   ----------------------- */
-function renderTrending(){
-  const root = document.getElementById('trendingContent');
-  if(!root) return;
-  root.innerHTML = '';
-  // top hashtags
-  const tags = {};
-  posts.forEach(p=>{
-    const m = (p.text || '').match(/#([a-zA-Z0-9_]+)/g) || [];
-    m.forEach(t => { tags[t] = (tags[t]||0) + 1; });
-  });
-  const sortedTags = Object.entries(tags).sort((a,b)=>b[1]-a[1]).slice(0,12);
-  const tagPanel = document.createElement('div');
-  tagPanel.className = 'panel';
-  tagPanel.innerHTML = `<div style="font-weight:700;margin-bottom:8px">Top Hashtags</div>` + (sortedTags.length === 0 ? '<div class="muted">No hashtags yet</div>' : sortedTags.map(([t,c])=>`<div class="trending-card"><a href="javascript:void(0)" onclick="filterByTag('${encodeURIComponent(t)}')">${t}</a> — ${c}</div>`).join(''));
-  root.appendChild(tagPanel);
-
-  // top posts (by likes)
-  const topPosts = posts.slice().sort((a,b)=> (b.likedBy.length || 0) - (a.likedBy.length || 0)).slice(0,6);
-  const postsPanel = document.createElement('div');
-  postsPanel.className = 'panel';
-  postsPanel.innerHTML = `<div style="font-weight:700;margin-bottom:8px">Top Posts</div>` + (topPosts.length === 0 ? '<div class="muted">No posts yet</div>' : topPosts.map(p=>{
-    return `<div class="card" style="margin-bottom:8px"><div style="font-weight:700">${escapeHtml(p.user)}</div><div style="font-size:13px;color:var(--muted)">${escapeHtml((p.text||'').slice(0,120))}</div><div style="margin-top:6px">❤️ ${p.likedBy.length} · 💬 ${p.comments.length}</div></div>`;
-  }).join(''));
-  root.appendChild(postsPanel);
-
-  // top users (by score: posts + likes + followers)
-  const usersArr = Object.entries(users).map(([k,v])=>{
-    const score = (v.stats?.posts || 0) + (v.stats?.likes || 0) + (v.followers?.length || 0);
-    return { username: k, score, posts:v.stats?.posts || 0, likes: v.stats?.likes || 0, followers: v.followers?.length || 0 };
-  }).sort((a,b)=>b.score - a.score).slice(0,8);
-  const usersPanel = document.createElement('div');
-  usersPanel.className = 'panel';
-  usersPanel.innerHTML = `<div style="font-weight:700;margin-bottom:8px">Top Users</div>` + (usersArr.length === 0 ? '<div class="muted">No users yet</div>' : usersArr.map(u=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.02)"><div><strong>${escapeHtml(u.username)}</strong><div style="font-size:12px;color:var(--muted)">${u.posts} posts · ${u.likes} likes</div></div><div style="font-weight:700">${u.score}</div></div>`).join(''));
-  root.appendChild(usersPanel);
-}
-
-/* -----------------------
-   Simple helpers for file modals (sell / story)
-   ----------------------- */
-function openSellModal(){
-  const modal = document.getElementById('sellModal');
-  modal.innerHTML = `<div class="modal"><div class="modal-card" style="max-width:520px">
-    <div style="display:flex;justify-content:space-between;align-items:center"><h3>Sell an item</h3><button class="small-btn" onclick="closeSimpleModal('sellModal')">Close</button></div>
-    <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
-      <input id="sellTitle" placeholder="Title" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)"/>
-      <input id="sellPrice" placeholder="Price" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)"/>
-      <textarea id="sellDesc" placeholder="Description" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)"></textarea>
-      <input id="sellImage" type="file" accept="image/*" />
-      <div style="display:flex;gap:8px;justify-content:flex-end"><button class="primary" onclick="postSellItem()">Post Item</button><button class="small-btn" onclick="closeSimpleModal('sellModal')">Cancel</button></div>
-    </div>
-  </div></div>`; 
+/* ------------------------
+   Notifications UI wiring
+   ------------------------ */
+function openMessagesModal(){
+  const modal = document.getElementById('messagesModal');
+  modal.innerHTML = `<div class="modal"><div class="modal-card"><h3>Messages (demo)</h3><div class="muted">Messaging is a light demo in this build.</div><div style="margin-top:8px"><button class="small-btn" onclick="closeSimpleModal('messagesModal')">Close</button></div></div></div>`;
   modal.style.display = 'block';
 }
-function postSellItem(){
-  if(!currentUser) return showToast('Please login to post items');
-  const title = document.getElementById('sellTitle').value.trim();
-  const price = document.getElementById('sellPrice').value.trim();
-  const desc = document.getElementById('sellDesc').value.trim();
-  const f = document.getElementById('sellImage').files[0];
-  if(!title || !price) return showToast('Title and price required');
-  if(f){
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      const it = { id: 'm' + Date.now(), title, price, desc, img: reader.result, seller: currentUser };
-      marketItems.unshift(it);
-      saveMarketState();
-      renderMarket();
-      closeSimpleModal('sellModal');
-      showToast('Item posted');
-    }
-    reader.readAsDataURL(f);
-  } else {
-    const it = { id: 'm' + Date.now(), title, price, desc, img: 'https://picsum.photos/seed/' + Date.now() + '/400/300', seller: currentUser };
-    marketItems.unshift(it);
-    saveMarketState();
-    renderMarket();
-    closeSimpleModal('sellModal');
-    showToast('Item posted');
-  }
-}
 
-/* =========================
-   Small helpers
-   ========================= */
-function escapeHtml(str){
-  if(!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-}
+/* helpers: small public exports for inline handlers */
+window.showPage = showPage;
+window.onRegister = onRegister;
+window.onLogin = onLogin;
+window.onCreatePost = onCreatePost;
+window.clearDraft = clearDraft;
+window.saveDraft = saveDraft;
+window.enterCompose = enterCompose;
+window.logout = logout;
+window.toggleNotifDot = toggleNotifDot;
+window.toggleLike = toggleLike;
+window.toggleCommentsArea = toggleCommentsArea;
+window.addComment = addComment;
+window.onEditPost = onEditPost;
+window.onDeletePost = onDeletePost;
+window.showProfile = showProfile;
+window.updateBio = updateBio;
+window.updateProfilePic = updateProfilePic;
+window.openPostModal = openPostModal;
+window.closePostModal = closePostModal;
+window.openPostModalById = openPostModalById;
+window.toggleSaveItem = toggleSaveItem;
+window.viewMarketItem = viewNewsItem;
+window.renderMarket = renderMarket;
+window.renderExplore = renderExplore;
+window.openMessagesModal = openMessagesModal;
+window.loadNewsFeed = loadNewsFeed;
+window.viewNewsItem = viewNewsItem;
 
-/* -----------------------
-   Simple theme toggle (optional)
-   ----------------------- */
-function toggleTheme(){
-  // optional (off by default): toggle adds/removes class 'light'
-  const body = document.body;
-  const isLight = body.classList.toggle('light');
-  saveTheme(isLight ? 'light' : 'dark');
-  showToast(isLight ? 'Light theme enabled' : 'Dark theme enabled');
-}
-(function initTheme(){
+/* ------------------------
+   Final small init
+   ------------------------ */
+(function finalInit(){
+  // Apply saved theme
   const t = localStorage.getItem(LS_THEME);
   if(t === 'light') document.body.classList.add('light');
-})();
 
-/* -----------------------
-   Render stories initially
-   ----------------------- */
-(function tryRenderStories(){
-  renderStories();
-})();
+  // Auto load sample news only if LS empty
+  if(!localStorage.getItem(LS_MARKET)) saveMarketState();
 
-/* -----------------------
-   Render trending initially
-   ----------------------- */
-(function tryRenderTrending(){
+  renderNotificationsDot();
   renderTrending();
 })();
 
-/* -----------------------
-   Final: expose some functions for onclick handlers that are dynamic
-   ----------------------- */
-window.openMessagesModal = openMessagesModal;
-window.toggleNotifications = toggleNotifications;
-window.renderTrending = renderTrending;
-window.renderStories = renderStories;
-window.openSellModal = openSellModal;
-window.openEditorModal = openEditorModal;
-window.addStory = addStory;
-window.filterByTag = filterByTag;
-window.renderMarket = renderMarket;
-window.renderExplore = renderExplore;
-window.renderSavedItems = renderSavedItems;
-window.toggleFollow = toggleFollow;
-window.renderNotificationsDot = renderNotificationsDot;
+// Stories horizontal scroll enhancement
+const storiesContainer = document.getElementById('storiesBar');
+if(storiesContainer){
+  storiesContainer.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    storiesContainer.scrollLeft += e.deltaY;
+  });
+}
+
