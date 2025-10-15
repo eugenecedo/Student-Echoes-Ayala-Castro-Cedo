@@ -5,112 +5,96 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Student Echoes — Upgraded (Full)</title>
   <link rel="stylesheet" href="1.css" />
-  <!-- script.js is the upgraded merged file -->
   <script src="1.js" defer></script>
   <script src="addon.js" defer></script>
-
-
 </head>
 <body class="nav-visible-top">
 
-  <!-- TOP NAV (desktop) -->
-  <div id="navTop" class="nav nav-top">
-    <div class="nav-inner">
-      <div class="nav-left">
-        <div class="brand">
-          <div class="logo">SE</div>
-          <div style="display:flex;flex-direction:column">
-            <div class="site-title">Student Echoes</div>
-            <div style="font-size:11px;color:var(--muted)">Voices • Stories • Community</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="nav-center" style="gap:8px">
-        <button class="nav-btn active" title="Home" id="navHome" onclick="showPage('feed')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <button class="nav-btn" title="Explore" id="navExplore" onclick="showPage('explore')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10.5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z"/><path d="M14 14l6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <!-- NEWS (was Market) -->
-        <button class="nav-btn" title="News" id="navMarket" onclick="showPage('market')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 9h16" stroke-linecap="round"/><path d="M9 4v5" stroke-linecap="round"/></svg>
-        </button>
-
-        <!-- TRENDING -->
-        <button class="nav-btn" title="Trending" id="navTrending" onclick="showPage('trending'); renderTrending()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 13l4-4 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <!-- MESSAGES -->
-        <button class="nav-btn" title="Messages" id="navMessages" onclick="openMessagesModal()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <button class="nav-btn" title="Profile" id="navProfile" onclick="showPage('profile')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <button class="nav-btn" title="Create" id="navCreate" onclick="enterCompose()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-
-      <div class="nav-right" style="gap:6px">
-        <button class="nav-btn" title="Notifications" id="navNotifications" onclick="toggleNotifications()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="dot" id="notifDot" style="display:none"></span>
-        </button>
-        <!-- THEME TOGGLE (optional) -->
-        <button class="nav-btn" title="Theme" id="themeToggle" onclick="toggleTheme()"></button>
-        <button class="nav-btn" title="Logout" onclick="logout()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- BOTTOM NAV (mobile) -->
-  <div id="navBottom" class="nav nav-bottom hidden">
-    <div class="nav-inner" style="justify-content:space-around;">
-      <button class="nav-btn active" onclick="showPage('feed')"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="nav-btn" onclick="showPage('explore')"><svg viewBox="0 0 24 24"><path d="M21 10.5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z"/><path d="M14 14l6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="nav-btn" onclick="showPage('market')">
-        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9h16" stroke-linecap="round"/><path d="M9 4v5" stroke-linecap="round"/></svg>
-      </button>
-      <button class="nav-btn" onclick="showPage('trending')"><svg viewBox="0 0 24 24"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 13l4-4 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="nav-btn" onclick="openMessagesModal()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="nav-btn" onclick="showPage('profile')"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="nav-btn" onclick="enterCompose()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    </div>
-  </div>
-
-  <!-- STORIES BAR (added) -->
-  <div id="storiesBar" class="stories-bar hidden" aria-label="stories"></div>
-
-  <!-- AUTH WRAP -->
+  <!-- AUTH WRAP (only auth UI, no nav bar) -->
   <div id="authWrap" class="auth-wrap fade-in">
     <div class="auth-bg"></div>
     <div class="auth-card glass-card" role="dialog" aria-labelledby="authTitle">
       <h1 id="authTitle" class="auth-title">Student Echoes</h1>
       <p class="auth-subtitle">Sign up or log in — your voice matters</p>
-
       <input id="authUser" class="auth-input" placeholder="Username" autocomplete="username" />
       <input id="authPass" class="auth-input" placeholder="Password" type="password" autocomplete="current-password" />
-
       <div class="auth-buttons">
         <button class="primary" onclick="onRegister()">Register</button>
         <button class="small-btn" onclick="onLogin()">Log in</button>
+        <button class="small-btn" onclick="onAnonymousLogin()">Anonymous</button>
       </div>
-
       <div id="authMsg" class="auth-message"></div>
     </div>
   </div>
 
+  <!-- MAIN APP (nav bar only visible after login) -->
   <div id="mainApp" style="display:none;">
+    <!-- TOP NAV (desktop) - visible only inside app -->
+    <div id="navTop" class="nav nav-top">
+      <div class="nav-inner">
+        <div class="nav-left">
+          <div class="brand">
+            <div class="logo">SE</div>
+            <div style="display:flex;flex-direction:column">
+              <div class="site-title">Student Echoes</div>
+              <div style="font-size:11px;color:var(--muted)">Voices • Stories • Community</div>
+            </div>
+          </div>
+        </div>
+        <div class="nav-center" style="gap:8px">
+          <button class="nav-btn active" title="Home" id="navHome" onclick="showPage('feed')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="nav-btn" title="Explore" id="navExplore" onclick="showPage('explore')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10.5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z"/><path d="M14 14l6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="nav-btn" title="News" id="navMarket" onclick="showPage('market')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 9h16" stroke-linecap="round"/><path d="M9 4v5" stroke-linecap="round"/></svg>
+          </button>
+          <button class="nav-btn" title="Trending" id="navTrending" onclick="showPage('trending'); renderTrending()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 13l4-4 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="nav-btn" title="Messages" id="navMessages" onclick="openMessagesModal()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="nav-btn" title="Profile" id="navProfile" onclick="showPage('profile')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="nav-btn" title="Create" id="navCreate" onclick="enterCompose()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="nav-right" style="gap:6px">
+          <button class="nav-btn" title="Notifications" id="navNotifications" onclick="toggleNotifications()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="dot" id="notifDot" style="display:none"></span>
+          </button>
+          <button class="nav-btn" title="Theme" id="themeToggle" onclick="toggleTheme()"></button>
+          <button class="nav-btn" title="Logout" onclick="logout()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAV (mobile) -->
+    <div id="navBottom" class="nav nav-bottom hidden">
+      <div class="nav-inner" style="justify-content:space-around;">
+        <button class="nav-btn active" onclick="showPage('feed')"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-btn" onclick="showPage('explore')"><svg viewBox="0 0 24 24"><path d="M21 10.5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z"/><path d="M14 14l6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-btn" onclick="showPage('market')">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9h16" stroke-linecap="round"/><path d="M9 4v5" stroke-linecap="round"/></svg>
+        </button>
+        <button class="nav-btn" onclick="showPage('trending')"><svg viewBox="0 0 24 24"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 13l4-4 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-btn" onclick="openMessagesModal()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-btn" onclick="showPage('profile')"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-btn" onclick="enterCompose()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </div>
+
+    <!-- STORIES BAR (added) -->
+    <div id="storiesBar" class="stories-bar hidden" aria-label="stories"></div>
+
     <div class="app-wrap">
       <div class="layout">
         <!-- left -->
@@ -155,7 +139,6 @@
                 </div>
               </div>
             </div>
-
             <div id="postsList"></div>
           </div>
 
@@ -179,9 +162,7 @@
                 <button class="small-btn" onclick="loadNewsFeed()">🔄 Refresh</button>
               </div>
             </div>
-
             <div id="marketList" style="margin-top:12px; display:flex;flex-direction:column;gap:12px"></div>
-
             <div style="margin-top:12px" class="panel">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <div style="font-weight:700">Saved Articles</div>
@@ -228,7 +209,6 @@
                 </div>
               </div>
             </div>
-
             <div id="profileGridWrapper" class="panel" style="margin-top:12px">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <div style="font-weight:700">Your Posts</div>
@@ -237,9 +217,7 @@
               <div id="profileGrid" class="profile-grid" style="margin-top:12px"></div>
             </div>
           </div>
-
         </main>
-
         <!-- right -->
         <aside class="right">
           <div class="panel">
@@ -249,7 +227,6 @@
             </div>
             <div id="trendingTags" style="margin-top:8px"></div>
           </div>
-
           <div class="panel" style="margin-top:12px">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <div style="font-weight:700">Stories</div>
@@ -264,12 +241,10 @@
 
   <!-- view modal (reused) -->
   <div id="viewModal" style="display:none;"></div>
-
   <!-- simple modals for notifications/messages -->
   <div id="notificationsModal" style="display:none;"></div>
   <div id="messagesModal" style="display:none;"></div>
   <div id="sellModal" style="display:none;"></div>
-
   <div id="toast"></div>
 </body>
 </html>

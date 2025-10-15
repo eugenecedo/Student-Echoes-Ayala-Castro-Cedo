@@ -1,5 +1,5 @@
 /* =========================
-   Student Echoes - script.js
+   Student Echoes - script.js v3
    Upgraded: Marketplace -> Offline News
    Keep original behavior for posts/profiles/etc.
    ========================= */
@@ -84,6 +84,23 @@ function onLogin(){
   openApp();
   showToast('Welcome back, ' + u + ' 👋');
 }
+/* ---- ANONYMOUS LOGIN ---- */
+function onAnonymousLogin(){
+  let anonId = 'anon_' + Math.floor(Math.random()*1000000);
+  while(users[anonId]) anonId = 'anon_' + Math.floor(Math.random()*1000000);
+  users[anonId] = {
+    password: '',
+    bio: 'Anonymous user',
+    pic: '',
+    stats: {posts:0,likes:0,comments:0},
+    following: [],
+    followers: []
+  };
+  saveUsers();
+  setCurrent(anonId);
+  openApp();
+  showToast('You are now anonymous!');
+}
 
 /* -----------------------
    App open / UI wiring
@@ -91,6 +108,8 @@ function onLogin(){
 function openApp(){
   document.getElementById('authWrap').style.display = 'none';
   document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('navTop').style.display = 'block';
+  document.getElementById('navBottom').style.display = window.innerWidth <= 720 ? 'block' : 'none';
   refreshProfileUI();
   renderPosts();
   loadDraft();
@@ -561,8 +580,11 @@ function logout(){
   setCurrent(null);
   document.getElementById('mainApp').style.display = 'none';
   document.getElementById('authWrap').style.display = 'flex';
+  document.getElementById('navTop').style.display = 'none';
+  document.getElementById('navBottom').style.display = 'none';
   showToast('👋 Logged out successfully.');
 }
+
 function enterCompose(){
   showPage('feed');
   document.getElementById('txtPost').focus();
@@ -935,10 +957,10 @@ function openMessagesModal(){
   modal.style.display = 'block';
 }
 
-/* helpers: small public exports for inline handlers */
 window.showPage = showPage;
 window.onRegister = onRegister;
 window.onLogin = onLogin;
+window.onAnonymousLogin = onAnonymousLogin;
 window.onCreatePost = onCreatePost;
 window.clearDraft = clearDraft;
 window.saveDraft = saveDraft;
@@ -964,17 +986,13 @@ window.openMessagesModal = openMessagesModal;
 window.loadNewsFeed = loadNewsFeed;
 window.viewNewsItem = viewNewsItem;
 
-/* ------------------------
-   Final small init
-   ------------------------ */
+/* Final small init */
 (function finalInit(){
   // Apply saved theme
   const t = localStorage.getItem(LS_THEME);
   if(t === 'light') document.body.classList.add('light');
-
   // Auto load sample news only if LS empty
   if(!localStorage.getItem(LS_MARKET)) saveMarketState();
-
   renderNotificationsDot();
   renderTrending();
 })();
@@ -987,4 +1005,3 @@ if(storiesContainer){
     storiesContainer.scrollLeft += e.deltaY;
   });
 }
-
