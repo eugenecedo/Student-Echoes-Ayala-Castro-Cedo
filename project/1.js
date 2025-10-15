@@ -358,33 +358,175 @@ function showProfile(username){
   refreshProfileUI(username);
   renderProfilePosts(username);
 }
-function refreshProfileUI(viewUser){
+function refreshProfileUI(viewUser) {
   const u = viewUser || currentUser;
-  if(!u) return;
-  const userObj = users[u] || {bio:'',pic:''};
-  const pic = userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(u)}`;
-  document.getElementById('miniUser').textContent = u;
-  document.getElementById('miniBio').textContent = userObj.bio || '';
-  document.getElementById('composerAvatar').src = pic;
-  document.getElementById('miniPic').src = pic;
-  document.getElementById('miniPicRight') && (document.getElementById('miniPicRight').src = pic);
-  document.getElementById('profilePicBig')?.src && (document.getElementById('profilePicBig').src = pic);
-  document.getElementById('profileUser') && (document.getElementById('profileUser').textContent = u);
-  document.getElementById('profileUserRight') && (document.getElementById('profileUserRight').textContent = u);
-  document.getElementById('profileBioMini') && (document.getElementById('profileBioMini').textContent = userObj.bio || "No bio yet");
-  document.getElementById('profileUsername') && (document.getElementById('profileUsername').value = u);
-  document.getElementById('bio') && (document.getElementById('bio').value = userObj.bio || '');
+  if (!u) return;
 
-  if(!users[u].stats) users[u].stats = {posts:0,likes:0,comments:0};
-  const postsCount = users[u].stats.posts || 0;
-  const likes = users[u].stats.likes || 0;
-  const comments = users[u].stats.comments || 0;
-  document.getElementById('statPosts') && (document.getElementById('statPosts').textContent = postsCount);
-  document.getElementById('statLikes') && (document.getElementById('statLikes').textContent = likes);
-  document.getElementById('statComments') && (document.getElementById('statComments').textContent = comments);
-  document.getElementById('statPostsRight') && (document.getElementById('statPostsRight').textContent = postsCount);
-  document.getElementById('statLikesRight') && (document.getElementById('statLikesRight').textContent = likes);
-  document.getElementById('statCommentsRight') && (document.getElementById('statCommentsRight').textContent = comments);
+  // ✅ define user object and pic first
+  const userObj = users[u] || { bio: '', pic: '', followers: [], following: [] };
+  const pic =
+    userObj.pic ||
+    `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(u)}`;
+
+  const header = document.getElementById("profileHeader");
+  if (header) {
+    header.innerHTML = `
+      <div style="display:flex;align-items:center;gap:16px;">
+        <img id="profilePicBig" src="${pic}" alt="profile" class="profile-pic"
+             style="width:88px;height:88px;cursor:pointer;border-radius:10px;object-fit:cover;">
+        <div style="flex:1">
+          <div id="profileUsernameDisplay" style="font-weight:700;font-size:20px;">${escapeHtml(u)}</div>
+          <div id="profileBioMini" class="muted" style="margin-top:4px">${escapeHtml(userObj.bio || 'No bio yet')}</div>
+            <div id="followersCountWrap" style="cursor:pointer;" onclick="toggleFollowList('followers')">
+              Followers: <b id="followersCount">${userObj.followers?.length || 0}</b>
+            </div>
+            <div id="followingCountWrap" style="cursor:pointer;" onclick="toggleFollowList('following')">
+              Following: <b id="followingCount">${userObj.following?.length || 0}</b>
+            </div>
+          </div>
+        </div>
+        ${u === currentUser ? `
+          <label style="cursor:pointer;">
+            <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
+            <button class="small-btn">Change Photo</button>
+          </label>` : ``}
+      </div>
+    `;
+  }
+
+  // Render follow button
+  renderFollowButton(u);
+
+  // Update followers/following list
+  renderFollowLists(u);
+}
+function renderFollowButton(profileUser) {
+  const wrap = document.getElementById("followBtnWrap");
+  if (!wrap) return;
+
+  if (profileUser === currentUser) {
+    wrap.innerHTML = ""; // Hide for own profile
+    return;
+  }
+
+  const myUser = users[currentUser];
+  const target = users[profileUser];
+  if (!myUser || !target) return;
+
+  const isFollowing = myUser.following?.includes(profileUser);
+  wrap.innerHTML = `
+    <button class="follow-btn ${isFollowing ? "following" : "follow"}" 
+            onclick="toggleFollow('${profileUser}')">
+      ${isFollowing ? "Following" : "Follow"}
+    </button>
+  `;
+}
+
+function toggleFollow(profileUser) {
+  if (profileUser === currentUser) return; // cannot follow self
+  const me = users[currentUser];
+  const target = users[profileUser];
+  if (!me || !target) return;
+
+  me.following = me.following || [];
+  target.followers = target.followers || [];
+
+  const isFollowing = me.following.includes(profileUser);
+
+  if (isFollowing) {
+    me.following = me.following.filter(u => u !== profileUser);
+    target.followers = target.followers.filter(u => u !== currentUser);
+  } else {
+    me.following.push(profileUser);
+    target.followers.push(currentUser);
+  }
+
+  saveUsers();
+  refreshProfileUI(profileUser);
+}
+
+function renderFollowLists(username) {
+  const uObj = users[username] || {};
+  const followers = uObj.followers || [];
+  const following = uObj.following || [];
+
+  const followersList = document.getElementById("followersList");
+  const followingList = document.getElementById("followingList");
+
+  followersList.innerHTML = followers
+    .map(name => {
+      const p =
+        users[name]?.pic ||
+        `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(
+          name
+        )}`;
+      return `<div class="follow-item" onclick="showProfile('${escapeHtml(name)}')">
+                <img src="${p}" alt="follower">
+                <div class="follow-item-name">@${escapeHtml(name)}</div>
+              </div>`;
+    })
+    .join("") || '<div class="muted">No followers yet.</div>';
+
+  followingList.innerHTML = following
+    .map(name => {
+      const p =
+        users[name]?.pic ||
+        `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(
+          name
+        )}`;
+      return `<div class="follow-item" onclick="showProfile('${escapeHtml(name)}')">
+                <img src="${p}" alt="following">
+                <div class="follow-item-name">@${escapeHtml(name)}</div>
+              </div>`;
+    })
+    .join("") || '<div class="muted">Not following anyone yet.</div>';
+}
+
+function toggleFollowList(type) {
+  const followers = document.getElementById("followersList");
+  const following = document.getElementById("followingList");
+  if (type === "followers") {
+    followers.classList.toggle("hidden");
+    following.classList.add("hidden");
+  } else {
+    following.classList.toggle("hidden");
+    followers.classList.add("hidden");
+  }
+}
+
+/* Profile Picture Upload */
+document.addEventListener("change", e => {
+  if (e.target && e.target.id === "profilePicInput") {
+    const file = e.target.files[0];
+    if (!file || !currentUser) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      users[currentUser].pic = reader.result;
+      saveUsers();
+      refreshProfileUI(currentUser);
+      renderPosts();
+      showToast("🖼️ Profile picture updated!");
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+/* Profile picture update */
+document.addEventListener('change', e=>{
+  if(e.target && e.target.id === 'profilePicInput'){
+    const file = e.target.files[0];
+    if(!file || !currentUser) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      users[currentUser].pic = reader.result;
+      saveUsers();
+      refreshProfileUI(currentUser);
+      renderPosts();
+      showToast('🖼️ Profile picture updated!');
+    };
+    reader.readAsDataURL(file);
+  }
+});
 
   // build profile header with follow button when viewing another user
   const header = document.getElementById('profileHeader');
@@ -448,7 +590,6 @@ function refreshProfileUI(viewUser){
     header.appendChild(left);
     header.appendChild(actions);
   }
-}
 
 /* profile bio/pic */
 function updateBio(){

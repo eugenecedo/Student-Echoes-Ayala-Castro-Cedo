@@ -254,3 +254,121 @@ textarea{ width:100%; background:transparent; color:var(--white); border:1px sol
 body {
   transition: background 0.25s ease, color 0.25s ease;
 }
+/* FOLLOWERS / FOLLOWING SECTION */
+.follow-section {
+  margin-top: 12px;
+}
+.follow-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.follow-list {
+  background: var(--card);
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.follow-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.follow-item:hover {
+  background: rgba(255,255,255,0.05);
+}
+body.light .follow-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+.follow-item img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.follow-item-name {
+  font-weight: 600;
+  color: var(--white);
+}
+body.light .follow-item-name {
+  color: #050505;
+}
+/* ============================= */
+/* FOLLOWERS / FOLLOWING SECTION */
+/* ============================= */
+.follow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.follow-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.follow-item:hover {
+  background: rgba(255,255,255,0.05);
+}
+body.light .follow-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.follow-item img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.follow-item-name {
+  font-weight: 600;
+  color: var(--white);
+}
+body.light .follow-item-name {
+  color: #050505;
+}
+
+/* ============================= */
+/* FOLLOW BUTTON STYLES */
+/* ============================= */
+.follow-btn {
+  padding: 6px 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.follow-btn.follow {
+  background: var(--accent);
+  color: #fff;
+}
+
+.follow-btn.follow:hover {
+  opacity: 0.9;
+}
+
+.follow-btn.following {
+  background: #555;
+  color: #fff;
+}
+
+body.light .follow-btn.following {
+  background: #ccc;
+  color: #333;
+}
+
+.follow-btn.following:hover {
+  opacity: 0.8;
+}

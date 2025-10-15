@@ -180,62 +180,70 @@
           </div>
 
           <!-- PROFILE -->
-          <div id="profilePage" class="page-section hidden">
-            <div class="panel" id="profileHeader"></div>
-            <div class="panel" style="margin-top:12px">
-              <div style="display:flex;gap:12px;align-items:center">
-                <div style="flex:1">
-                  <div style="display:flex;gap:8px;align-items:center">
-                    <input id="profileUsername" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)" />
-                    <button class="small-btn" onclick="updateProfileUsername()">Save</button>
-                  </div>
-                  <div style="margin-top:8px">
-                    <textarea id="bio" placeholder="Edit your bio" style="width:100%;min-height:80px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)"></textarea>
-                    <div style="display:flex;gap:8px;margin-top:8px">
-                      <button class="primary" onclick="updateBio()">Update Bio</button>
-                      <button class="small-btn" onclick="cancelEditProfile()">Cancel</button>
-                    </div>
-                  </div>
-                </div>
-                <div style="width:180px">
-                  <div style="font-weight:700">Profile Stats</div>
-                  <div style="display:flex;gap:8px;margin-top:8px">
-                    <div>Posts: <span id="statPosts">0</span></div>
-                    <div>Likes: <span id="statLikes">0</span></div>
-                    <div>Comments: <span id="statComments">0</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div id="profileGridWrapper" class="panel" style="margin-top:12px">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="font-weight:700">Your Posts</div>
-                <div class="muted" id="profilePostCount">0</div>
-              </div>
-              <div id="profileGrid" class="profile-grid" style="margin-top:12px"></div>
-            </div>
+<div id="profilePage" class="page-section hidden">
+  <!-- Profile Header -->
+  <div class="panel" id="profileHeader">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <img id="profilePicBig" src="" alt="profile" class="profile-pic" 
+           style="width:88px;height:88px;cursor:pointer;border-radius:10px;object-fit:cover;">
+      <div style="flex:1">
+        <div id="profileUsernameDisplay" style="font-weight:700;font-size:20px;">User</div>
+        <div id="profileBioMini" class="muted" style="margin-top:4px">No bio yet</div>
+        
+        <!-- Follow / Unfollow button (below bio) -->
+        <div id="followBtnWrap" style="margin-top:8px;"></div>
+
+        <!-- Followers / Following counts -->
+        <div style="margin-top:10px;display:flex;gap:16px;font-size:14px;">
+          <div id="followersCountWrap" style="cursor:pointer;" onclick="toggleFollowList('followers')">
+            Followers: <b id="followersCount">0</b>
           </div>
-        </main>
-        <!-- right -->
-        <aside class="right">
-          <div class="panel">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:700">Trending Tags</div>
-              <div class="muted" style="font-size:12px">live</div>
-            </div>
-            <div id="trendingTags" style="margin-top:8px"></div>
+          <div id="followingCountWrap" style="cursor:pointer;" onclick="toggleFollowList('following')">
+            Following: <b id="followingCount">0</b>
           </div>
-          <div class="panel" style="margin-top:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:700">Stories</div>
-              <div class="muted" style="font-size:12px">24h</div>
-            </div>
-            <div id="storiesPanel" style="margin-top:8px"></div>
-          </div>
-        </aside>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
+<button class="small-btn" onclick="document.getElementById('profilePicInput').click()">Change Photo</button>
+
       </div>
     </div>
   </div>
+
+  <!-- Followers / Following Inline Lists -->
+  <div class="panel" id="followSection" style="margin-top:12px;">
+    <div id="followersList" class="follow-list hidden"></div>
+    <div id="followingList" class="follow-list hidden"></div>
+  </div>
+
+  <!-- Profile Edit + Stats -->
+  <div class="panel" style="margin-top:12px;">
+    <div style="display:flex;gap:12px;align-items:center">
+      <div style="flex:1">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="profileUsername" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)" />
+          <button class="small-btn" onclick="updateProfileUsername()">Save</button>
+        </div>
+        <div style="margin-top:8px">
+          <textarea id="bio" placeholder="Edit your bio" style="width:100%;min-height:80px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="primary" onclick="updateBio()">Update Bio</button>
+            <button class="small-btn" onclick="cancelEditProfile()">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div style="width:180px">
+        <div style="font-weight:700">Profile Stats</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div>Posts: <span id="statPosts">0</span></div>
+          <div>Likes: <span id="statLikes">0</span></div>
+          <div>Comments: <span id="statComments">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
   <!-- view modal (reused) -->
   <div id="viewModal" style="display:none;"></div>
