@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create an account • AMU</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="auth">
+    <!-- Left visual panel -->
+    <section class="visual">
+      <header class="visual-top">
+        <div class="brand">AMU</div>
+        <a href="#" class="back-link">Back to website</a>
+      </header>
+
+      <div class="visual-image" aria-hidden="true"></div>
+
+      <footer class="visual-caption">
+        <p>Capturing Moments, Creating Memories.</p>
+      </footer>
+    </section>
+
+    <!-- Right form panel -->
+    <section class="form-panel">
+      <div class="form-wrap">
+        <div class="form-header">
+          <h1>Create an account</h1>
+          <p class="sub">
+            Already have an account?
+            <a href="#">Log in</a>
+          </p>
+        </div>
+
+        <form class="form" action="#" method="post" novalidate>
+          <div class="grid">
+            <div class="field">
+              <label for="firstName">First name</label>
+              <input id="firstName" name="firstName" type="text" placeholder="Eugene" required />
+            </div>
+
+            <div class="field">
+              <label for="lastName">Last name</label>
+              <input id="lastName" name="lastName" type="text" placeholder="Dela Cruz" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="you@example.com" required />
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="••••••••" required />
+          </div>
+
+          <div class="consent">
+            <label class="checkbox">
+              <input type="checkbox" id="terms" required />
+              <span>I agree to the Terms & Conditions</span>
+            </label>
+          </div>
+
+          <button class="primary-btn" type="submit">Create account</button>
+
+          <div class="divider">
+            <span>or</span>
+          </div>
+
+          <div class="providers">
+            <button type="button" class="provider google">
+              <span class="icon">G</span> Continue with Google
+            </button>
+            <button type="button" class="provider apple">
+              <span class="icon"></span> Continue with Apple
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
