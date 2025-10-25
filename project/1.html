@@ -4,81 +4,97 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Student Echoes — Upgraded (Full)</title>
+  <!-- Fonts (kept Inter + Merriweather as requested) -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="1.css" />
+  <!-- scripts: keep order (1.js -> addon.js) -->
   <script src="1.js" defer></script>
-  <script src="addon.js" defer></script>
+  <script src="2.js" defer></script>
 </head>
-<body class="nav-visible-top">
+<body class="nav-visible-top" aria-busy="false">
 
   <!-- AUTH WRAP (only auth UI, no nav bar) -->
-  <div id="authWrap" class="auth-wrap fade-in">
-    <div class="auth-bg"></div>
-    <div class="auth-card glass-card" role="dialog" aria-labelledby="authTitle">
+  <div id="authWrap" class="auth-wrap fade-in" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="auth-bg" aria-hidden="true"></div>
+    <div class="auth-card glass-card" role="document" aria-labelledby="authTitle">
       <h1 id="authTitle" class="auth-title">Student Echoes</h1>
       <p class="auth-subtitle">Sign up or log in — your voice matters</p>
       <input id="authUser" class="auth-input" placeholder="Username" autocomplete="username" />
       <input id="authPass" class="auth-input" placeholder="Password" type="password" autocomplete="current-password" />
-      <div class="auth-buttons">
-        <button class="primary" onclick="onRegister()">Register</button>
-        <button class="small-btn" onclick="onLogin()">Log in</button>
-        <button class="small-btn" onclick="onAnonymousLogin()">Anonymous</button>
+      <div class="auth-buttons" role="group" aria-label="auth actions">
+        <button class="primary" onclick="onRegister()" aria-label="Register">Register</button>
+        <button class="small-btn" onclick="onLogin()" aria-label="Log in">Log in</button>
+        <button class="small-btn" onclick="onAnonymousLogin()" aria-label="Anonymous login">Anonymous</button>
       </div>
-      <div id="authMsg" class="auth-message"></div>
+      <div id="authMsg" class="auth-message" aria-live="polite"></div>
     </div>
   </div>
 
   <!-- MAIN APP (nav bar only visible after login) -->
   <div id="mainApp" style="display:none;">
     <!-- TOP NAV (desktop) - visible only inside app -->
-    <div id="navTop" class="nav nav-top">
+    <header id="navTop" class="nav nav-top" role="navigation" aria-label="Main navigation">
       <div class="nav-inner">
         <div class="nav-left">
-          <div class="brand">
-            <div class="logo">SE</div>
-            <div style="display:flex;flex-direction:column">
+          <div class="brand" role="banner">
+            <div class="logo" aria-hidden="true">SE</div>
+            <div class="brand-text">
               <div class="site-title">Student Echoes</div>
-              <div style="font-size:11px;color:var(--muted)">Voices • Stories • Community</div>
+              <div class="muted small" style="font-size:11px">Voices • Stories • Community</div>
             </div>
           </div>
         </div>
-        <div class="nav-center" style="gap:8px">
-          <button class="nav-btn active" title="Home" id="navHome" onclick="showPage('feed')">
+
+        <nav class="nav-center" aria-label="Primary" role="menubar" style="gap:8px">
+          <button class="nav-btn active" title="Home" id="navHome" onclick="showPage('feed')" role="menuitem" aria-current="page">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="nav-btn" title="Explore" id="navExplore" onclick="showPage('explore')">
+
+          <button class="nav-btn" title="Explore" id="navExplore" onclick="showPage('explore')" role="menuitem">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10.5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z"/><path d="M14 14l6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="nav-btn" title="News" id="navMarket" onclick="showPage('market')">
+
+          <button class="nav-btn" title="News" id="navMarket" onclick="showPage('market')" role="menuitem">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 9h16" stroke-linecap="round"/><path d="M9 4v5" stroke-linecap="round"/></svg>
           </button>
-          <button class="nav-btn" title="Trending" id="navTrending" onclick="showPage('trending'); renderTrending()">
+
+          <button class="nav-btn" title="Trending" id="navTrending" onclick="showPage('trending'); renderTrending()" role="menuitem">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 13l4-4 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="nav-btn" title="Messages" id="navMessages" onclick="openMessagesModal()">
+
+          <button class="nav-btn" title="Messages" id="navMessages" onclick="openMessagesModal()" role="menuitem">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="nav-btn" title="Profile" id="navProfile" onclick="showPage('profile')">
+
+          <button class="nav-btn" title="Profile" id="navProfile" onclick="showPage('profile')" role="menuitem">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="nav-btn" title="Create" id="navCreate" onclick="enterCompose()">
+
+          <button class="nav-btn" title="Create" id="navCreate" onclick="enterCompose()" role="menuitem">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-        </div>
-        <div class="nav-right" style="gap:6px">
-          <button class="nav-btn" title="Notifications" id="navNotifications" onclick="toggleNotifications()">
+        </nav>
+
+        <div class="nav-right" style="gap:6px" role="group" aria-label="secondary">
+          <button class="nav-btn" title="Notifications" id="navNotifications" onclick="toggleNotifications()" aria-haspopup="dialog" aria-controls="notificationsModal">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="dot" id="notifDot" style="display:none"></span>
+            <span class="dot" id="notifDot" style="display:none" aria-hidden="true"></span>
           </button>
-          <button class="nav-btn" title="Theme" id="themeToggle" onclick="toggleTheme()"></button>
-          <button class="nav-btn" title="Logout" onclick="logout()">
+
+          <!-- NOTE: theme toggle is handled by addon.js (which injects its own floating button).
+               To avoid duplicate IDs/handlers we give this nav theme control a neutral id. -->
+          <button class="nav-btn" title="Theme (see top-right)" id="navThemeBtn" aria-hidden="true"></button>
+
+          <button class="nav-btn" title="Logout" onclick="logout()" aria-label="Logout">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
-    </div>
+    </header>
 
     <!-- BOTTOM NAV (mobile) -->
-    <div id="navBottom" class="nav nav-bottom hidden">
+    <nav id="navBottom" class="nav nav-bottom hidden" aria-label="Mobile navigation">
       <div class="nav-inner" style="justify-content:space-around;">
         <button class="nav-btn active" onclick="showPage('feed')"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="nav-btn" onclick="showPage('explore')"><svg viewBox="0 0 24 24"><path d="M21 10.5a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z"/><path d="M14 14l6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -90,25 +106,26 @@
         <button class="nav-btn" onclick="showPage('profile')"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20a8 8 0 0116 0" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="nav-btn" onclick="enterCompose()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
-    </div>
-
+    </nav>
     <!-- STORIES BAR (added) -->
     <div id="storiesBar" class="stories-bar hidden" aria-label="stories"></div>
 
-    <div class="app-wrap">
+    <main class="app-wrap" role="main">
       <div class="layout">
         <!-- left -->
-        <aside class="left">
+        <aside class="left" aria-label="sidebar">
           <div class="panel">
-            <div style="display:flex;align-items:center;gap:12px">
-              <img id="miniPic" src="" alt="avatar" style="width:56px;height:56px;border-radius:10px;object-fit:cover;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));">
+            <div class="profile-compact" style="display:flex;align-items:center;gap:12px">
+              <img id="miniPic" src="" alt="avatar" class="profile-pic profile-compact-pic">
               <div>
                 <div id="miniUser" style="font-weight:700;color:var(--white)">User</div>
-                <div id="miniBio" class="muted" style="font-size:13px">Bio</div>
+                <div id="miniBio" class="muted small" style="font-size:13px">Bio</div>
               </div>
             </div>
-            <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.03)">
-            <div style="display:flex;flex-direction:column;gap:8px">
+
+            <hr class="sidebar-sep" />
+
+            <div class="sidebar-links" style="display:flex;flex-direction:column;gap:8px">
               <button class="small-btn" onclick="showPage('feed')">Home</button>
               <button class="small-btn" onclick="showPage('profile')">Profile & Settings</button>
               <button class="small-btn" onclick="showPage('explore')">Explore</button>
@@ -118,15 +135,15 @@
           </div>
         </aside>
 
-        <!-- main -->
-        <main>
+        <!-- main column -->
+        <section>
           <!-- FEED -->
-          <div id="feedPage" class="page-section">
+          <section id="feedPage" class="page-section">
             <div class="panel">
               <div style="display:flex;gap:10px;align-items:flex-start">
                 <img id="composerAvatar" src="" alt="avatar" class="profile-pic" style="width:48px;height:48px;border-radius:10px">
                 <div style="flex:1">
-                  <textarea id="txtPost" placeholder="What's on your mind?" oninput="saveDraft()"></textarea>
+                  <textarea id="txtPost" placeholder="What's on your mind?" oninput="saveDraft()" aria-label="Compose post"></textarea>
                   <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
                     <input id="filePost" type="file" accept="image/*" style="color:var(--white)" />
                     <div style="margin-left:auto;display:flex;gap:8px">
@@ -134,33 +151,37 @@
                       <button class="primary" onclick="onCreatePost()">Post</button>
                     </div>
                   </div>
-                  <div id="draftNotice" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+                  <div id="draftNotice" style="margin-top:8px;font-size:12px;color:var(--muted);" aria-live="polite"></div>
                 </div>
               </div>
             </div>
-            <div id="postsList"></div>
-          </div>
+
+            <div id="postsList" aria-live="polite"></div>
+          </section>
 
           <!-- EXPLORE -->
-          <div id="explorePage" class="page-section hidden">
+          <section id="explorePage" class="page-section hidden" aria-hidden="true">
             <div class="panel" style="display:flex;gap:12px;align-items:center">
               <div style="font-weight:700">Explore</div>
               <input id="exploreSearch" placeholder="Search posts or usernames..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)" oninput="renderExplore()" />
               <div id="exploreCount" class="muted" style="font-size:13px">0 results</div>
             </div>
             <div id="exploreResults" style="margin-top:12px"></div>
-          </div>
+          </section>
 
-          <!-- NEWS (replaces MARKET) -->
-          <div id="marketPage" class="page-section hidden">
-            <div class="panel" style="display:flex;justify-content:space-between;align-items:center">
+          <!-- NEWS (Market) -->
+          <section id="marketPage" class="page-section hidden" aria-hidden="true">
+            <div class="panel panel-row" style="display:flex;justify-content:space-between;align-items:center">
               <div style="font-weight:700">Campus News</div>
               <div style="display:flex;gap:8px;align-items:center">
                 <input id="marketSearch" placeholder="Search articles..." style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)" oninput="renderMarket()" />
                 <button class="small-btn" onclick="renderMarket()">Search</button>
+                <button id="addon-news-refresh" class="small-btn" onclick="loadNewsFeed()">🔄 Refresh</button>
               </div>
             </div>
+
             <div id="marketList" style="margin-top:12px; display:flex;flex-direction:column;gap:12px"></div>
+
             <div style="margin-top:12px" class="panel">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <div style="font-weight:700">Saved Articles</div>
@@ -168,89 +189,112 @@
               </div>
               <div id="savedList" style="margin-top:8px" class="profile-grid"></div>
             </div>
-          </div>
+          </section>
 
           <!-- TRENDING -->
-          <div id="trendingPage" class="page-section hidden">
+          <section id="trendingPage" class="page-section hidden" aria-hidden="true">
             <div class="panel" style="display:flex;justify-content:space-between;align-items:center">
               <div style="font-weight:700">Trending</div>
               <div class="muted">Top hashtags & posts</div>
             </div>
             <div id="trendingContent" style="margin-top:12px"></div>
-          </div>
+          </section>
 
           <!-- PROFILE -->
-<div id="profilePage" class="page-section hidden">
-  <!-- Profile Header -->
-  <div class="panel" id="profileHeader">
-    <div style="display:flex;align-items:center;gap:16px;">
-      <img id="profilePicBig" src="" alt="profile" class="profile-pic" 
-           style="width:88px;height:88px;cursor:pointer;border-radius:10px;object-fit:cover;">
-      <div style="flex:1">
-        <div id="profileUsernameDisplay" style="font-weight:700;font-size:20px;">User</div>
-        <div id="profileBioMini" class="muted" style="margin-top:4px">No bio yet</div>
-        
-        <!-- Follow / Unfollow button (below bio) -->
-        <div id="followBtnWrap" style="margin-top:8px;"></div>
+          <section id="profilePage" class="page-section hidden" aria-hidden="true">
+            <!-- Profile Header -->
+            <div class="panel" id="profileHeader" role="region" aria-label="Profile header">
+              <div style="display:flex;align-items:center;gap:16px;">
+                <img id="profilePicBig" src="" alt="profile" class="profile-pic" 
+                     style="width:88px;height:88px;cursor:pointer;border-radius:10px;object-fit:cover;">
+                <div style="flex:1">
+                  <div id="profileUsernameDisplay" style="font-weight:700;font-size:20px;">User</div>
+                  <div id="profileBioMini" class="muted" style="margin-top:4px">No bio yet</div>
+                  <div id="followBtnWrap" style="margin-top:8px;"></div>
+                  <div style="margin-top:10px;display:flex;gap:16px;font-size:14px;">
+                    <div id="followersCountWrap" style="cursor:pointer;" onclick="toggleFollowList('followers')">
+                      Followers: <b id="followersCount">0</b>
+                    </div>
+                    <div id="followingCountWrap" style="cursor:pointer;" onclick="toggleFollowList('following')">
+                      Following: <b id="followingCount">0</b>
+                    </div>
+                  </div>
+                </div>
 
-        <!-- Followers / Following counts -->
-        <div style="margin-top:10px;display:flex;gap:16px;font-size:14px;">
-          <div id="followersCountWrap" style="cursor:pointer;" onclick="toggleFollowList('followers')">
-            Followers: <b id="followersCount">0</b>
+                <div style="text-align:right;">
+                  <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
+                  <button class="small-btn" onclick="document.getElementById('profilePicInput').click()">Change Photo</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Followers / Following Inline Lists -->
+            <div class="panel" id="followSection" style="margin-top:12px;">
+              <div id="followersList" class="follow-list hidden"></div>
+              <div id="followingList" class="follow-list hidden"></div>
+            </div>
+
+            <!-- Profile Edit + Stats -->
+            <div class="panel" style="margin-top:12px;">
+              <div style="display:flex;gap:12px;align-items:center">
+                <div style="flex:1">
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input id="profileUsername" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)" />
+                    <button class="small-btn" onclick="updateProfileUsername()">Save</button>
+                  </div>
+                  <div style="margin-top:8px">
+                    <textarea id="bio" placeholder="Edit your bio" style="width:100%;min-height:80px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)"></textarea>
+                    <div style="display:flex;gap:8px;margin-top:8px">
+                      <button class="primary" onclick="updateBio()">Update Bio</button>
+                      <button class="small-btn" onclick="cancelEditProfile()">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+                <div style="width:180px">
+                  <div style="font-weight:700">Profile Stats</div>
+                  <div style="display:flex;gap:8px;margin-top:8px">
+                    <div>Posts: <span id="statPosts">0</span></div>
+                    <div>Likes: <span id="statLikes">0</span></div>
+                    <div>Comments: <span id="statComments">0</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </section>
+
+        <!-- right (extra) -->
+        <aside class="right" aria-label="right column">
+          <div class="panel">
+            <div style="font-weight:700">Quick Tips</div>
+            <div class="muted" style="margin-top:8px">Tap the + button to compose quickly. Use hashtags to reach more people.</div>
           </div>
-          <div id="followingCountWrap" style="cursor:pointer;" onclick="toggleFollowList('following')">
-            Following: <b id="followingCount">0</b>
+
+          <div class="panel" style="margin-top:12px">
+            <div style="font-weight:700">Trending Tags</div>
+            <div id="trendingTags" style="margin-top:8px" class="muted"></div>
           </div>
-        </div>
+        </aside>
       </div>
-      <div style="text-align:right;">
-        <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
-<button class="small-btn" onclick="document.getElementById('profilePicInput').click()">Change Photo</button>
+    </main>
 
-      </div>
-    </div>
-  </div>
+    <!-- modal containers (single overlay zone) -->
+    <div id="viewModal" style="display:none;" aria-hidden="true"></div>
+    <div id="notificationsModal" style="display:none;" aria-hidden="true"></div>
+    <div id="messagesModal" style="display:none;" aria-hidden="true"></div>
+    <div id="sellModal" style="display:none;" aria-hidden="true"></div>
 
-  <!-- Followers / Following Inline Lists -->
-  <div class="panel" id="followSection" style="margin-top:12px;">
-    <div id="followersList" class="follow-list hidden"></div>
-    <div id="followingList" class="follow-list hidden"></div>
-  </div>
+    <!-- toast -->
+    <div id="toast" role="status" aria-live="polite"></div>
+  </div><!-- end mainApp -->
 
-  <!-- Profile Edit + Stats -->
-  <div class="panel" style="margin-top:12px;">
-    <div style="display:flex;gap:12px;align-items:center">
-      <div style="flex:1">
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="profileUsername" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)" />
-          <button class="small-btn" onclick="updateProfileUsername()">Save</button>
-        </div>
-        <div style="margin-top:8px">
-          <textarea id="bio" placeholder="Edit your bio" style="width:100%;min-height:80px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)"></textarea>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="primary" onclick="updateBio()">Update Bio</button>
-            <button class="small-btn" onclick="cancelEditProfile()">Cancel</button>
-          </div>
-        </div>
-      </div>
-      <div style="width:180px">
-        <div style="font-weight:700">Profile Stats</div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <div>Posts: <span id="statPosts">0</span></div>
-          <div>Likes: <span id="statLikes">0</span></div>
-          <div>Comments: <span id="statComments">0</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-  <!-- view modal (reused) -->
-  <div id="viewModal" style="display:none;"></div>
-  <!-- simple modals for notifications/messages -->
-  <div id="notificationsModal" style="display:none;"></div>
-  <div id="messagesModal" style="display:none;"></div>
-  <div id="sellModal" style="display:none;"></div>
-  <div id="toast"></div>
+  <script>
+    // small safety: ensure addon.js theme toggle doesn't conflict if navThemeBtn exists
+    document.addEventListener('DOMContentLoaded', function(){
+      const btn = document.getElementById('navThemeBtn');
+      if(btn) btn.setAttribute('aria-hidden','true');
+    });
+  </script>
 </body>
 </html>

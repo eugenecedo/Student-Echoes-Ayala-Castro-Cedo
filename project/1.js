@@ -1,10 +1,9 @@
 /* =========================
-   Student Echoes - script.js v3
-   Upgraded: Marketplace -> Offline News
-   Keep original behavior for posts/profiles/etc.
+   Student Echoes - 1_fixed_part1.js
+   Purpose: fixed + polished core (Part 1 of 2)
+   Replace your existing 1.js with Part1 + Part2 (in order)
    ========================= */
 
-/* LocalStorage keys */
 const LS_USERS = 'se_users';
 const LS_POSTS = 'se_posts';
 const LS_CURRENT = 'se_current';
@@ -41,17 +40,19 @@ function showToast(msg, timeout=2200){
   if(!t) return alert(msg);
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(()=> t.classList.remove('show'), timeout);
+  // ensure removal
+  clearTimeout(t._toastTimeout);
+  t._toastTimeout = setTimeout(()=> t.classList.remove('show'), timeout);
 }
 
-function saveUsers(){ localStorage.setItem(LS_USERS, JSON.stringify(users)); }
-function savePosts(){ localStorage.setItem(LS_POSTS, JSON.stringify(posts)); }
-function saveMarketState(){ localStorage.setItem(LS_MARKET, JSON.stringify(marketItems)); }
-function saveSavedItems(){ localStorage.setItem(LS_SAVED_ITEMS, JSON.stringify(savedMarket)); }
-function saveMessages(){ localStorage.setItem(LS_MESSAGES, JSON.stringify(messages)); }
-function saveNotifications(){ localStorage.setItem(LS_NOTIFS, JSON.stringify(notifications)); }
-function saveStories(){ localStorage.setItem(LS_STORIES, JSON.stringify(stories)); }
-function saveTheme(val){ localStorage.setItem(LS_THEME, val); }
+function saveUsers(){ try{ localStorage.setItem(LS_USERS, JSON.stringify(users)); }catch(e){} }
+function savePosts(){ try{ localStorage.setItem(LS_POSTS, JSON.stringify(posts)); }catch(e){} }
+function saveMarketState(){ try{ localStorage.setItem(LS_MARKET, JSON.stringify(marketItems)); }catch(e){} }
+function saveSavedItems(){ try{ localStorage.setItem(LS_SAVED_ITEMS, JSON.stringify(savedMarket)); }catch(e){} }
+function saveMessages(){ try{ localStorage.setItem(LS_MESSAGES, JSON.stringify(messages)); }catch(e){} }
+function saveNotifications(){ try{ localStorage.setItem(LS_NOTIFS, JSON.stringify(notifications)); }catch(e){} }
+function saveStories(){ try{ localStorage.setItem(LS_STORIES, JSON.stringify(stories)); }catch(e){} }
+function saveTheme(val){ try{ localStorage.setItem(LS_THEME, val); }catch(e){} }
 
 /* -----------------------
    Keep current setter
@@ -60,6 +61,15 @@ function setCurrent(user){
   currentUser = user;
   if(user) localStorage.setItem(LS_CURRENT, user);
   else localStorage.removeItem(LS_CURRENT);
+}
+
+/* -----------------------
+   Small helpers (escapeHtml etc)
+   ----------------------- */
+function escapeHtml(str){
+  if(!str && str !== 0) return '';
+  const s = String(str);
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
 /* -----------------------
@@ -93,8 +103,7 @@ function onAnonymousLogin(){
     bio: 'Anonymous user',
     pic: '',
     stats: {posts:0,likes:0,comments:0},
-    following: [],
-    followers: []
+    following: [], followers: []
   };
   saveUsers();
   setCurrent(anonId);
@@ -106,10 +115,14 @@ function onAnonymousLogin(){
    App open / UI wiring
    ----------------------- */
 function openApp(){
-  document.getElementById('authWrap').style.display = 'none';
-  document.getElementById('mainApp').style.display = 'block';
-  document.getElementById('navTop').style.display = 'block';
-  document.getElementById('navBottom').style.display = window.innerWidth <= 720 ? 'block' : 'none';
+  const auth = document.getElementById('authWrap');
+  const main = document.getElementById('mainApp');
+  if(auth) auth.style.display = 'none';
+  if(main) main.style.display = 'block';
+  const navTop = document.getElementById('navTop');
+  const navBottom = document.getElementById('navBottom');
+  if(navTop) navTop.style.display = 'block';
+  if(navBottom) navBottom.style.display = window.innerWidth <= 720 ? 'block' : 'none';
   refreshProfileUI();
   renderPosts();
   loadDraft();
@@ -138,25 +151,26 @@ function showPage(page, instant=false){
 
   clearActiveNav();
   if(page === 'profile'){
-    document.getElementById('profilePage').classList.remove('hidden');
+    const profileEl = document.getElementById('profilePage');
+    if(profileEl) profileEl.classList.remove('hidden');
     document.getElementById('navProfile')?.classList.add('active');
     renderProfilePosts();
     refreshProfileUI();
   } else if(page === 'explore'){
-    document.getElementById('explorePage').classList.remove('hidden');
+    document.getElementById('explorePage')?.classList.remove('hidden');
     document.getElementById('navExplore')?.classList.add('active');
     renderExplore();
   } else if(page === 'market'){ // News page
-    document.getElementById('marketPage').classList.remove('hidden');
+    document.getElementById('marketPage')?.classList.remove('hidden');
     document.getElementById('navMarket')?.classList.add('active');
     renderMarket();
     renderSavedItems();
   } else if(page === 'trending'){
-    document.getElementById('trendingPage').classList.remove('hidden');
+    document.getElementById('trendingPage')?.classList.remove('hidden');
     document.getElementById('navTrending')?.classList.add('active');
     renderTrending();
   } else {
-    document.getElementById('feedPage').classList.remove('hidden');
+    document.getElementById('feedPage')?.classList.remove('hidden');
     document.getElementById('navHome')?.classList.add('active');
     renderPosts();
   }
@@ -169,21 +183,26 @@ function showPage(page, instant=false){
    ----------------------- */
 function saveDraft(){
   if(!currentUser) return;
-  const text = document.getElementById('txtPost').value;
+  const el = document.getElementById('txtPost');
+  if(!el) return;
+  const text = el.value;
   localStorage.setItem(LS_DRAFT + '_' + currentUser, text);
-  document.getElementById('draftNotice').textContent = text ? 'Draft saved' : '';
+  const dn = document.getElementById('draftNotice');
+  if(dn) dn.textContent = text ? 'Draft saved' : '';
 }
 function loadDraft(){
   if(!currentUser) return;
   const val = localStorage.getItem(LS_DRAFT + '_' + currentUser) || '';
-  document.getElementById('txtPost').value = val;
-  document.getElementById('draftNotice').textContent = val ? 'Draft loaded' : '';
+  const el = document.getElementById('txtPost');
+  if(el) el.value = val;
+  const dn = document.getElementById('draftNotice');
+  if(dn) dn.textContent = val ? 'Draft loaded' : '';
 }
 function clearDraft(){
   if(currentUser) localStorage.removeItem(LS_DRAFT + '_' + currentUser);
-  document.getElementById('txtPost').value = '';
+  const txt = document.getElementById('txtPost'); if(txt) txt.value = '';
   const fp = document.getElementById('filePost'); if(fp) fp.value = '';
-  document.getElementById('draftNotice').textContent = '';
+  const dn = document.getElementById('draftNotice'); if(dn) dn.textContent = '';
 }
 
 /* -----------------------
@@ -191,8 +210,10 @@ function clearDraft(){
    ----------------------- */
 function onCreatePost(){
   if(!currentUser) return showToast('Please login first');
-  const text = document.getElementById('txtPost').value.trim();
-  const file = document.getElementById('filePost').files[0];
+  const textEl = document.getElementById('txtPost');
+  const text = textEl ? textEl.value.trim() : '';
+  const fileEl = document.getElementById('filePost');
+  const file = fileEl && fileEl.files ? fileEl.files[0] : null;
   if(!text && !file) return showToast('Write something or attach an image');
 
   if(file){
@@ -240,6 +261,7 @@ function notifyFollowersNewPost(user, post){
    ----------------------- */
 function renderPosts(filter=''){
   const container = document.getElementById('postsList');
+  if(!container) return;
   container.innerHTML = '';
   const filtered = posts.filter(post => {
     if(!filter) return true;
@@ -362,11 +384,9 @@ function refreshProfileUI(viewUser) {
   const u = viewUser || currentUser;
   if (!u) return;
 
-  // ✅ define user object and pic first
+  // define user object and pic
   const userObj = users[u] || { bio: '', pic: '', followers: [], following: [] };
-  const pic =
-    userObj.pic ||
-    `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(u)}`;
+  const pic = userObj.pic || `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(u)}`;
 
   const header = document.getElementById("profileHeader");
   if (header) {
@@ -377,6 +397,7 @@ function refreshProfileUI(viewUser) {
         <div style="flex:1">
           <div id="profileUsernameDisplay" style="font-weight:700;font-size:20px;">${escapeHtml(u)}</div>
           <div id="profileBioMini" class="muted" style="margin-top:4px">${escapeHtml(userObj.bio || 'No bio yet')}</div>
+          <div style="margin-top:10px;display:flex;gap:16px;font-size:14px;">
             <div id="followersCountWrap" style="cursor:pointer;" onclick="toggleFollowList('followers')">
               Followers: <b id="followersCount">${userObj.followers?.length || 0}</b>
             </div>
@@ -385,19 +406,15 @@ function refreshProfileUI(viewUser) {
             </div>
           </div>
         </div>
-        ${u === currentUser ? `
-          <label style="cursor:pointer;">
-            <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
-            <button class="small-btn">Change Photo</button>
-          </label>` : ``}
+        <div style="text-align:right;">
+          ${u === currentUser ? `<input type="file" id="profilePicInput" accept="image/*" style="display:none;"><button class="small-btn" onclick="document.getElementById('profilePicInput').click()">Change Photo</button>` : ''}
+        </div>
       </div>
     `;
   }
 
-  // Render follow button
+  // Render follow button & lists
   renderFollowButton(u);
-
-  // Update followers/following list
   renderFollowLists(u);
 }
 function renderFollowButton(profileUser) {
@@ -422,196 +439,10 @@ function renderFollowButton(profileUser) {
   `;
 }
 
-function toggleFollow(profileUser) {
-  if (profileUser === currentUser) return; // cannot follow self
-  const me = users[currentUser];
-  const target = users[profileUser];
-  if (!me || !target) return;
-
-  me.following = me.following || [];
-  target.followers = target.followers || [];
-
-  const isFollowing = me.following.includes(profileUser);
-
-  if (isFollowing) {
-    me.following = me.following.filter(u => u !== profileUser);
-    target.followers = target.followers.filter(u => u !== currentUser);
-  } else {
-    me.following.push(profileUser);
-    target.followers.push(currentUser);
-  }
-
-  saveUsers();
-  refreshProfileUI(profileUser);
-}
-
-function renderFollowLists(username) {
-  const uObj = users[username] || {};
-  const followers = uObj.followers || [];
-  const following = uObj.following || [];
-
-  const followersList = document.getElementById("followersList");
-  const followingList = document.getElementById("followingList");
-
-  followersList.innerHTML = followers
-    .map(name => {
-      const p =
-        users[name]?.pic ||
-        `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(
-          name
-        )}`;
-      return `<div class="follow-item" onclick="showProfile('${escapeHtml(name)}')">
-                <img src="${p}" alt="follower">
-                <div class="follow-item-name">@${escapeHtml(name)}</div>
-              </div>`;
-    })
-    .join("") || '<div class="muted">No followers yet.</div>';
-
-  followingList.innerHTML = following
-    .map(name => {
-      const p =
-        users[name]?.pic ||
-        `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(
-          name
-        )}`;
-      return `<div class="follow-item" onclick="showProfile('${escapeHtml(name)}')">
-                <img src="${p}" alt="following">
-                <div class="follow-item-name">@${escapeHtml(name)}</div>
-              </div>`;
-    })
-    .join("") || '<div class="muted">Not following anyone yet.</div>';
-}
-
-function toggleFollowList(type) {
-  const followers = document.getElementById("followersList");
-  const following = document.getElementById("followingList");
-  if (type === "followers") {
-    followers.classList.toggle("hidden");
-    following.classList.add("hidden");
-  } else {
-    following.classList.toggle("hidden");
-    followers.classList.add("hidden");
-  }
-}
-
-/* Profile Picture Upload */
-document.addEventListener("change", e => {
-  if (e.target && e.target.id === "profilePicInput") {
-    const file = e.target.files[0];
-    if (!file || !currentUser) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      users[currentUser].pic = reader.result;
-      saveUsers();
-      refreshProfileUI(currentUser);
-      renderPosts();
-      showToast("🖼️ Profile picture updated!");
-    };
-    reader.readAsDataURL(file);
-  }
-});
-
-/* Profile picture update */
-document.addEventListener('change', e=>{
-  if(e.target && e.target.id === 'profilePicInput'){
-    const file = e.target.files[0];
-    if(!file || !currentUser) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      users[currentUser].pic = reader.result;
-      saveUsers();
-      refreshProfileUI(currentUser);
-      renderPosts();
-      showToast('🖼️ Profile picture updated!');
-    };
-    reader.readAsDataURL(file);
-  }
-});
-
-  // build profile header with follow button when viewing another user
-  const header = document.getElementById('profileHeader');
-  if(header){
-    header.innerHTML = '';
-    const left = document.createElement('div');
-    left.style.display = 'flex';
-    left.style.gap = '12px';
-    left.style.alignItems = 'center';
-    const img = document.createElement('img');
-    img.id = 'profilePicBig';
-    img.className = 'profile-pic';
-    img.src = pic;
-    img.alt = 'profile';
-    img.style.width = '88px';
-    img.style.height = '88px';
-    img.style.borderRadius = '18px';
-    left.appendChild(img);
-
-    const rightDiv = document.createElement('div');
-    rightDiv.style.flex = '1';
-    rightDiv.innerHTML = `<h2 id="profileUser" style="margin:0;color:var(--white)">${escapeHtml(u)}</h2>
-      <div id="profileBioMini" class="muted">${escapeHtml(userObj.bio || 'No bio yet')}</div>
-      <div class="profile-stats" style="margin-top:8px">
-        <div>Posts: <span id="statPosts">${postsCount}</span></div>
-        <div>Likes: <span id="statLikes">${likes}</span></div>
-        <div>Comments: <span id="statComments">${comments}</span></div>
-      </div>`;
-    left.appendChild(rightDiv);
-
-    const actions = document.createElement('div');
-    actions.style.display = 'flex';
-    actions.style.gap = '8px';
-    actions.style.marginLeft = 'auto';
-
-    if(u === currentUser){
-      const changePhotoLabel = document.createElement('label');
-      changePhotoLabel.style.cursor='pointer';
-      changePhotoLabel.innerHTML = `<input id="profilePicInput" type="file" accept="image/*" style="display:none" /> <button class="small-btn">Change Photo</button>`;
-      actions.appendChild(changePhotoLabel);
-      const editBtn = document.createElement('button');
-      editBtn.className = 'small-btn';
-      editBtn.textContent = 'Edit Profile';
-      editBtn.onclick = ()=>enterEditProfile();
-      actions.appendChild(editBtn);
-      const backBtn = document.createElement('button');
-      backBtn.className = 'small-btn';
-      backBtn.textContent = 'Back';
-      backBtn.onclick = ()=> showPage('feed');
-      actions.appendChild(backBtn);
-    } else {
-      const followBtn = document.createElement('button');
-      followBtn.className = 'primary';
-      followBtn.id = 'followBtn';
-      const isFollowing = currentUser && users[currentUser] && users[currentUser].following && users[currentUser].following.includes(u);
-      followBtn.textContent = isFollowing ? 'Unfollow' : 'Follow';
-      followBtn.onclick = ()=> toggleFollow(u);
-      actions.appendChild(followBtn);
-    }
-
-    header.appendChild(left);
-    header.appendChild(actions);
-  }
-
-/* profile bio/pic */
-function updateBio(){
-  const val = document.getElementById('bio').value.trim();
-  if(!currentUser) return showToast('No current user');
-  users[currentUser].bio = val;
-  saveUsers(); renderPosts(); refreshProfileUI(); showToast('✏️ Bio updated!');
-}
-function updateProfilePic(e){
-  const f = e.target.files && e.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    users[currentUser].pic = reader.result;
-    saveUsers(); refreshProfileUI(); renderPosts(); showToast('🖼️ Profile picture updated'); renderProfilePosts();
-  }
-  reader.readAsDataURL(f);
-}
-
-/* follow/unfollow */
+/* unified toggleFollow (single definition) */
 function toggleFollow(targetUser){
   if(!currentUser) return showToast('Please login to follow');
+  if(!users[targetUser]) return showToast('User not found');
   if(currentUser === targetUser) return;
   users[currentUser].following = users[currentUser].following || [];
   users[targetUser].followers = users[targetUser].followers || [];
@@ -631,15 +462,84 @@ function toggleFollow(targetUser){
 }
 
 /* -----------------------
+   Render follow lists
+   ----------------------- */
+function renderFollowLists(username) {
+  const uObj = users[username] || {};
+  const followers = uObj.followers || [];
+  const following = uObj.following || [];
+
+  const followersList = document.getElementById("followersList");
+  const followingList = document.getElementById("followingList");
+  if(followersList){
+    followersList.innerHTML = followers
+      .map(name => {
+        const p =
+          users[name]?.pic ||
+          `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(
+            name
+          )}`;
+        return `<div class="follow-item" onclick="showProfile('${escapeHtml(name)}')">
+                  <img src="${p}" alt="follower">
+                  <div class="follow-item-name">@${escapeHtml(name)}</div>
+                </div>`;
+      })
+      .join("") || '<div class="muted">No followers yet.</div>';
+  }
+  if(followingList){
+    followingList.innerHTML = following
+      .map(name => {
+        const p =
+          users[name]?.pic ||
+          `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(
+            name
+          )}`;
+        return `<div class="follow-item" onclick="showProfile('${escapeHtml(name)}')">
+                  <img src="${p}" alt="following">
+                  <div class="follow-item-name">@${escapeHtml(name)}</div>
+                </div>`;
+      })
+      .join("") || '<div class="muted">Not following anyone yet.</div>';
+  }
+}
+
+/* wire single profilePicInput change handler */
+document.addEventListener('change', (e)=>{
+  if(e.target && e.target.id === 'profilePicInput'){
+    const file = e.target.files[0];
+    if(!file || !currentUser) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      users[currentUser].pic = reader.result;
+      saveUsers();
+      refreshProfileUI(currentUser);
+      renderPosts();
+      showToast('🖼️ Profile picture updated!');
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+/* ensure stats exist */
+(function ensureUserStats(){ Object.keys(users).forEach(u=>{ if(!users[u].stats) users[u].stats = {posts:0,likes:0,comments:0}; if(!users[u].following) users[u].following = []; if(!users[u].followers) users[u].followers = []; }); saveUsers(); })();
+
+/* =========================
+   Student Echoes - 1_fixed_part2.js
+   Part 2 (continued): profile grid, modals, explore, news, notifications, trending, stories, init
+   ========================= */
+
+/* -----------------------
    Profile grid rendering
    ----------------------- */
 function renderProfilePosts(viewUser){
   const u = viewUser || currentUser;
   if(!u) return;
   const grid = document.getElementById('profileGrid');
+  if(!grid) return;
   grid.innerHTML = '';
   const userPosts = posts.filter(p => p.user === u);
-  document.getElementById('profilePostCount') && (document.getElementById('profilePostCount').textContent = userPosts.length);
+  const countEl = document.getElementById('profilePostCount');
+  if(countEl) countEl.textContent = userPosts.length;
   userPosts.forEach(p=>{
     const div = document.createElement('div');
     div.className = 'grid-item';
@@ -656,12 +556,11 @@ function renderProfilePosts(viewUser){
 /* modal for posts */
 function openPostModal(post){
   const modalRoot = document.getElementById('viewModal');
+  if(!modalRoot) return;
   const likedText = post.likedBy.includes(currentUser) ? '💔 Unlike' : '❤️ Like';
-  const avatar = (users[post.user] && users[post.user].pic) ? users[post.user].pic : `https://api.dicebear.com/6.x/identicon/svg?seed=${encodeURIComponent(post.user)}`;
-
   modalRoot.innerHTML = `
     <div class="modal" id="modal-${post.id}">
-      <div class="modal-card">
+      <div class="modal-card" role="dialog" aria-labelledby="post-${post.id}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div>
             <div style="font-weight:700">${escapeHtml(post.user)}</div>
@@ -682,11 +581,14 @@ function openPostModal(post){
     </div>
   `;
   modalRoot.style.display = 'block';
+  document.body.classList.add('modal-open');
 }
 function closePostModal(id){
   const modalRoot = document.getElementById('viewModal');
+  if(!modalRoot) return;
   modalRoot.innerHTML = '';
   modalRoot.style.display = 'none';
+  document.body.classList.remove('modal-open');
 }
 function openPostModalById(id){
   const post = posts.find(p => p.id === id);
@@ -719,106 +621,55 @@ function updateCounts(){
 function logout(){
   if(!confirm('Are you sure you want to logout?')) return;
   setCurrent(null);
-  document.getElementById('mainApp').style.display = 'none';
-  document.getElementById('authWrap').style.display = 'flex';
-  document.getElementById('navTop').style.display = 'none';
-  document.getElementById('navBottom').style.display = 'none';
+  const main = document.getElementById('mainApp');
+  const auth = document.getElementById('authWrap');
+  if(main) main.style.display = 'none';
+  if(auth) auth.style.display = 'flex';
+  const navTop = document.getElementById('navTop'); if(navTop) navTop.style.display='none';
+  const navBottom = document.getElementById('navBottom'); if(navBottom) navBottom.style.display='none';
   showToast('👋 Logged out successfully.');
 }
 
 function enterCompose(){
   showPage('feed');
-  document.getElementById('txtPost').focus();
-}
-
-/* helpers */
-function escapeHtml(str){
-  if(!str) return '';
-  return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#039;');
+  const t = document.getElementById('txtPost');
+  if(t) t.focus();
 }
 
 /* -----------------------
-   Wire profile pic input
+   Wire profile pic input (already added in Part1)
    ----------------------- */
-document.addEventListener('change', (e)=>{
-  if(e.target && e.target.id === 'profilePicInput') updateProfilePic(e);
-});
 
-/* ensure stats exist */
-(function ensureUserStats(){ Object.keys(users).forEach(u=>{ if(!users[u].stats) users[u].stats = {posts:0,likes:0,comments:0}; if(!users[u].following) users[u].following = []; if(!users[u].followers) users[u].followers = []; }); saveUsers(); })();
+/* -----------------------
+   Profile grid rendering continued in Part1
+   ----------------------- */
 
-/* auto login if current user in storage */
-(function init(){
-  const cur = localStorage.getItem(LS_CURRENT);
-  if(cur && users[cur]){ setCurrent(cur); openApp(); }
-  renderMarket(); // show news on load
-})();
-
-/* notify dot toggler (demo) */
-function toggleNotifDot(btn){
-  const d = document.getElementById('notifDot');
-  if(d.style.display === 'none' || !d.style.display) { d.style.display='inline-block'; showToast('You have new notifications'); }
-  else { d.style.display='none'; showToast('Notifications cleared'); }
+/* modal utilities for simple modals */
+function closeSimpleModal(id){ 
+  const m = document.getElementById(id); 
+  if(m){
+    m.style.display='none';
+    // if this is viewModal, clear innerHTML
+    if(id === 'viewModal') m.innerHTML = '';
+  }
+  document.body.classList.remove('modal-open');
 }
 
-/* Scroll hide/show nav logic (kept) */
-(function navScrollHandler(){
-  let lastY = window.scrollY;
-  let ticking = false;
-  const navTop = document.getElementById('navTop');
-  const navBottom = document.getElementById('navBottom');
-  function onScroll(){
-    const y = window.scrollY;
-    if(y > lastY + 8){ // scrolling down -> hide
-      document.body.classList.remove('nav-visible-top'); document.body.classList.add('nav-hidden-top');
-      navTop.classList.add('hidden');
-      navBottom.classList.add('hidden');
-    } else if(y < lastY - 8){ // scrolling up -> show
-      document.body.classList.remove('nav-hidden-top'); document.body.classList.add('nav-visible-top');
-      navTop.classList.remove('hidden');
-      navBottom.classList.remove('hidden');
-    }
-    lastY = y;
-    ticking = false;
-  }
-  window.addEventListener('scroll', ()=>{ if(!ticking){ window.requestAnimationFrame(onScroll); ticking = true; } }, {passive:true});
-
-  function adaptNav(){
-    if(window.innerWidth <= 720){ navTop.style.display='none'; navBottom.style.display='block'; }
-    else { navTop.style.display='block'; navBottom.style.display='none'; }
-  }
-  window.addEventListener('resize', adaptNav);
-  adaptNav();
-})();
-
-/* storage sync */
-window.addEventListener('storage', ()=> {
-  users = JSON.parse(localStorage.getItem(LS_USERS) || '{}');
-  posts = JSON.parse(localStorage.getItem(LS_POSTS) || '[]');
-  savedMarket = JSON.parse(localStorage.getItem(LS_SAVED_ITEMS) || '[]');
-  messages = JSON.parse(localStorage.getItem(LS_MESSAGES) || '{}');
-  notifications = JSON.parse(localStorage.getItem(LS_NOTIFS) || '{}');
-  stories = JSON.parse(localStorage.getItem(LS_STORIES) || '[]');
-  updateCounts();
-});
-
-/* =========================
-   EXPLORE (kept)
-   ========================= */
+/* ------------------------
+   Explore (kept)
+   ------------------------ */
 function renderExplore(){
-  const q = document.getElementById('exploreSearch').value.trim().toLowerCase();
+  const inp = document.getElementById('exploreSearch');
+  const q = inp ? inp.value.trim().toLowerCase() : '';
   const resultsRoot = document.getElementById('exploreResults');
+  if(!resultsRoot) return;
   resultsRoot.innerHTML = '';
   const filtered = posts.filter(p => {
     if(!q) return true;
     return p.user.toLowerCase().includes(q) || (p.text && p.text.toLowerCase().includes(q));
   });
-  document.getElementById('exploreCount').textContent = filtered.length + ' results';
+  const countEl = document.getElementById('exploreCount');
+  if(countEl) countEl.textContent = filtered.length + ' results';
   if(filtered.length === 0){
     resultsRoot.innerHTML = '<div class="panel muted">No results</div>';
     return;
@@ -856,8 +707,6 @@ function renderExplore(){
 /* loadNewsFeed: for offline mode, reloads the sample news (or keeps saved) */
 function loadNewsFeed(){
   showToast("Loading campus headlines...");
-  // For offline mode we just restore the bundled sample headlines.
-  // If you later want to add API fetching, modify this function.
   marketItems = [
     { id: 'news1', title: 'University to Open New Study Hall', desc: 'A new 24/7 study hall will open in Block C this semester.', price: 'Campus Bulletin', img: 'https://picsum.photos/seed/news1/400/300', seller: 'Campus Bulletin', url: '#' },
     { id: 'news2', title: 'Hackathon Winners Announced', desc: 'Team Orion wins the annual inter-college hackathon.', price: 'Campus News', img: 'https://picsum.photos/seed/news2/400/300', seller: 'Campus News', url: '#' },
@@ -874,6 +723,7 @@ function loadNewsFeed(){
 function renderMarket(){
   const q = (document.getElementById('marketSearch')?.value || '').trim().toLowerCase();
   const root = document.getElementById('marketList');
+  if(!root) return;
   root.innerHTML = '';
   const filtered = marketItems.filter(it => {
     if(!q) return true;
@@ -910,6 +760,7 @@ function viewNewsItem(id){
   const it = marketItems.find(m=>m.id===id);
   if(!it) return;
   const modalRoot = document.getElementById('viewModal');
+  if(!modalRoot) return;
   modalRoot.innerHTML = `
     <div class="modal">
       <div class="modal-card">
@@ -927,8 +778,13 @@ function viewNewsItem(id){
     </div>
   `;
   modalRoot.style.display = 'block';
+  document.body.classList.add('modal-open');
 }
-function closeMarketModal(){ document.getElementById('viewModal').innerHTML=''; document.getElementById('viewModal').style.display='none'; }
+function closeMarketModal(){ 
+  const root = document.getElementById('viewModal');
+  if(root){ root.innerHTML=''; root.style.display='none'; }
+  document.body.classList.remove('modal-open');
+}
 
 /* save / unsave article */
 function toggleSaveItem(id){
@@ -948,6 +804,7 @@ function toggleSaveItem(id){
 function renderSavedItems(){
   const root = document.getElementById('savedList');
   const count = document.getElementById('savedCount');
+  if(!root || !count) return;
   root.innerHTML = '';
   count.textContent = savedMarket.length + ' saved';
   if(savedMarket.length === 0){ root.innerHTML = '<div class="muted">No saved articles yet</div>'; return; }
@@ -969,17 +826,34 @@ ensureSavedInit();
 /* ------------------------
    Notifications system
    ------------------------ */
+
+/* notification sound guard (play only after user interaction) */
+let _userInteractedForSound = false;
+document.addEventListener('pointerdown', ()=>{ _userInteractedForSound = true; }, {once:true});
+
+const _notifAudio = new Audio();
+_notifAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='; // minimal placeholder
+
+function playNotifSound(){
+  if(!_userInteractedForSound) return;
+  try{ _notifAudio.currentTime = 0; _notifAudio.play().catch(()=>{}); }catch(e){}
+}
+
 function addNotification(username, type, text, meta={}){
   notifications[username] = notifications[username] || [];
   notifications[username].unshift({ type, text, meta, at: new Date().toISOString(), read: false });
   saveNotifications();
   renderNotificationsDot();
+  const cur = localStorage.getItem(LS_CURRENT);
+  if(cur && username === cur) playNotifSound();
 }
+
 function getNotifications(username){
   return notifications[username] || [];
 }
 function toggleNotifications(){
   const modal = document.getElementById('notificationsModal');
+  if(!modal) return;
   const list = getNotifications(currentUser || '__guest__');
   modal.innerHTML = `<div class="modal"><div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:center"><h3>Notifications</h3><button class="small-btn" onclick="closeSimpleModal('notificationsModal')">Close</button></div>
@@ -988,8 +862,8 @@ function toggleNotifications(){
     </div>
   </div></div>`;
   modal.style.display = 'block';
+  document.body.classList.add('modal-open');
 }
-function closeSimpleModal(id){ const m = document.getElementById(id); if(m) m.style.display='none'; }
 function renderNotificationsDot(){
   const dot = document.getElementById('notifDot');
   if(!dot) return;
@@ -1003,6 +877,7 @@ function renderNotificationsDot(){
    ------------------------ */
 function renderTrending(){
   const root = document.getElementById('trendingContent');
+  if(!root) return;
   root.innerHTML = '';
   // top posts by likes
   const top = [...posts].sort((a,b)=> (b.likedBy.length||0) - (a.likedBy.length||0)).slice(0,6);
@@ -1049,15 +924,13 @@ function renderStories(){
     root.appendChild(b);
   });
 }
-
-/* add story (kept skeleton) */
 function addStory(){ if(!currentUser) return showToast('Login to add story'); stories.unshift({id:'st'+Date.now(), user: currentUser, img:'', createdAt: new Date().toISOString()}); saveStories(); renderStories(); showToast('Story added'); }
 
 /* ------------------------
    Misc small helpers / profile edit
    ------------------------ */
-function enterEditProfile(){ showPage('profile'); document.getElementById('bio').focus(); }
-function cancelEditProfile(){ if(currentUser && users[currentUser]) document.getElementById('bio').value = users[currentUser].bio || ''; showToast('Edit cancelled'); }
+function enterEditProfile(){ showPage('profile'); const b = document.getElementById('bio'); if(b) b.focus(); }
+function cancelEditProfile(){ if(currentUser && users[currentUser]){ const b = document.getElementById('bio'); if(b) b.value = users[currentUser].bio || ''; } showToast('Edit cancelled'); }
 function updateProfileUsername(){ showToast('Username cannot be changed in this demo'); }
 
 /* ------------------------
@@ -1065,6 +938,7 @@ function updateProfileUsername(){ showToast('Username cannot be changed in this 
    ------------------------ */
 function openEditorModal(postId){
   const modalRoot = document.getElementById('viewModal');
+  if(!modalRoot) return;
   if(postId){
     const post = posts.find(p=>p.id===postId);
     if(!post) return;
@@ -1073,9 +947,11 @@ function openEditorModal(postId){
     modalRoot.innerHTML = `<div class="modal"><div class="modal-card"><h3>Compose</h3><textarea id="editorText"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="primary" onclick="saveNewFromEditor()">Post</button><button class="small-btn" onclick="closePostModal('editor')">Cancel</button></div></div></div>`;
   }
   modalRoot.style.display = 'block';
+  document.body.classList.add('modal-open');
 }
 function saveEdit(postId){
-  const txt = document.getElementById('editorText').value.trim();
+  const txtEl = document.getElementById('editorText');
+  const txt = txtEl ? txtEl.value.trim() : '';
   const post = posts.find(p=>p.id===postId);
   if(!post) return;
   post.text = txt;
@@ -1083,7 +959,8 @@ function saveEdit(postId){
   savePosts(); renderPosts(); closePostModal(postId); showToast('Post updated');
 }
 function saveNewFromEditor(){
-  const txt = document.getElementById('editorText').value.trim();
+  const txtEl = document.getElementById('editorText');
+  const txt = txtEl ? txtEl.value.trim() : '';
   if(!txt) return showToast('Write something');
   createPostObject(txt, null);
   closePostModal('editor');
@@ -1094,10 +971,13 @@ function saveNewFromEditor(){
    ------------------------ */
 function openMessagesModal(){
   const modal = document.getElementById('messagesModal');
+  if(!modal) return;
   modal.innerHTML = `<div class="modal"><div class="modal-card"><h3>Messages (demo)</h3><div class="muted">Messaging is a light demo in this build.</div><div style="margin-top:8px"><button class="small-btn" onclick="closeSimpleModal('messagesModal')">Close</button></div></div></div>`;
   modal.style.display = 'block';
+  document.body.classList.add('modal-open');
 }
 
+/* global exposure for UI */
 window.showPage = showPage;
 window.onRegister = onRegister;
 window.onLogin = onLogin;
@@ -1107,15 +987,15 @@ window.clearDraft = clearDraft;
 window.saveDraft = saveDraft;
 window.enterCompose = enterCompose;
 window.logout = logout;
-window.toggleNotifDot = toggleNotifDot;
+window.toggleNotifDot = function(){ const d = document.getElementById('notifDot'); if(d.style.display === 'none' || !d.style.display) { d.style.display='inline-block'; showToast('You have new notifications'); } else { d.style.display='none'; showToast('Notifications cleared'); } };
 window.toggleLike = toggleLike;
 window.toggleCommentsArea = toggleCommentsArea;
 window.addComment = addComment;
 window.onEditPost = onEditPost;
 window.onDeletePost = onDeletePost;
 window.showProfile = showProfile;
-window.updateBio = updateBio;
-window.updateProfilePic = updateProfilePic;
+window.updateBio = function(){ const valEl = document.getElementById('bio'); const val = valEl ? valEl.value.trim() : ''; if(!currentUser) return showToast('No current user'); users[currentUser].bio = val; saveUsers(); renderPosts(); refreshProfileUI(); showToast('✏️ Bio updated!'); };
+window.updateProfilePic = function(e){ const f = e.target.files && e.target.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = () => { users[currentUser].pic = reader.result; saveUsers(); refreshProfileUI(); renderPosts(); showToast('🖼️ Profile picture updated'); renderProfilePosts(); }; reader.readAsDataURL(f); };
 window.openPostModal = openPostModal;
 window.closePostModal = closePostModal;
 window.openPostModalById = openPostModalById;
@@ -1129,20 +1009,48 @@ window.viewNewsItem = viewNewsItem;
 
 /* Final small init */
 (function finalInit(){
-  // Apply saved theme
-  const t = localStorage.getItem(LS_THEME);
-  if(t === 'light') document.body.classList.add('light');
+  // Apply saved theme early (ensures CSS variables get the right class)
+  const t_local = localStorage.getItem(LS_THEME) || localStorage.getItem('se_theme') || 'dark';
+  if(t_local === 'light') document.body.classList.add('light');
+  else document.body.classList.remove('light');
+
   // Auto load sample news only if LS empty
   if(!localStorage.getItem(LS_MARKET)) saveMarketState();
   renderNotificationsDot();
   renderTrending();
+
+  // ensure nav adapts once fully loaded
+  function adaptNav(){
+    const navTop = document.getElementById('navTop');
+    const navBottom = document.getElementById('navBottom');
+    if(!navTop || !navBottom) return;
+    if(window.innerWidth <= 720){ navTop.style.display='none'; navBottom.style.display='block'; }
+    else { navTop.style.display='block'; navBottom.style.display='none'; }
+  }
+  window.addEventListener('resize', adaptNav);
+  window.addEventListener('load', adaptNav);
+  adaptNav();
 })();
 
-// Stories horizontal scroll enhancement
-const storiesContainer = document.getElementById('storiesBar');
-if(storiesContainer){
-  storiesContainer.addEventListener('wheel', (e)=>{
-    e.preventDefault();
-    storiesContainer.scrollLeft += e.deltaY;
-  });
-}
+/* Stories horizontal scroll enhancement */
+(function enhanceStoriesScroll(){
+  const storiesContainer = document.getElementById('storiesBar');
+  if(storiesContainer){
+    storiesContainer.addEventListener('wheel', (e)=>{
+      e.preventDefault();
+      storiesContainer.scrollLeft += e.deltaY;
+    }, {passive:false});
+  }
+})();
+
+/* Storage sync across tabs */
+window.addEventListener('storage', ()=> {
+  users = JSON.parse(localStorage.getItem(LS_USERS) || '{}');
+  posts = JSON.parse(localStorage.getItem(LS_POSTS) || '[]');
+  savedMarket = JSON.parse(localStorage.getItem(LS_SAVED_ITEMS) || '[]');
+  messages = JSON.parse(localStorage.getItem(LS_MESSAGES) || '{}');
+  notifications = JSON.parse(localStorage.getItem(LS_NOTIFS) || '{}');
+  stories = JSON.parse(localStorage.getItem(LS_STORIES) || '[]');
+  updateCounts();
+});
+
