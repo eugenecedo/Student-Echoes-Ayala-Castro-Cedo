@@ -11,7 +11,7 @@ body {
 /* Layout wrapper */
 .auth {
   display: grid;
-  grid-template-columns: 1.05fr 1fr; /* slightly wider visual panel */
+  grid-template-columns: 1.05fr 1fr;
   min-height: 100vh;
 }
 
@@ -95,7 +95,7 @@ body {
   border: 1px solid rgba(255,255,255,0.16);
   border-radius: 20px;
   padding: 32px;
-  color: #e5e7eb; /* gray-200 */
+  color: #e5e7eb;
   backdrop-filter: blur(10px);
   box-shadow: 0 20px 60px rgba(3, 7, 18, 0.6);
 }
@@ -157,9 +157,38 @@ input:focus {
   background: rgba(255,255,255,0.12);
 }
 
-.consent {
-  margin: 8px 0 18px;
+/* ✅ Specific style for Email or Phone field */
+#contact {
+  background: rgba(255,255,255,0.1);
 }
+#contact:focus {
+  border-color: #66d9ff;
+  box-shadow: 0 0 0 3px rgba(102, 217, 255, 0.25);
+}
+
+/* ✅ Password toggle */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #8dd3ff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+.toggle-password:hover {
+  color: #a7f3d0;
+}
+
+/* Checkbox */
+.consent { margin: 8px 0 18px; }
 .checkbox {
   display: inline-flex;
   align-items: center;
@@ -172,6 +201,7 @@ input:focus {
   accent-color: #66d9ff;
 }
 
+/* Button */
 .primary-btn {
   width: 100%;
   display: inline-flex;
@@ -210,16 +240,18 @@ input:focus {
 .divider:before { left: 0; }
 .divider:after { right: 0; }
 
-/* Providers */
+/* ✅ Providers (Google & Apple) */
 .providers {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+
 .provider {
   width: 100%;
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding: 12px 16px;
   border-radius: 12px;
@@ -227,81 +259,49 @@ input:focus {
   background: rgba(255,255,255,0.08);
   color: #e5e7eb;
   cursor: pointer;
-  transition: background .2s ease, border-color .2s ease;
+  transition: background .2s ease, border-color .2s ease, transform .08s ease;
 }
 .provider:hover {
   background: rgba(255,255,255,0.12);
   border-color: rgba(226,232,240,0.35);
+  transform: translateY(-1px);
 }
+
 .provider .icon {
   display: inline-flex;
-  align-items: center; justify-content: center;
+  align-items: center;
+  justify-content: center;
   width: 22px; height: 22px;
   border-radius: 6px;
-  font-weight: 800;
-  color: #0b1020;
+  background: #fff;
+}
+.provider svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+/* Google */
+.provider.google .icon {
   background: #fff;
 }
 
-/* Provider flavors */
-.provider.google .icon { background: #fff; color: #1f2937; }
-.provider.apple .icon { background: #000; color: #fff; }
+/* Apple */
+.provider.apple {
+  background: rgba(255,255,255,0.1);
+}
+.provider.apple .icon {
+  background: #000;
+}
 
 /* Responsiveness */
 @media (max-width: 980px) {
   .auth { grid-template-columns: 1fr; }
-  .visual { display: none; } /* hide the image panel on small screens */
+  .visual { display: none; }
 }
 
 @media (max-width: 560px) {
   .form-wrap { padding: 24px; border-radius: 16px; }
   .form .grid { grid-template-columns: 1fr; }
-}
-
-.form-wrap {
-  max-width: 480px;
-  margin: 0 auto;
-}
-
-/* Base layout: two columns side by side */
-.auth {
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  min-height: 100vh;
-}
-
-/* Tablet breakpoint */
-@media (max-width: 980px) {
-  .auth {
-    grid-template-columns: 1fr; /* stack panels */
-  }
-  .visual {
-    display: none; /* hide left image panel on tablets/phones */
-  }
-  .form-panel {
-    padding: 2rem 1rem;
-  }
-  .form-wrap {
-    max-width: 100%;
-    margin: 0 auto;
-  }
-}
-
-/* Mobile breakpoint */
-@media (max-width: 560px) {
-  .form-wrap {
-    padding: 1.5rem;
-    border-radius: 12px;
-  }
-  .form .grid {
-    grid-template-columns: 1fr; /* stack first/last name fields */
-    gap: 0.8rem;
-  }
-  .primary-btn {
-    font-size: 0.95rem;
-    padding: 0.9rem;
-  }
-  .providers {
-    grid-template-columns: 1fr; /* stack Google/Apple buttons */
-  }
+  .providers { grid-template-columns: 1fr; }
 }
