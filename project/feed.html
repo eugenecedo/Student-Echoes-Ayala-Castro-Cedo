@@ -35,17 +35,28 @@
     <!-- left nav -->
     <aside class="left sidebar" id="sidebar">
       <nav class="navcard">
-        <ul>
-          <li class="active">Feed</li>
-          <li>News</li>
-          <li>Profile</li>
+        <ul id="nav-list">
+          <li class="active" data-tab="feed">Feed</li>
+          <li data-tab="news">News</li>
+          <li data-tab="profile">Profile</li>
         </ul>
       </nav>
+      <div class="card friends">
+        <h4>Friends</h4>
+        <div id="friends-list"></div>
+      </div>
+      <div class="card notifications">
+        <div class="card-head">
+          <h4>Notifications</h4>
+          <button id="clear-notifs" class="linkbtn">Clear</button>
+        </div>
+        <div id="notif-list"></div>
+      </div>
     </aside>
 
     <!-- main feed -->
     <section class="main" id="maincontent">
-      <div class="card create-post">
+      <div class="card create-post" id="tab-feed">
         <form id="post-form">
           <textarea id="post-text" placeholder="What's on your mind?" rows="3"></textarea>
           <input id="post-image" placeholder="Image URL (optional)" />
@@ -56,6 +67,8 @@
         </form>
       </div>
       <div id="feed"></div>
+      <div class="card" id="tab-news" style="display:none;"><h4>Latest News</h4><div id="news-content">Coming soon...</div></div>
+      <div class="card" id="tab-profile" style="display:none;"><h4>Your Profile</h4><div id="profile-content">Coming soon...</div></div>
     </section>
 
     <aside class="right">
@@ -69,7 +82,7 @@
   <footer class="footer">Demo Social Dashboard • Responsive HTML/CSS/JS</footer>
 </div>
 
-<script src="app.js"></script>
+<script src="feed.js"></script>
 <script>
   // Redirect to login if not logged in
   if(localStorage.getItem('loggedIn') !== 'true'){

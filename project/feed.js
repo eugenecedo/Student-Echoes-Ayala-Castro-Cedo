@@ -1,6 +1,6 @@
 // app.js - responsive dashboard with hamburger drawer and theme toggle
 
-// Seed data (same as earlier)
+// Seed data
 const seedFriends = [
   { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true },
   { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true },
@@ -49,13 +49,15 @@ const clearNotifsBtn = document.getElementById('clear-notifs');
 const postForm = document.getElementById('post-form');
 const postText = document.getElementById('post-text');
 const postImage = document.getElementById('post-image');
-
 const hamburger = document.getElementById('hamburger');
 const overlay = document.getElementById('overlay');
 const body = document.body;
 const sidebar = document.getElementById('sidebar');
+const navList = document.getElementById('nav-list');
+const tabFeed = document.getElementById('tab-feed');
+const tabNews = document.getElementById('tab-news');
+const tabProfile = document.getElementById('tab-profile');
 
-// render helpers
 function renderFriends(){
   friendsList.innerHTML = '';
   seedFriends.forEach(f=>{
@@ -85,7 +87,9 @@ function renderFeed(){
           <div style="font-weight:600">${post.author.name}</div>
           <div style="font-size:12px; color:var(--muted)">${post.time}</div>
         </div>
-        <div style="font-size:18px; opacity:.6">•••</div>
+        <div style="font-size:18px; opacity:.6">
+          <button class="icon-btn menu-btn" data-id="${post.id}" title="Post menu">•••</button>
+        </div>
       </div>
       <div class="post-body">
         <div>${escapeHtml(post.text)}</div>
@@ -98,18 +102,35 @@ function renderFeed(){
           </button>
           <span style="margin-left:12px">💬 ${post.comments}</span>
           <span style="margin-left:12px">🔁 ${post.shares}</span>
+          <button class="icon-btn share-btn" data-id="${post.id}" style="margin-left:12px;" title="Share">Share</button>
         </div>
-        <div style="color:var(--muted); font-size:13px">Share</div>
+        <div style="color:var(--muted); font-size:13px"></div>
       </div>
     `;
     feedEl.appendChild(article);
   });
 
-  // attach like handlers
+  // Like handler
   document.querySelectorAll('.like-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = Number(btn.getAttribute('data-id'));
       toggleLike(id);
+    });
+  });
+
+  // Share handler
+  document.querySelectorAll('.share-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      sharePost(id);
+    });
+  });
+
+  // Menu handler
+  document.querySelectorAll('.menu-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const id = Number(btn.getAttribute('data-id'));
+      openPostMenu(e.currentTarget, id);
     });
   });
 }
@@ -133,8 +154,19 @@ function renderCommunities(){
   communities.forEach(c=>{
     const row = document.createElement('div');
     row.style.display='flex'; row.style.justifyContent='space-between'; row.style.marginBottom='8px';
-    row.innerHTML = `<div>${c.name}</div><div style="font-size:12px;color:var(--muted)">${c.members} members</div>`;
+    row.innerHTML = `<div>
+    <button class="btn small join-community" data-id="${c.id}" style="background:var(--accent);color:white;border:0;">
+      Join
+    </button> ${c.name}
+    </div>
+    <div style="font-size:12px;color:var(--muted)">${c.members} members</div>`;
     commList.appendChild(row);
+  });
+  document.querySelectorAll('.join-community').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const cId = Number(btn.getAttribute('data-id'));
+      joinCommunity(cId);
+    });
   });
 }
 
@@ -170,14 +202,34 @@ function createPost(e){
   renderFeed(); renderNotifications();
 }
 
-// small util to avoid HTML injection when inserting text
+function joinCommunity(cId){
+  const comm = communities.find(c=>c.id===cId);
+  if(comm){
+    comm.members += 1;
+    notifications.unshift({ id:Date.now(), text:`You joined ${comm.name}.`, time:'just now', avatar:'https://i.pravatar.cc/36?img=65' });
+    renderCommunities(); renderNotifications();
+  }
+}
+
+function sharePost(postId){
+  const post = posts.find(p=>p.id===postId);
+  let textToCopy = post.text;
+  if(post.image) textToCopy += '\n' + post.image;
+  navigator.clipboard.writeText(textToCopy).then(()=>{
+    notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
+    renderNotifications();
+  });
+}
+
+// Small util to avoid HTML injection when inserting text
 function escapeHtml(str){
+  if(!str) return '';
   return str.replace(/[&<>"']/g, function(m){
     return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
   });
 }
 
-// theme
+// Theme
 function initTheme(){
   const saved = localStorage.getItem('theme');
   if(saved === 'light'){
@@ -191,11 +243,10 @@ function initTheme(){
   }
 }
 
-// drawer (hamburger) behavior
+// Drawer (hamburger)
 function openDrawer(){
   body.classList.add('drawer-open');
   hamburger.setAttribute('aria-expanded','true');
-  // ensure focus lands in drawer for accessibility
   sidebar.setAttribute('tabindex','-1');
   sidebar.focus();
 }
@@ -204,7 +255,61 @@ function closeDrawer(){
   hamburger.setAttribute('aria-expanded','false');
 }
 
-// listeners
+// Sidebar navigation functionality
+navList.addEventListener('click', (e)=>{
+  if(e.target.tagName==='LI'){
+    navList.querySelectorAll('li').forEach(li=>li.classList.remove('active'));
+    e.target.classList.add('active');
+    const tab = e.target.getAttribute('data-tab');
+    // toggle main content tabs
+    tabFeed.style.display = tab==='feed'? '' : 'none';
+    feedEl.style.display = tab==='feed'? '' : 'none';
+    tabNews.style.display = tab==='news'? '' : 'none';
+    tabProfile.style.display = tab==='profile'? '' : 'none';
+  }
+});
+
+// Post menu: allow delete (for own posts)
+function openPostMenu(btn, postId){
+  let menu = document.getElementById('post-menu-temp');
+  if(menu) menu.remove();
+  // only allow delete for user's own posts
+  const post = posts.find(p=>p.id===postId);
+  if(post.author.name!=='You') return;
+  menu = document.createElement('div');
+  menu.id = 'post-menu-temp';
+  menu.style.position = 'absolute';
+  menu.style.background = 'var(--panel-dark)';
+  menu.style.color = 'white';
+  menu.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)';
+  menu.style.borderRadius = '8px';
+  menu.style.zIndex = '999';
+  menu.style.padding = '8px 16px';
+  menu.innerHTML = `<button class="btn small" id="delete-post-menu-btn">Delete</button>`;
+  document.body.appendChild(menu);
+
+  // Position menu near button
+  const rect = btn.getBoundingClientRect();
+  menu.style.left = rect.left + 'px';
+  menu.style.top = (rect.bottom+window.scrollY) + 'px';
+
+  document.getElementById('delete-post-menu-btn').onclick = () => {
+    posts = posts.filter(p=>p.id!==postId);
+    notifications.unshift({id:Date.now(), text:'You deleted a post.', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
+    renderFeed(); renderNotifications();
+    menu.remove();
+  };
+
+  // remove menu if click outside
+  window.addEventListener('mousedown', function handler(e){
+    if(!menu.contains(e.target) && e.target!==btn){
+      menu.remove();
+      window.removeEventListener('mousedown', handler);
+    }
+  });
+}
+
+// Listeners
 themeToggle.addEventListener('click', ()=>{
   if(body.classList.contains('theme-light')){
     body.classList.remove('theme-light');
@@ -231,12 +336,11 @@ hamburger.addEventListener('click', ()=>{
 });
 overlay.addEventListener('click', closeDrawer);
 
-// close drawer with Escape key when open
+// close drawer with Escape
 document.addEventListener('keydown', (e)=>{
   if(e.key === 'Escape' && body.classList.contains('drawer-open')) closeDrawer();
 });
 
-// initial render (simulate async fetch)
 function init(){
   renderFriends();
   renderCommunities();
