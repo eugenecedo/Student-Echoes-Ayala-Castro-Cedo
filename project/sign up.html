@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Student Echoes</title>
-  <link rel="stylesheet" href="log in.css"/>
+  <link rel="stylesheet" href="sign up.css"/>
 </head>
 <body>
   <div class="auth">
@@ -27,7 +27,7 @@
           <h1>Create an account</h1>
           <p class="sub">
             Already have an account?
-            <a href="#" id="login-link">Log in</a>
+            <a href="#" id="signup-link">Log in</a>
           </p>
         </div>
 
@@ -97,7 +97,7 @@
     });
 
     // Login link (simulate login)
-    document.getElementById('login-link').addEventListener('click', e => {
+    document.getElementById('signup-link').addEventListener('click', e => {
       e.preventDefault();
       localStorage.setItem('loggedIn', 'true');
       window.location.href = 'feed.html';
