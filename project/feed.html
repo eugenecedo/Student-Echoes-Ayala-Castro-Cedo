@@ -54,8 +54,9 @@
       </div>
     </aside>
 
-    <!-- main feed -->
+    <!-- main feed/tab sections -->
     <section class="main" id="maincontent">
+      <!-- Feed tab -->
       <div class="card create-post" id="tab-feed">
         <form id="post-form">
           <textarea id="post-text" placeholder="What's on your mind?" rows="3"></textarea>
@@ -67,8 +68,16 @@
         </form>
       </div>
       <div id="feed"></div>
-      <div class="card" id="tab-news" style="display:none;"><h4>Latest News</h4><div id="news-content">Coming soon...</div></div>
-      <div class="card" id="tab-profile" style="display:none;"><h4>Your Profile</h4><div id="profile-content">Coming soon...</div></div>
+      <!-- News tab -->
+      <div class="card" id="tab-news" style="display:none;">
+        <h4>Latest News</h4>
+        <div id="news-content"></div>
+      </div>
+      <!-- Profile tab -->
+      <div class="card" id="tab-profile" style="display:none;">
+        <h4>Your Profile</h4>
+        <div id="profile-content"></div>
+      </div>
     </section>
 
     <aside class="right">

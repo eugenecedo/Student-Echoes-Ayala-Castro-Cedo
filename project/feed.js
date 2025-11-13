@@ -324,6 +324,106 @@ themeToggle.addEventListener('click', ()=>{
   }
 });
 
+// ... (rest of file unchanged above)
+
+// Example news data and render function
+function renderNews(){
+  const news = [
+    {
+      title: "Design Trends 2025 Announced",
+      summary: "See what's new in global UI/UX for the upcoming year.",
+      url: "#"
+    },
+    {
+      title: "AMU Launches New Dev Community",
+      summary: "Join the latest group for frontend devs and share your work!",
+      url: "#"
+    },
+    {
+      title: "Update: JS Security Best Practices",
+      summary: "Latest guide from SEM group, including new XSS techniques.",
+      url: "#"
+    }
+  ];
+  const newsContent = document.getElementById('news-content');
+  newsContent.innerHTML = news.map(n => `
+    <div style="margin-bottom:16px;">
+      <a href="${n.url}" style="font-weight:600;color:var(--accent);text-decoration:none;">${n.title}</a>
+      <div style="color:var(--muted);font-size:14px;margin-top:4px;">
+        ${n.summary}
+      </div>
+    </div>
+  `).join('');
+}
+
+// Example profile data and render function
+function renderProfile(){
+  const user = {
+    name: "Marjohn",
+    avatar: "https://i.pravatar.cc/80?img=7",
+    bio: "Frontend developer at AMU. Passionate about design, accessibility, and coffee ☕️.",
+    joined: "Feb 2024",
+    posts: posts.filter(p => p.author.name === 'You').length,
+    communitiesJoined: 2
+  };
+  const profileContent = document.getElementById('profile-content');
+  profileContent.innerHTML = `
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+      <img src="${user.avatar}" alt="${user.name}" style="width:80px;height:80px;border-radius:50%;">
+      <div>
+        <div style="font-size:22px;font-weight:700;">${user.name}</div>
+        <div style="color:var(--muted);font-size:15px;">
+          ${user.bio}
+        </div>
+        <div style="margin-top:6px; font-size:13px;">
+          <span>Joined: ${user.joined}</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <strong>Posts:</strong> ${user.posts} <br>
+      <strong>Communities:</strong> ${user.communitiesJoined}
+    </div>
+    <div style="margin-top:18px;">
+      <button class="btn small" id="editProfileBtn">Edit Profile</button>
+    </div>
+  `;
+  const editBtn = document.getElementById('editProfileBtn');
+  if (editBtn) {
+    editBtn.onclick = () => {
+      alert("Edit Profile UI coming soon!");
+    };
+  }
+}
+
+// Update sidebar click handler to render News/Profile
+navList.addEventListener('click', (e)=>{
+  if(e.target.tagName==='LI'){
+    navList.querySelectorAll('li').forEach(li=>li.classList.remove('active'));
+    e.target.classList.add('active');
+    const tab = e.target.getAttribute('data-tab');
+    tabFeed.style.display = tab==='feed'? '' : 'none';
+    feedEl.style.display = tab==='feed'? '' : 'none';
+    tabNews.style.display = tab==='news'? '' : 'none';
+    tabProfile.style.display = tab==='profile'? '' : 'none';
+    if(tab==='news') renderNews();
+    if(tab==='profile') renderProfile();
+  }
+});
+
+// Render News/Profile at init
+function init(){
+  renderFriends();
+  renderCommunities();
+  setTimeout(()=>{ renderFeed(); renderNotifications(); }, 300);
+  initTheme();
+  renderNews();
+  renderProfile();
+}
+
+init();
+
+
 clearNotifsBtn.addEventListener('click', ()=>{
   notifications = []; renderNotifications();
 });
