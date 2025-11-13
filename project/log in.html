@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Create an account • AMU</title>
+  <title>Student Echoes</title>
   <link rel="stylesheet" href="log in.css"/>
 </head>
 <body>
@@ -11,7 +11,7 @@
     <!-- Left visual panel -->
     <section class="visual">
       <header class="visual-top">
-        <div class="brand">AMU</div>
+        <div class="brand">SE</div>
         <a href="#" class="back-link">Back to website</a>
       </header>
       <div class="visual-image" aria-hidden="true"></div>
@@ -35,23 +35,23 @@
           <div class="grid">
             <div class="field">
               <label for="firstName">First name</label>
-              <input id="firstName" type="text" placeholder="Eugene" required />
+              <input id="firstName" name="firstName" type="text" placeholder="Eugene" required />
             </div>
             <div class="field">
               <label for="lastName">Last name</label>
-              <input id="lastName" type="text" placeholder="Dela Cruz" required />
+              <input id="lastName" name="lastName" type="text" placeholder="Dela Cruz" required />
             </div>
           </div>
 
           <div class="field">
             <label for="contact">Email or Phone Number</label>
-            <input id="contact" type="text" placeholder="you@example.com or +639123456789" required />
+            <input id="contact" name="contact" type="text" placeholder="you@example.com or +639123456789" required />
           </div>
 
           <div class="field password-field">
             <label for="password">Password</label>
             <div class="password-wrapper">
-              <input id="password" type="password" placeholder="••••••••" required />
+              <input id="password" name="password" type="password" placeholder="••••••••" required />
               <button type="button" id="togglePassword" class="toggle-password">Show</button>
             </div>
           </div>
@@ -70,6 +70,7 @@
   </div>
 
   <script>
+    // Toggle password visibility
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
 
@@ -79,16 +80,23 @@
       togglePassword.textContent = isPassword ? 'Hide' : 'Show';
     });
 
-    // Signup form
+    // Signup form submission
     const signupForm = document.getElementById('signup-form');
     signupForm.addEventListener('submit', e => {
       e.preventDefault();
-      // In real app, validate & send to server
+
+      // Optional: simple validation
+      if (!document.getElementById('terms').checked) {
+        alert('You must agree to the Terms & Conditions.');
+        return;
+      }
+
+      // Save login state (simulated)
       localStorage.setItem('loggedIn', 'true');
       window.location.href = 'feed.html';
     });
 
-    // Login link (simulated login)
+    // Login link (simulate login)
     document.getElementById('login-link').addEventListener('click', e => {
       e.preventDefault();
       localStorage.setItem('loggedIn', 'true');
