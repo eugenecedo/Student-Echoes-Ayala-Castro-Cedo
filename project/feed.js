@@ -1,4 +1,4 @@
-// app.js - responsive dashboard with hamburger drawer and theme toggle
+// feed.js - Social Dashboard with Editable Facebook-style Profile
 
 // Seed data
 const seedFriends = [
@@ -39,6 +39,24 @@ const communities = [
   { id:2, name:'Frontend Developers', members:16 },
 ];
 
+// Profile utilities
+function getUserProfile() {
+  const raw = localStorage.getItem('userProfile');
+  if (raw) return JSON.parse(raw);
+  // Default profile
+  return {
+    name: "Marjohn",
+    avatar: "https://i.pravatar.cc/80?img=7",
+    bio: "Frontend developer at AMU. Passionate about design, accessibility, and coffee ☕️.",
+    joined: "Feb 2024",
+    communitiesJoined: 2
+  };
+}
+function setUserProfile(upd) {
+  localStorage.setItem('userProfile', JSON.stringify(upd));
+  renderTopRightUser();
+}
+
 // DOM refs
 const friendsList = document.getElementById('friends-list');
 const feedEl = document.getElementById('feed');
@@ -57,6 +75,14 @@ const navList = document.getElementById('nav-list');
 const tabFeed = document.getElementById('tab-feed');
 const tabNews = document.getElementById('tab-news');
 const tabProfile = document.getElementById('tab-profile');
+const userImg = document.querySelector('.user img');
+const userName = document.querySelector('.username');
+
+function renderTopRightUser() {
+  const user = getUserProfile();
+  if (userImg) userImg.src = user.avatar;
+  if (userName) userName.textContent = user.name;
+}
 
 function renderFriends(){
   friendsList.innerHTML = '';
@@ -188,9 +214,10 @@ function createPost(e){
   const image = postImage.value.trim();
   if(!text && !image) return;
 
+  const user = getUserProfile();
   const newP = {
     id: Date.now(),
-    author:{name:'You', avatar:'https://i.pravatar.cc/48?img=65'},
+    author:{name:user.name, avatar:user.avatar},
     time:'just now',
     text,
     image: image || null,
@@ -255,78 +282,93 @@ function closeDrawer(){
   hamburger.setAttribute('aria-expanded','false');
 }
 
-// Sidebar navigation functionality
-navList.addEventListener('click', (e)=>{
-  if(e.target.tagName==='LI'){
-    navList.querySelectorAll('li').forEach(li=>li.classList.remove('active'));
-    e.target.classList.add('active');
-    const tab = e.target.getAttribute('data-tab');
-    // toggle main content tabs
-    tabFeed.style.display = tab==='feed'? '' : 'none';
-    feedEl.style.display = tab==='feed'? '' : 'none';
-    tabNews.style.display = tab==='news'? '' : 'none';
-    tabProfile.style.display = tab==='profile'? '' : 'none';
-  }
-});
+// Editable Profile Functionality
+function renderProfile(editMode = false) {
+  const profileContent = document.getElementById('profile-content');
+  const user = getUserProfile();
+  const postCount = posts.filter(p => p.author.name === user.name).length;
 
-// Post menu: allow delete (for own posts)
-function openPostMenu(btn, postId){
-  let menu = document.getElementById('post-menu-temp');
-  if(menu) menu.remove();
-  // only allow delete for user's own posts
-  const post = posts.find(p=>p.id===postId);
-  if(post.author.name!=='You') return;
-  menu = document.createElement('div');
-  menu.id = 'post-menu-temp';
-  menu.style.position = 'absolute';
-  menu.style.background = 'var(--panel-dark)';
-  menu.style.color = 'white';
-  menu.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)';
-  menu.style.borderRadius = '8px';
-  menu.style.zIndex = '999';
-  menu.style.padding = '8px 16px';
-  menu.innerHTML = `<button class="btn small" id="delete-post-menu-btn">Delete</button>`;
-  document.body.appendChild(menu);
-
-  // Position menu near button
-  const rect = btn.getBoundingClientRect();
-  menu.style.left = rect.left + 'px';
-  menu.style.top = (rect.bottom+window.scrollY) + 'px';
-
-  document.getElementById('delete-post-menu-btn').onclick = () => {
-    posts = posts.filter(p=>p.id!==postId);
-    notifications.unshift({id:Date.now(), text:'You deleted a post.', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
-    renderFeed(); renderNotifications();
-    menu.remove();
-  };
-
-  // remove menu if click outside
-  window.addEventListener('mousedown', function handler(e){
-    if(!menu.contains(e.target) && e.target!==btn){
-      menu.remove();
-      window.removeEventListener('mousedown', handler);
+  if (!editMode) {
+    profileContent.innerHTML = `
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+        <img src="${user.avatar}" alt="${user.name}" style="width:80px;height:80px;border-radius:50%;">
+        <div>
+          <div style="font-size:22px;font-weight:700;">${user.name}</div>
+          <div style="color:var(--muted);font-size:15px;">
+            ${user.bio}
+          </div>
+          <div style="margin-top:6px; font-size:13px;">
+            <span>Joined: ${user.joined}</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <strong>Posts:</strong> ${postCount} <br>
+        <strong>Communities:</strong> ${user.communitiesJoined}
+      </div>
+      <div style="margin-top:18px;">
+        <button class="btn small" id="editProfileBtn">Edit Profile</button>
+      </div>
+    `;
+    const editBtn = document.getElementById('editProfileBtn');
+    if (editBtn) {
+      editBtn.onclick = () => renderProfile(true);
     }
-  });
+  } else {
+    profileContent.innerHTML = `
+      <form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;">
+        <label>
+          Name:<br>
+          <input type="text" name="name" value="${user.name}" style="width:100%;padding:6px;border-radius:6px;">
+        </label>
+        <label>
+          Avatar URL:<br>
+          <input type="text" name="avatar" value="${user.avatar}" style="width:100%;padding:6px;border-radius:6px;">
+        </label>
+        <label>
+          Bio:<br>
+          <textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;">${user.bio}</textarea>
+        </label>
+        <div style="margin-top:12px;">
+          <button class="btn small" id="saveProfileBtn" type="submit">Save</button>
+          <button class="btn small" id="cancelProfileBtn" type="button" style="margin-left:8px;">Cancel</button>
+        </div>
+      </form>
+    `;
+    const form = document.getElementById('editProfileForm');
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const newProfile = {
+        name: formData.get('name'),
+        avatar: formData.get('avatar'),
+        bio: formData.get('bio'),
+        joined: user.joined,
+        communitiesJoined: user.communitiesJoined
+      };
+      setUserProfile(newProfile);
+      updateCurrentUserName(newProfile);
+      renderProfile(false);
+    };
+    document.getElementById('cancelProfileBtn').onclick = () => renderProfile(false);
+  }
 }
 
-// Listeners
-themeToggle.addEventListener('click', ()=>{
-  if(body.classList.contains('theme-light')){
-    body.classList.remove('theme-light');
-    themeToggle.textContent='Light';
-    themeToggle.setAttribute('aria-pressed','false');
-    localStorage.setItem('theme','dark');
-  } else {
-    body.classList.add('theme-light');
-    themeToggle.textContent='Dark';
-    themeToggle.setAttribute('aria-pressed','true');
-    localStorage.setItem('theme','light');
-  }
-});
+// Update posts authored by user when profile changes
+function updateCurrentUserName(newProfile) {
+  posts = posts.map(p => {
+    const currentName = getUserProfile().name;
+    // Update posts by previous or new name for robustness!
+    if (p.author.name === currentName || p.author.name === newProfile.name) {
+      return { ...p, author: { name: newProfile.name, avatar: newProfile.avatar } };
+    }
+    return p;
+  });
+  renderFeed();
+  renderTopRightUser();
+}
 
-// ... (rest of file unchanged above)
-
-// Example news data and render function
+// News demo
 function renderNews(){
   const news = [
     {
@@ -356,47 +398,7 @@ function renderNews(){
   `).join('');
 }
 
-// Example profile data and render function
-function renderProfile(){
-  const user = {
-    name: "Marjohn",
-    avatar: "https://i.pravatar.cc/80?img=7",
-    bio: "Frontend developer at AMU. Passionate about design, accessibility, and coffee ☕️.",
-    joined: "Feb 2024",
-    posts: posts.filter(p => p.author.name === 'You').length,
-    communitiesJoined: 2
-  };
-  const profileContent = document.getElementById('profile-content');
-  profileContent.innerHTML = `
-    <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-      <img src="${user.avatar}" alt="${user.name}" style="width:80px;height:80px;border-radius:50%;">
-      <div>
-        <div style="font-size:22px;font-weight:700;">${user.name}</div>
-        <div style="color:var(--muted);font-size:15px;">
-          ${user.bio}
-        </div>
-        <div style="margin-top:6px; font-size:13px;">
-          <span>Joined: ${user.joined}</span>
-        </div>
-      </div>
-    </div>
-    <div>
-      <strong>Posts:</strong> ${user.posts} <br>
-      <strong>Communities:</strong> ${user.communitiesJoined}
-    </div>
-    <div style="margin-top:18px;">
-      <button class="btn small" id="editProfileBtn">Edit Profile</button>
-    </div>
-  `;
-  const editBtn = document.getElementById('editProfileBtn');
-  if (editBtn) {
-    editBtn.onclick = () => {
-      alert("Edit Profile UI coming soon!");
-    };
-  }
-}
-
-// Update sidebar click handler to render News/Profile
+// Nav/tab handler
 navList.addEventListener('click', (e)=>{
   if(e.target.tagName==='LI'){
     navList.querySelectorAll('li').forEach(li=>li.classList.remove('active'));
@@ -407,27 +409,83 @@ navList.addEventListener('click', (e)=>{
     tabNews.style.display = tab==='news'? '' : 'none';
     tabProfile.style.display = tab==='profile'? '' : 'none';
     if(tab==='news') renderNews();
-    if(tab==='profile') renderProfile();
+    if(tab==='profile') renderProfile(false);
   }
 });
 
-// Render News/Profile at init
+// Post menu: allow delete (for own posts)
+function openPostMenu(btn, postId){
+  let menu = document.getElementById('post-menu-temp');
+  if(menu) menu.remove();
+  // only allow delete for user's own posts (match current profile name)
+  const user = getUserProfile();
+  const post = posts.find(p=>p.id===postId);
+  if(post.author.name!==user.name) return;
+  menu = document.createElement('div');
+  menu.id = 'post-menu-temp';
+  menu.style.position = 'absolute';
+  menu.style.background = 'var(--panel-dark)';
+  menu.style.color = 'white';
+  menu.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)';
+  menu.style.borderRadius = '8px';
+  menu.style.zIndex = '999';
+  menu.style.padding = '8px 16px';
+  menu.innerHTML = `<button class="btn small" id="delete-post-menu-btn">Delete</button>`;
+  document.body.appendChild(menu);
+
+  // Position menu near button
+  const rect = btn.getBoundingClientRect();
+  menu.style.left = rect.left + 'px';
+  menu.style.top = (rect.bottom+window.scrollY) + 'px';
+
+  document.getElementById('delete-post-menu-btn').onclick = () => {
+    posts = posts.filter(p=>p.id!==postId);
+    notifications.unshift({id:Date.now(), text:'You deleted a post.', time:'just now', avatar:user.avatar});
+    renderFeed(); renderNotifications();
+    menu.remove();
+  };
+
+  // remove menu if click outside
+  window.addEventListener('mousedown', function handler(e){
+    if(!menu.contains(e.target) && e.target!==btn){
+      menu.remove();
+      window.removeEventListener('mousedown', handler);
+    }
+  });
+}
+
+// Listeners
+themeToggle.addEventListener('click', ()=>{
+  if(body.classList.contains('theme-light')){
+    body.classList.remove('theme-light');
+    themeToggle.textContent='Light';
+    themeToggle.setAttribute('aria-pressed','false');
+    localStorage.setItem('theme','dark');
+  } else {
+    body.classList.add('theme-light');
+    themeToggle.textContent='Dark';
+    themeToggle.setAttribute('aria-pressed','true');
+    localStorage.setItem('theme','light');
+  }
+});
+
+// App init
 function init(){
+  renderTopRightUser();
   renderFriends();
   renderCommunities();
   setTimeout(()=>{ renderFeed(); renderNotifications(); }, 300);
   initTheme();
-  renderNews();
-  renderProfile();
 }
 
 init();
 
-
+// Clear notifications
 clearNotifsBtn.addEventListener('click', ()=>{
   notifications = []; renderNotifications();
 });
 
+// Create post
 postForm.addEventListener('submit', createPost);
 
 // hamburger and overlay events
@@ -440,12 +498,3 @@ overlay.addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e)=>{
   if(e.key === 'Escape' && body.classList.contains('drawer-open')) closeDrawer();
 });
-
-function init(){
-  renderFriends();
-  renderCommunities();
-  setTimeout(()=>{ renderFeed(); renderNotifications(); }, 300);
-  initTheme();
-}
-
-init();
