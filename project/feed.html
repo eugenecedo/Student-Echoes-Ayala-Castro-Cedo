@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+<<<<<<< HEAD
   <title>Social Dashboard</title>
   <link rel="stylesheet" href="feed.css" />
   <script src="feed.js" defer></script>
@@ -11,9 +12,14 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
+=======
+  <title>Social Dashboard • AMU</title>
+  <link rel="stylesheet" href="feed.css" />
+>>>>>>> 50022bac42a4551381a990a4126e673727981db2
 </head>
 
 <body>
+<<<<<<< HEAD
   <div id="app" class="container">
 
     <!-- TOP BAR -->
@@ -27,8 +33,29 @@
           </svg>
           <input id="search" placeholder="Search">
         </div>
-      </div>
+=======
+<div id="app" class="container">
+  <header class="topbar">
+    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
 
+    <div class="brand">
+      <div class="logo">Social</div>
+    </div>
+
+    <div class="top-right">
+      <button id="theme-toggle" class="btn small" aria-pressed="false">Light</button>
+      <div class="user">
+        <img src="https://i.pravatar.cc/36?img=7" alt="me" />
+        <span class="username">Marjohn</span>
+>>>>>>> 50022bac42a4551381a990a4126e673727981db2
+      </div>
+      <button id="logoutBtn" class="btn small">Logout</button>
+    </div>
+  </header>
+
+<<<<<<< HEAD
       <div class="top-right">
         <button id="theme-toggle" class="btn small">Light</button>
 
@@ -176,5 +203,85 @@
 
     <footer class="footer">Demo Social Dashboard • Front-end Version</footer>
   </div>
+=======
+  <!-- overlay for mobile drawer -->
+  <div id="overlay" class="overlay"></div>
+
+  <!-- Grid layout -->
+  <main class="grid">
+    <!-- left nav -->
+    <aside class="left sidebar" id="sidebar">
+      <nav class="navcard">
+        <ul id="nav-list">
+          <li class="active" data-tab="feed">Feed</li>
+          <li data-tab="news">News</li>
+          <li data-tab="profile">Profile</li>
+        </ul>
+      </nav>
+      <div class="card friends">
+        <h4>Friends</h4>
+        <div id="friends-list"></div>
+      </div>
+      <div class="card notifications">
+        <div class="card-head">
+          <h4>Notifications</h4>
+          <button id="clear-notifs" class="linkbtn">Clear</button>
+        </div>
+        <div id="notif-list"></div>
+      </div>
+    </aside>
+
+    <!-- main feed/tab sections -->
+    <section class="main" id="maincontent">
+      <!-- Feed tab -->
+      <div class="card create-post" id="tab-feed">
+        <form id="post-form">
+          <textarea id="post-text" placeholder="What's on your mind?" rows="3"></textarea>
+          <input id="post-image" placeholder="Image URL (optional)" />
+          <div class="form-foot">
+            <small>Attach an image URL or write something.</small>
+            <button type="submit" class="btn">Post</button>
+          </div>
+        </form>
+      </div>
+      <div id="feed"></div>
+      <!-- News tab -->
+      <div class="card" id="tab-news" style="display:none;">
+        <h4>Latest News</h4>
+        <div id="news-content"></div>
+      </div>
+      <!-- Profile tab -->
+      <div class="card" id="tab-profile" style="display:none;">
+        <h4>Your Profile</h4>
+        <div id="profile-content"></div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <div class="card communities">
+        <h4>Communities</h4>
+        <div id="communities-list"></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="footer">Demo Social Dashboard • Responsive HTML/CSS/JS</footer>
+</div>
+
+<script src="feed.js"></script>
+<script>
+  // Redirect to login if not logged in
+  if(localStorage.getItem('loggedIn') !== 'true'){
+    window.location.href = 'index.html';
+  }
+
+  // Logout button
+  const logoutBtn = document.getElementById('logoutBtn');
+  logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('loggedIn');
+    window.location.href = 'sign up.html';
+  });
+</script>
+>>>>>>> 50022bac42a4551381a990a4126e673727981db2
 </body>
 </html>
