@@ -66,7 +66,6 @@ const themeToggle = document.getElementById('theme-toggle');
 const clearNotifsBtn = document.getElementById('clear-notifs');
 const postForm = document.getElementById('post-form');
 const postText = document.getElementById('post-text');
-const postImage = document.getElementById('post-image');
 const hamburger = document.getElementById('hamburger');
 const overlay = document.getElementById('overlay');
 const body = document.body;
@@ -77,15 +76,25 @@ const tabNews = document.getElementById('tab-news');
 const tabProfile = document.getElementById('tab-profile');
 const userImg = document.querySelector('.user img');
 const userName = document.querySelector('.username');
+const addImageBtn = document.getElementById('add-image-btn');
+const postImage = document.getElementById('post-image');
+const preview = document.getElementById('preview');
 
-// --- News configuration & helpers ---
-// The code will attempt sources in this order:
-// 1) NewsAPI.org (if you set a key in localStorage under 'newsApiKey')
-//    - To set: localStorage.setItem('newsApiKey', 'YOUR_KEY');
-//    - NewsAPI requires an API key and may enforce CORS/usage limits.
-// 2) Spaceflight News API (public) - good for tech/space stories
-// 3) Hacker News Algolia front page (generic trending tech posts)
-// Each fetch returns a normalized array: { title, url, summary, source }
+addImageBtn.addEventListener('click', () => postImage.click());
+
+postImage.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    preview.style.display = 'none';
+  }
+});
 
 async function fetchNewsFromNewsAPI(apiKey, pageSize = 8) {
   // This uses the v2 top-headlines endpoint; subject to CORS and API key limits.
@@ -400,7 +409,19 @@ function toggleLike(postId){
 function createPost(e){
   e.preventDefault();
   const text = postText.value.trim();
-  const image = postImage.value.trim();
+  const file = postImage.files[0];
+let imageData = null;
+if(file){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    imageData = e.target.result;
+    actuallyCreatePost(imageData);
+  };
+  reader.readAsDataURL(file);
+} else {
+  actuallyCreatePost(null);
+}
+
   if(!text && !image) return;
 
   const user = getUserProfile();
@@ -665,6 +686,30 @@ clearNotifsBtn.addEventListener('click', ()=>{
 
 // Create post
 postForm.addEventListener('submit', createPost);
+function actuallyCreatePost(){
+  const text = postText.value.trim();
+  const imageData = preview.src || null;
+
+  if(!text && !imageData) return;
+
+  const user = getUserProfile();
+  const newP = {
+    id: Date.now(),
+    author:{name:user.name, avatar:user.avatar},
+    time:'just now',
+    text,
+    image: imageData,
+    likes:0, comments:0, shares:0, liked:false
+  };
+  posts.unshift(newP);
+  notifications.unshift({ id:Date.now(), text:'You posted to the feed.', time:'just now', avatar:newP.author.avatar });
+  postText.value=''; 
+  postImage.value=''; 
+  preview.style.display='none';
+  renderFeed(); 
+  renderNotifications();
+}
+
 
 // hamburger and overlay events
 hamburger.addEventListener('click', ()=>{
