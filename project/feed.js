@@ -1,4 +1,4 @@
-// app.js - responsive dashboard with hamburger drawer and theme toggle
+// feed.js - Social Dashboard with Editable Profile + Working News (multiple sources + fallback)
 
 // Seed data
 const seedFriends = [
@@ -39,6 +39,24 @@ const communities = [
   { id:2, name:'Frontend Developers', members:16 },
 ];
 
+// Profile utilities
+function getUserProfile() {
+  const raw = localStorage.getItem('userProfile');
+  if (raw) return JSON.parse(raw);
+  // Default profile
+  return {
+    name: "Marjohn",
+    avatar: "https://i.pravatar.cc/80?img=7",
+    bio: "Frontend developer at AMU. Passionate about design, accessibility, and coffee ☕️.",
+    joined: "Feb 2024",
+    communitiesJoined: 2
+  };
+}
+function setUserProfile(upd) {
+  localStorage.setItem('userProfile', JSON.stringify(upd));
+  renderTopRightUser();
+}
+
 // DOM refs
 const friendsList = document.getElementById('friends-list');
 const feedEl = document.getElementById('feed');
@@ -57,6 +75,203 @@ const navList = document.getElementById('nav-list');
 const tabFeed = document.getElementById('tab-feed');
 const tabNews = document.getElementById('tab-news');
 const tabProfile = document.getElementById('tab-profile');
+const userImg = document.querySelector('.user img');
+const userName = document.querySelector('.username');
+
+// --- News configuration & helpers ---
+// The code will attempt sources in this order:
+// 1) NewsAPI.org (if you set a key in localStorage under 'newsApiKey')
+//    - To set: localStorage.setItem('newsApiKey', 'YOUR_KEY');
+//    - NewsAPI requires an API key and may enforce CORS/usage limits.
+// 2) Spaceflight News API (public) - good for tech/space stories
+// 3) Hacker News Algolia front page (generic trending tech posts)
+// Each fetch returns a normalized array: { title, url, summary, source }
+
+async function fetchNewsFromNewsAPI(apiKey, pageSize = 8) {
+  // This uses the v2 top-headlines endpoint; subject to CORS and API key limits.
+  const url = `https://newsapi.org/v2/top-headlines?language=en&pageSize=${pageSize}`;
+  try {
+    const res = await fetch(`${url}&apiKey=${encodeURIComponent(apiKey)}`);
+    if(!res.ok) throw new Error(`NewsAPI response ${res.status}`);
+    const data = await res.json();
+    if(data.status !== 'ok') throw new Error('NewsAPI error');
+    return data.articles.map(a => ({
+      title: a.title || 'Untitled',
+      url: a.url || '#',
+      summary: a.description || a.content || '',
+      source: (a.source && a.source.name) || 'NewsAPI'
+    }));
+  } catch (err) {
+    console.warn('NewsAPI failed:', err);
+    throw err;
+  }
+}
+
+async function fetchNewsFromSpaceflight(limit = 8) {
+  const url = `https://api.spaceflightnewsapi.net/v3/articles?_limit=${limit}`;
+  try {
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`Spaceflight API ${res.status}`);
+    const data = await res.json();
+    return data.map(item => ({
+      title: item.title,
+      url: item.url,
+      summary: item.summary,
+      source: item.newsSite || 'Spaceflight'
+    }));
+  } catch (err) {
+    console.warn('Spaceflight API failed:', err);
+    throw err;
+  }
+}
+
+async function fetchNewsFromHN(limit = 8) {
+  // Get front page hits via Algolia HN API
+  const url = `https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=${limit}`;
+  try {
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HN Algolia ${res.status}`);
+    const data = await res.json();
+    return (data.hits || []).map(h => ({
+      title: h.title || h.story_title || 'Untitled',
+      url: h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`,
+      summary: h.comment_text ? h.comment_text.replace(/<[^>]+>/g,'') : '',
+      source: 'Hacker News'
+    }));
+  } catch (err) {
+    console.warn('HN fetch failed:', err);
+    throw err;
+  }
+}
+
+async function fetchNews(preferredLimit = 8) {
+  // Attempt chain: NewsAPI (if key), Spaceflight, Hacker News
+  const apiKey = localStorage.getItem('newsApiKey');
+  let lastErr = null;
+  if(apiKey){
+    try {
+      const items = await fetchNewsFromNewsAPI(apiKey, preferredLimit);
+      return { items, used: 'newsapi' };
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  // try Spaceflight (public)
+  try {
+    const items = await fetchNewsFromSpaceflight(preferredLimit);
+    return { items, used: 'spaceflight' };
+  } catch (err) {
+    lastErr = err;
+  }
+
+  // fallback to Hacker News
+  try {
+    const items = await fetchNewsFromHN(preferredLimit);
+    return { items, used: 'hackernews' };
+  } catch (err) {
+    lastErr = err;
+  }
+
+  throw lastErr || new Error('No news sources available');
+}
+
+// Render news with UI controls: Refresh and Manage API key
+async function renderNews(useCache = false) {
+  const container = document.getElementById('news-content');
+  if(!container) return;
+  // add controls and place for list
+  container.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-weight:600">Latest News</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn small" id="refreshNewsBtn">Refresh</button>
+        <button class="btn small" id="manageNewsKeyBtn" title="Set or clear NewsAPI key">News API</button>
+      </div>
+    </div>
+    <div id="news-list" style="min-height:100px;">
+      <div style="color:var(--muted)">Loading news…</div>
+    </div>
+  `;
+  const listEl = document.getElementById('news-list');
+  const refreshBtn = document.getElementById('refreshNewsBtn');
+  const manageBtn = document.getElementById('manageNewsKeyBtn');
+
+  refreshBtn.onclick = () => {
+    // visual feedback
+    refreshBtn.textContent = 'Refreshing...';
+    fetchAndShowNews().finally(()=> refreshBtn.textContent = 'Refresh');
+  };
+
+  manageBtn.onclick = () => {
+    const current = localStorage.getItem('newsApiKey') || '';
+    const key = prompt('Enter NewsAPI.org API key (leave blank to remove):', current);
+    if(key === null) return;
+    if(key.trim() === '') {
+      localStorage.removeItem('newsApiKey');
+      alert('NewsAPI key cleared. Will use fallback sources.');
+    } else {
+      localStorage.setItem('newsApiKey', key.trim());
+      alert('NewsAPI key saved. Next refresh will use NewsAPI.');
+    }
+    fetchAndShowNews();
+  };
+
+  // optionally allow cached lastNews in sessionStorage for quick load
+  if(useCache){
+    try {
+      const cached = sessionStorage.getItem('lastNews');
+      if(cached){
+        const parsed = JSON.parse(cached);
+        showNewsItems(parsed.items, parsed.used);
+      }
+    } catch(e){}
+  }
+
+  // Fetch and render
+  async function fetchAndShowNews(){
+    try {
+      const res = await fetchNews(8);
+      sessionStorage.setItem('lastNews', JSON.stringify(res));
+      showNewsItems(res.items, res.used);
+    } catch (err) {
+      console.error('All news sources failed:', err);
+      listEl.innerHTML = `<div class="muted">Couldn't load news. Try setting a NewsAPI key or check your network.</div>`;
+    }
+  }
+
+  function showNewsItems(items, usedSource) {
+    if(!items || items.length === 0){
+      listEl.innerHTML = `<div class="muted">No news items found.</div>`;
+      return;
+    }
+    listEl.innerHTML = items.map(item => `
+      <div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.03);">
+        <a href="${item.url}" target="_blank" rel="noopener" style="font-weight:600;color:var(--accent);text-decoration:none;">${escapeHtml(item.title)}</a>
+        <div style="color:var(--muted);font-size:14px;margin-top:6px;">${escapeHtml(item.summary || '')}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;">Source: ${escapeHtml(item.source || 'Unknown')}</div>
+      </div>
+    `).join('');
+    // small hint which source used
+    const hint = document.createElement('div');
+    hint.style.marginTop = '8px';
+    hint.style.fontSize = '12px';
+    hint.style.color = 'var(--muted)';
+    hint.textContent = `Source: ${usedSource || 'unknown'} • Updated ${new Date().toLocaleTimeString()}`;
+    listEl.appendChild(hint);
+  }
+
+  // initial fetch
+  fetchAndShowNews();
+}
+
+// --- existing UI renderer functions ---
+
+function renderTopRightUser() {
+  const user = getUserProfile();
+  if (userImg) userImg.src = user.avatar;
+  if (userName) userName.textContent = user.name;
+}
 
 function renderFriends(){
   friendsList.innerHTML = '';
@@ -188,9 +403,10 @@ function createPost(e){
   const image = postImage.value.trim();
   if(!text && !image) return;
 
+  const user = getUserProfile();
   const newP = {
     id: Date.now(),
-    author:{name:'You', avatar:'https://i.pravatar.cc/48?img=65'},
+    author:{name:user.name, avatar:user.avatar},
     time:'just now',
     text,
     image: image || null,
@@ -218,13 +434,16 @@ function sharePost(postId){
   navigator.clipboard.writeText(textToCopy).then(()=>{
     notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
     renderNotifications();
+  }).catch(()=> {
+    notifications.unshift({id:Date.now(), text:'Could not copy to clipboard.', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
+    renderNotifications();
   });
 }
 
 // Small util to avoid HTML injection when inserting text
 function escapeHtml(str){
   if(!str) return '';
-  return str.replace(/[&<>"']/g, function(m){
+  return String(str).replace(/[&<>"']/g, function(m){
     return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
   });
 }
@@ -255,27 +474,111 @@ function closeDrawer(){
   hamburger.setAttribute('aria-expanded','false');
 }
 
-// Sidebar navigation functionality
-navList.addEventListener('click', (e)=>{
-  if(e.target.tagName==='LI'){
-    navList.querySelectorAll('li').forEach(li=>li.classList.remove('active'));
-    e.target.classList.add('active');
-    const tab = e.target.getAttribute('data-tab');
-    // toggle main content tabs
-    tabFeed.style.display = tab==='feed'? '' : 'none';
-    feedEl.style.display = tab==='feed'? '' : 'none';
-    tabNews.style.display = tab==='news'? '' : 'none';
-    tabProfile.style.display = tab==='profile'? '' : 'none';
+// Editable Profile Functionality
+function renderProfile(editMode = false) {
+  const profileContent = document.getElementById('profile-content');
+  const user = getUserProfile();
+  const postCount = posts.filter(p => p.author.name === user.name).length;
+
+  if (!editMode) {
+    profileContent.innerHTML = `
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+        <img src="${user.avatar}" alt="${user.name}" style="width:80px;height:80px;border-radius:50%;">
+        <div>
+          <div style="font-size:22px;font-weight:700;">${user.name}</div>
+          <div style="color:var(--muted);font-size:15px;">
+            ${escapeHtml(user.bio)}
+          </div>
+          <div style="margin-top:6px; font-size:13px;">
+            <span>Joined: ${user.joined}</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <strong>Posts:</strong> ${postCount} <br>
+        <strong>Communities:</strong> ${user.communitiesJoined}
+      </div>
+      <div style="margin-top:18px;">
+        <button class="btn small" id="editProfileBtn">Edit Profile</button>
+      </div>
+    `;
+    const editBtn = document.getElementById('editProfileBtn');
+    if (editBtn) {
+      editBtn.onclick = () => renderProfile(true);
+    }
+  } else {
+    profileContent.innerHTML = `
+      <form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;">
+        <label>
+          Name:<br>
+          <input type="text" name="name" value="${escapeHtml(user.name)}" style="width:100%;padding:6px;border-radius:6px;">
+        </label>
+        <label>
+          Avatar URL:<br>
+          <input type="text" name="avatar" value="${escapeHtml(user.avatar)}" style="width:100%;padding:6px;border-radius:6px;">
+        </label>
+        <label>
+          Bio:<br>
+          <textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;">${escapeHtml(user.bio)}</textarea>
+        </label>
+        <div style="margin-top:12px;">
+          <button class="btn small" id="saveProfileBtn" type="submit">Save</button>
+          <button class="btn small" id="cancelProfileBtn" type="button" style="margin-left:8px;">Cancel</button>
+        </div>
+      </form>
+    `;
+    const form = document.getElementById('editProfileForm');
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const newProfile = {
+        name: formData.get('name') || getUserProfile().name,
+        avatar: formData.get('avatar') || getUserProfile().avatar,
+        bio: formData.get('bio') || '',
+        joined: getUserProfile().joined,
+        communitiesJoined: getUserProfile().communitiesJoined
+      };
+      // Save and propagate
+      setUserProfile(newProfile);
+      updateCurrentUserName(newProfile);
+      renderProfile(false);
+    };
+    document.getElementById('cancelProfileBtn').onclick = () => renderProfile(false);
   }
-});
+}
+
+// Update posts authored by user when profile changes
+function updateCurrentUserName(newProfile) {
+  // Use previous profile name from storage before it was updated - but getUserProfile already returns updated,
+  // so we keep this robust by checking any posts that have the previous avatar or a "You" placeholder.
+  const prevName = (function(){
+    // We can attempt to find any post with avatar equal to current newProfile.avatar to avoid renaming wrong posts.
+    // Simpler: update posts where author matches either the previous stored 'lastProfileName' (if any) or 'You'.
+    return sessionStorage.getItem('lastProfileName') || 'You';
+  })();
+
+  posts = posts.map(p => {
+    if(p.author.name === prevName || p.author.avatar === newProfile.avatar || p.author.name === newProfile.name){
+      return { ...p, author: { name: newProfile.name, avatar: newProfile.avatar } };
+    }
+    return p;
+  });
+
+  // remember current name for later updates
+  sessionStorage.setItem('lastProfileName', newProfile.name);
+
+  renderFeed();
+  renderTopRightUser();
+}
 
 // Post menu: allow delete (for own posts)
 function openPostMenu(btn, postId){
   let menu = document.getElementById('post-menu-temp');
   if(menu) menu.remove();
-  // only allow delete for user's own posts
+  // only allow delete for user's own posts (match current profile name)
+  const user = getUserProfile();
   const post = posts.find(p=>p.id===postId);
-  if(post.author.name!=='You') return;
+  if(!post || post.author.name!==user.name) return;
   menu = document.createElement('div');
   menu.id = 'post-menu-temp';
   menu.style.position = 'absolute';
@@ -290,12 +593,15 @@ function openPostMenu(btn, postId){
 
   // Position menu near button
   const rect = btn.getBoundingClientRect();
-  menu.style.left = rect.left + 'px';
+  // ensure menu doesn't go off screen
+  let left = rect.left;
+  if(left + 220 > window.innerWidth) left = window.innerWidth - 240;
+  menu.style.left = left + 'px';
   menu.style.top = (rect.bottom+window.scrollY) + 'px';
 
   document.getElementById('delete-post-menu-btn').onclick = () => {
     posts = posts.filter(p=>p.id!==postId);
-    notifications.unshift({id:Date.now(), text:'You deleted a post.', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
+    notifications.unshift({id:Date.now(), text:'You deleted a post.', time:'just now', avatar:user.avatar});
     renderFeed(); renderNotifications();
     menu.remove();
   };
@@ -324,10 +630,40 @@ themeToggle.addEventListener('click', ()=>{
   }
 });
 
+// Nav/tab handler: ensure news tab calls renderNews
+navList.addEventListener('click', (e)=>{
+  if(e.target.tagName==='LI'){
+    navList.querySelectorAll('li').forEach(li=>li.classList.remove('active'));
+    e.target.classList.add('active');
+    const tab = e.target.getAttribute('data-tab');
+    tabFeed.style.display = tab==='feed'? '' : 'none';
+    feedEl.style.display = tab==='feed'? '' : 'none';
+    tabNews.style.display = tab==='news'? '' : 'none';
+    tabProfile.style.display = tab==='profile'? '' : 'none';
+    if(tab==='news') renderNews(true); // try to use cache for snappy UI
+    if(tab==='profile') renderProfile(false);
+  }
+});
+
+// App init
+function init(){
+  renderTopRightUser();
+  renderFriends();
+  renderCommunities();
+  setTimeout(()=>{ renderFeed(); renderNotifications(); }, 300);
+  initTheme();
+  // pre-render news container (but don't fetch until tab opened) - eager fetch optional:
+  // renderNews(true);
+}
+
+init();
+
+// Clear notifications
 clearNotifsBtn.addEventListener('click', ()=>{
   notifications = []; renderNotifications();
 });
 
+// Create post
 postForm.addEventListener('submit', createPost);
 
 // hamburger and overlay events
@@ -340,108 +676,3 @@ overlay.addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e)=>{
   if(e.key === 'Escape' && body.classList.contains('drawer-open')) closeDrawer();
 });
-
-function init(){
-  renderFriends();
-  renderCommunities();
-  setTimeout(()=>{ renderFeed(); renderNotifications(); }, 300);
-  initTheme();
-};
-// Example news data and render function
-function renderNews(){
-  const news = [
-    {
-      title: "Design Trends 2025 Announced",
-      summary: "See what's new in global UI/UX for the upcoming year.",
-      url: "#"
-    },
-    {
-      title: "AMU Launches New Dev Community",
-      summary: "Join the latest group for frontend devs and share your work!",
-      url: "#"
-    },
-    {
-      title: "Update: JS Security Best Practices",
-      summary: "Latest guide from SEM group, including new XSS techniques.",
-      url: "#"
-    }
-  ];
-  const newsContent = document.getElementById('news-content');
-  newsContent.innerHTML = news.map(n => `
-    <div style="margin-bottom:16px;">
-      <a href="${n.url}" style="font-weight:600;color:var(--accent);text-decoration:none;">${n.title}</a>
-      <div style="color:var(--muted);font-size:14px;margin-top:4px;">
-        ${n.summary}
-      </div>
-    </div>
-  `).join('');
-}
-
-// Example profile data and render function
-function renderProfile(){
-  const user = {
-    name: "Marjohn",
-    avatar: "https://i.pravatar.cc/80?img=7",
-    bio: "Frontend developer at AMU. Passionate about design, accessibility, and coffee ☕️.",
-    joined: "Feb 2024",
-    posts: posts.filter(p => p.author.name === 'You').length,
-    communitiesJoined: 2
-  };
-  const profileContent = document.getElementById('profile-content');
-  profileContent.innerHTML = `
-    <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-      <img src="${user.avatar}" alt="${user.name}" style="width:80px;height:80px;border-radius:50%;">
-      <div>
-        <div style="font-size:22px;font-weight:700;">${user.name}</div>
-        <div style="color:var(--muted);font-size:15px;">
-          ${user.bio}
-        </div>
-        <div style="margin-top:6px; font-size:13px;">
-          <span>Joined: ${user.joined}</span>
-        </div>
-      </div>
-    </div>
-    <div>
-      <strong>Posts:</strong> ${user.posts} <br>
-      <strong>Communities:</strong> ${user.communitiesJoined}
-    </div>
-    <div style="margin-top:18px;">
-      <button class="btn small" id="editProfileBtn">Edit Profile</button>
-    </div>
-  `;
-  const editBtn = document.getElementById('editProfileBtn');
-  if (editBtn) {
-    editBtn.onclick = () => {
-      alert("Edit Profile UI coming soon!");
-    };
-  }
-}
-
-// Update sidebar click handler to render News/Profile
-navList.addEventListener('click', (e)=>{
-  if(e.target.tagName==='LI'){
-    navList.querySelectorAll('li').forEach(li=>li.classList.remove('active'));
-    e.target.classList.add('active');
-    const tab = e.target.getAttribute('data-tab');
-    tabFeed.style.display = tab==='feed'? '' : 'none';
-    feedEl.style.display = tab==='feed'? '' : 'none';
-    tabNews.style.display = tab==='news'? '' : 'none';
-    tabProfile.style.display = tab==='profile'? '' : 'none';
-    if(tab==='news') renderNews();
-    if(tab==='profile') renderProfile();
-  }
-});
-
-// Render News/Profile at init
-function init(){
-  renderFriends();
-  renderCommunities();
-  setTimeout(()=>{ renderFeed(); renderNotifications(); }, 300);
-  initTheme();
-  renderNews();
-  renderProfile();
-}
-
-init();
-
-// ... (rest of file unchanged below)
