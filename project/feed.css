@@ -87,13 +87,144 @@ body.drawer-open .hamburger span:nth-child(3){ transform: translateY(-6px) rotat
 .post{ margin-bottom:12px; border-radius:12px; overflow:hidden; background: rgba(255,255,255,0.02);}
 .post-head{ display:flex; align-items:center; gap:10px; padding:12px; border-bottom:1px solid rgba(255,255,255,0.03);}
 .post-head img{ width:44px; height:44px; border-radius:50%; }
-.post-body{ padding:12px; }
-.post-body img{ width:100%; max-height:380px; object-fit:cover; border-radius:8px; margin-top:10px; }
-.post-foot{ display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-top:1px solid rgba(255,255,255,0.03); font-size:14px; }
+.post-body{ padding:12px; position:relative; }
+.post-body img{ width:100%; max-height:380px; object-fit:cover; border-radius:8px; margin-top:10px; display:block; }
 
-/* tiny buttons */
-.icon-btn{ background:transparent; border:0; cursor:pointer; display:inline-flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; }
-.icon-btn.liked{ color:#ff6b98; }
+/* ---- NEW: TikTok-like horizontal action bar design (CSS only) ----
+   Keep the buttons visually like TikTok (circular icons, small counts),
+   but place them in a horizontal row under the image (not stacked vertically).
+   This modifies only styles; no JS changes required here.
+*/
+
+/* Container for the horizontal action bar inside .post-foot */
+.post-foot{
+  display:flex;
+  justify-content:flex-start; /* align actions left; change to center if you prefer centered */
+  align-items:center;
+  gap:16px;
+  padding:12px;
+  border-top:1px solid rgba(255,255,255,0.03);
+  font-size:14px;
+  background: transparent;
+}
+
+/* Make the action group a compact horizontal pill (optional visual container) */
+.post-foot .actions-row{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:6px 8px;
+  border-radius:12px;
+  background: rgba(255,255,255,0.01);
+}
+
+/* Circular icon buttons resembling TikTok */
+.post-foot .icon-btn{
+  width:56px;
+  height:56px;
+  min-width:56px;
+  padding:0;
+  border-radius:50%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+  font-size:22px; /* icon size */
+}
+
+/* keep original icon inline content visible and centered */
+.post-foot .icon-btn > *{ pointer-events:none; }
+
+/* small count under the icon */
+.post-foot .icon-btn .like-count,
+.post-foot .icon-btn .comment-count,
+.post-foot .icon-btn .share-count{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  margin-top:6px;
+  line-height:1;
+  pointer-events:none;
+}
+
+/* For elements that are plain spans in your markup (e.g., comment and repost spans),
+   style them so they look like the circular buttons with icon + count horizontally */
+.post-foot > div > span,
+.post-foot > div > .stat-pill{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:56px;
+  height:56px;
+  min-width:56px;
+  border-radius:50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+  border: 1px solid rgba(255,255,255,0.02);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.14);
+  font-size:18px; /* emoji size */
+  color:inherit;
+}
+
+/* Ensure the textual 'Share' button (if present) appears as an icon circle:
+   hide its textual label while keeping accessible text via aria-label.
+   We add a glyph via ::before so design is unchanged without JS changes. */
+.post-foot .share-btn{
+  position:relative;
+  color:transparent; /* hide textual content visually */
+  width:56px;
+  height:56px;
+  padding:0;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+}
+.post-foot .share-btn::before{
+  content: "📤";
+  position: absolute;
+  left: 50%;
+  top:50%;
+  transform: translate(-50%,-50%);
+  color:inherit;
+  font-size:20px;
+}
+.post-foot .share-btn:focus{ outline:none; }
+
+/* Liked state: preserve accent */
+.post-foot .icon-btn.liked,
+.post-foot .share-btn.liked{
+  color:var(--accent);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.28), 0 0 0 6px rgba(0,180,216,0.06);
+}
+
+/* Hover states */
+.post-foot .icon-btn:hover,
+.post-foot > div > span:hover,
+.post-foot .share-btn:hover{
+  transform: translateY(-6px) scale(1.02);
+}
+
+/* Responsive: compress sizes on small screens */
+@media (max-width:480px){
+  .post-foot{ gap:8px; padding:10px; }
+  .post-foot .icon-btn,
+  .post-foot > div > span,
+  .post-foot .share-btn{ width:46px; height:46px; min-width:46px; font-size:18px; }
+  .post-foot .icon-btn .like-count,
+  .post-foot .icon-btn .comment-count,
+  .post-foot .icon-btn .share-count{ font-size:11px; margin-top:4px; }
+}
+
+/* keep other definitions intact below (unchanged) */
 
 /* right side */
 .right .muted{ color:rgba(255,255,255,0.5); font-size:13px; }
