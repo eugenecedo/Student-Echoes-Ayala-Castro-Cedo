@@ -9,23 +9,30 @@
 <body>
 <div id="app" class="container">
   <header class="topbar">
-    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
 
-    <div class="brand">
-      <div class="logo">Social</div>
-    </div>
+  <!-- HAMBURGER -->
+  <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
 
-    <div class="top-right">
-      <button id="theme-toggle" class="btn small" aria-pressed="false">Light</button>
-      <div class="user">
-        <img src="https://i.pravatar.cc/36?img=7" alt="me" />
-        <span class="username">Marjohn</span>
-      </div>
-      <button id="logoutBtn" class="btn small">Logout</button>
+  <!-- LEFT SIDE = LOGO -->
+  <div class="brand">
+    <div class="logo">Social</div>
+  </div>
+
+
+  <!-- RIGHT SIDE = THEME / PROFILE / LOGOUT -->
+  <div class="top-right">
+    <button id="theme-toggle" class="btn small" aria-pressed="false">Light</button>
+    <div class="user">
+      <img src="https://i.pravatar.cc/36?img=7" alt="me" />
+      <span class="username">Marjohn</span>
     </div>
-  </header>
+    <button id="logoutBtn" class="btn small">Logout</button>
+  </div>
+
+</header>
+
 
   <!-- overlay for mobile drawer -->
   <div id="overlay" class="overlay"></div>
@@ -55,7 +62,19 @@
     </aside>
 
     <!-- main feed/tab sections -->
-    <section class="main" id="maincontent">
+ <section class="main" id="maincontent">
+
+  <!-- FULL-WIDTH SEARCH BAR (matches feed size) -->
+  <div class="card" style="margin-bottom:12px;">
+    <div class="search" style="width:100%;">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" placeholder="Search..." style="width:100%;" />
+    </div>
+  </div>
+
       <!-- Feed tab -->
       <div class="card create-post" id="tab-feed">
         <form id="post-form">
