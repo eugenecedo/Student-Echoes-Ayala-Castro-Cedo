@@ -151,3 +151,22 @@ body.theme-light .card{ background:var(--card-light); box-shadow: 0 1px 0 rgba(1
   .logo{ font-size:18px; }
   .user img{ width:32px; height:32px; }
 }
+.hidden {
+  display: none;
+}
+.clickable {
+  cursor: pointer;
+  transition: 0.2s;
+}
+.clickable:hover {
+  color: var(--accent, #007bff);
+  text-decoration: underline;
+}
+.hidden {
+  display: none !important;
+}
+.unfollow-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+  transition: 0.15s ease;
+}

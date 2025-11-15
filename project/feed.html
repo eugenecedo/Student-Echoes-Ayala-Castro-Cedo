@@ -3,10 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+<<<<<<< HEAD
+  <title>Social Dashboard</title>
+  <link rel="stylesheet" href="feed.css" />
+  <script src="feed.js" defer></script>
+
+  <!-- Prevent caching issues -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+=======
   <title>Social Dashboard • AMU</title>
   <link rel="stylesheet" href="feed.css" />
+>>>>>>> 50022bac42a4551381a990a4126e673727981db2
 </head>
+
 <body>
+<<<<<<< HEAD
+  <div id="app" class="container">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">Social</div>
+
+        <div class="search">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <input id="search" placeholder="Search">
+        </div>
+=======
 <div id="app" class="container">
   <header class="topbar">
     <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
@@ -22,11 +49,161 @@
       <div class="user">
         <img src="https://i.pravatar.cc/36?img=7" alt="me" />
         <span class="username">Marjohn</span>
+>>>>>>> 50022bac42a4551381a990a4126e673727981db2
       </div>
       <button id="logoutBtn" class="btn small">Logout</button>
     </div>
   </header>
 
+<<<<<<< HEAD
+      <div class="top-right">
+        <button id="theme-toggle" class="btn small">Light</button>
+
+        <div class="user">
+          <img id="header-profile-pic" src="https://i.pravatar.cc/36" alt="Profile">
+          <span id="username" class="username"></span>
+        </div>
+
+        <button id="logoutBtn" class="btn small">Logout</button>
+      </div>
+    </header>
+
+    <!-- MAIN GRID -->
+    <main class="grid">
+
+      <!-- LEFT SIDEBAR -->
+      <aside class="left sidebar">
+        <nav class="navcard">
+          <ul id="menu">
+            <li class="active" data-section="feed">Feed</li>
+            <li data-section="chat">Chat</li>
+            <li data-section="profile">Profile</li>
+            <li data-section="friends">Friends</li>
+            <li data-section="saved">Saved</li>
+            <li data-section="settings">Settings</li>
+          </ul>
+        </nav>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <section class="main">
+
+        <!-- ✅ FEED SECTION -->
+        <div id="feed-section" class="content-section active">
+
+          <div class="card create-post">
+            <form id="post-form">
+              <textarea id="post-text" placeholder="What's on your mind?" rows="3"></textarea>
+              <input id="post-image" placeholder="Image URL (optional)">
+              <div class="form-foot">
+                <small>Attach an image URL or write something.</small>
+                <button type="submit" class="btn">Post</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="feed"></div>
+        </div>
+
+        <!-- ✅ CHAT SECTION -->
+        <div id="chat-section" class="content-section hidden card">
+          <h3>Chat</h3>
+          <div id="chat-box" style="max-height:250px;overflow-y:auto;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;"></div>
+
+          <div style="display:flex;gap:8px;">
+            <input id="chat-input" placeholder="Type a message..." style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;">
+            <button id="chat-send" class="btn small">Send</button>
+          </div>
+        </div>
+
+        <!-- ✅ PROFILE SECTION -->
+        <div id="profile-section" class="content-section hidden card">
+          <h3>My Profile</h3>
+
+          <div style="text-align:center;margin-top:10px;">
+            <img id="profile-picture" src="https://i.pravatar.cc/100" style="border-radius:50%;width:100px;height:100px;">
+            <input type="file" id="profile-pic-input" style="display:none;" accept="image/*">
+            <br>
+            <button id="change-pic-btn" class="btn small" style="margin-top:8px;">Change Picture</button>
+          </div>
+
+          <div style="margin-top:15px;">
+            <label>Name:</label>
+            <input id="profile-name-input" type="text" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
+          </div>
+
+          <div style="margin-top:10px;">
+            <label>Bio:</label>
+            <textarea id="profile-bio" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;margin-top:4px;"></textarea>
+          </div>
+
+          <div style="display:flex;justify-content:space-around;margin-top:15px;">
+            <div>
+              <strong id="followers-count">0</strong><br>
+              <small>Followers</small>
+            </div>
+
+            <div>
+              <strong id="following-count">0</strong><br>
+              <small>Following</small>
+            </div>
+          </div>
+
+          <button id="save-profile-btn" class="btn" style="margin-top:15px;">Save Changes</button>
+        </div>
+        
+<!-- Followers / Following Popup -->
+<div id="popup-overlay" class="hidden"
+     style="position:fixed;top:0;left:0;width:100%;height:100%;
+     background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;
+     z-index:1000;">
+  <div id="popup-box"
+       style="background:var(--card-bg,#fff);color:var(--text,#000);
+       width:300px;max-height:400px;overflow-y:auto;border-radius:12px;
+       box-shadow:0 4px 12px rgba(0,0,0,0.2);padding:16px;text-align:center;">
+    <h3 id="popup-title" style="margin-bottom:10px;"></h3>
+    <ul id="popup-list" style="list-style:none;padding:0;margin:0;"></ul>
+    <button id="popup-close" class="btn small" style="margin-top:10px;">Close</button>
+  </div>
+</div>
+
+        <!-- ✅ FRIENDS SECTION -->
+<div id="friends-section" class="content-section hidden card">
+  <h3>Friends</h3>
+  <ul id="friends-list" style="list-style:none;padding:0;">
+    <li data-name="Bernadette" class="friend-item">
+      Bernadette <button class="btn small follow-btn">Follow</button>
+    </li>
+    <li data-name="John Doe" class="friend-item">
+      John Doe <button class="btn small follow-btn">Follow</button>
+    </li>
+    <li data-name="Jane Smith" class="friend-item">
+      Jane Smith <button class="btn small follow-btn">Follow</button>
+    </li>
+    <li data-name="Mario Santos" class="friend-item">
+      Mario Santos <button class="btn small follow-btn">Follow</button>
+    </li>
+  </ul>
+</div>
+
+        <!-- ✅ SAVED SECTION -->
+        <div id="saved-section" class="content-section hidden card">
+          <h3>Saved Posts</h3>
+          <p>No saved posts yet.</p>
+        </div>
+
+        <!-- ✅ SETTINGS SECTION -->
+        <div id="settings-section" class="content-section hidden card">
+          <h3>Settings</h3>
+          <button id="darkModeBtn" class="btn small">Toggle Theme</button>
+        </div>
+
+      </section>
+    </main>
+
+    <footer class="footer">Demo Social Dashboard • Front-end Version</footer>
+  </div>
+=======
   <!-- overlay for mobile drawer -->
   <div id="overlay" class="overlay"></div>
 
@@ -105,5 +282,6 @@
     window.location.href = 'sign up.html';
   });
 </script>
+>>>>>>> 50022bac42a4551381a990a4126e673727981db2
 </body>
 </html>
