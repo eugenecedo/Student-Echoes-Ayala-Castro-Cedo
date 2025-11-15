@@ -10,29 +10,27 @@
 <div id="app" class="container">
   <header class="topbar">
 
-  <!-- HAMBURGER -->
-  <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
-    <span></span><span></span><span></span>
-  </button>
+    <!-- HAMBURGER -->
+    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
 
-  <!-- LEFT SIDE = LOGO -->
-  <div class="brand">
-    <div class="logo">Social</div>
-  </div>
-
-
-  <!-- RIGHT SIDE = THEME / PROFILE / LOGOUT -->
-  <div class="top-right">
-    <button id="theme-toggle" class="btn small" aria-pressed="false">Light</button>
-    <div class="user">
-      <img src="https://i.pravatar.cc/36?img=7" alt="me" />
-      <span class="username">Marjohn</span>
+    <!-- LEFT SIDE = LOGO -->
+    <div class="brand">
+      <div class="logo">Social</div>
     </div>
-    <button id="logoutBtn" class="btn small">Logout</button>
-  </div>
 
-</header>
+    <!-- RIGHT SIDE = THEME / PROFILE / LOGOUT -->
+    <div class="top-right">
+      <button id="theme-toggle" class="btn small" aria-pressed="false">Light</button>
+      <div class="user">
+        <img src="https://i.pravatar.cc/36?img=7" alt="me" />
+        <span class="username">Marjohn</span>
+      </div>
+      <button id="logoutBtn" class="btn small">Logout</button>
+    </div>
 
+  </header>
 
   <!-- overlay for mobile drawer -->
   <div id="overlay" class="overlay"></div>
@@ -46,6 +44,11 @@
           <li class="active" data-tab="feed">Feed</li>
           <li data-tab="news">News</li>
           <li data-tab="profile">Profile</li>
+          <li data-tab="write a Story">Write a Story</li>
+          <li data-tab="My Stories">My Stories</li>
+          <li data-tab="Categories">Categories</li>
+          <li data-tab="Trending">Trending</li>
+          <li data-tab="Anonymous Room">Anonymous Room</li>
         </ul>
       </nav>
       <div class="card friends">
@@ -60,94 +63,101 @@
         <div id="notif-list"></div>
       </div>
     </aside>
-    
 
     <!-- main feed/tab sections -->
- <section class="main" id="maincontent">
+    <section class="main" id="maincontent">
 
-  <!-- FULL-WIDTH SEARCH BAR (matches feed size) -->
-  <div class="card" style="margin-bottom:12px;">
-    <div class="search" style="width:100%;">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <input type="text" placeholder="Search..." style="width:100%;" />
-    </div>
-  </div>
-
-   <!-- Feed tab -->
-<div id="feed-container">
-  <div class="card create-post" id="tab-feed">
-    <form id="post-form" style="position:relative;">
-      <div style="position:relative;">
-        <!-- + button -->
-        <button type="button" id="add-image-btn" style="
-          position:absolute;
-          top:8px;
-          left:10px;
-          z-index:10;
-          width:24px;
-          height:24px;
-          border:none;
-          background-color:var(--accent);
-          color:white;
-          font-weight:bold;
-          border-radius:50%;
-          cursor:pointer;
-        ">＋</button>
-        <textarea id="post-text" placeholder="What's on your mind?" rows="3" style="padding-left:40px;"></textarea>
+      <!-- FULL-WIDTH SEARCH BAR (matches feed size) -->
+      <div class="card" style="margin-bottom:12px;">
+        <div class="search" style="width:100%;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input id="global-search" type="text" placeholder="Search..." style="width:100%;" />
+        </div>
       </div>
 
-      <input id="post-image" type="file" accept="image/*" style="display:none;" />
+      <!-- Feed tab -->
+      <div id="feed-container">
+        <div class="card create-post" id="tab-feed">
+          <form id="post-form" style="position:relative;">
+            <div style="position:relative;">
+              <!-- + button -->
+              <button type="button" id="add-image-btn" style="
+                position:absolute;
+                top:8px;
+                left:10px;
+                z-index:10;
+                width:24px;
+                height:24px;
+                border:none;
+                background-color:var(--accent);
+                color:white;
+                font-weight:bold;
+                border-radius:50%;
+                cursor:pointer;
+              " aria-label="Add image">＋</button>
+              <textarea id="post-text" placeholder="What's on your mind?" rows="3" style="padding-left:40px;"></textarea>
+            </div>
 
-      <img id="preview" style="display:none; max-width:100%; margin-top:8px; border-radius:8px;" />
+            <!-- single hidden file input -->
+            <input id="post-image" type="file" accept="image/*" style="display:none;" />
 
-      <div class="form-foot" style="margin-top:8px;">
-        <button type="submit" class="btn">Post</button>
+            <!-- category selector for posts -->
+            <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+              <label style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:13px;color:var(--muted)">Category</span>
+                <select id="post-category" style="padding:6px;border-radius:6px;">
+                  <!-- options populated by JS -->
+                </select>
+              </label>
+              <button type="button" id="new-category-btn" class="btn small" style="margin-left:auto;">New Category</button>
+            </div>
+
+            <!-- single preview img -->
+            <img id="preview" style="display:none; max-width:100%; margin-top:8px; border-radius:8px;" alt="preview" />
+
+            <div class="form-foot" style="margin-top:8px;">
+              <button type="submit" class="btn">Post</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="feed" aria-live="polite"></div>
       </div>
-    </form>
-  </div>
 
-  <div id="feed"></div>
-</div>
-
-    <!-- hidden file input -->
-    <input id="post-image" type="file" accept="image/*" style="display:none;" />
-
-    <img id="preview" style="display:none; max-width:100%; margin-top:8px; border-radius:8px;" />
-
-    <div class="form-foot" style="margin-top:8px;">
-      <button type="submit" class="btn">Post</button>
-    </div>
-  </form>
-</div>
-
-
-      </div>
-     <div id="feed" class="create-post"></div>
       <!-- News tab -->
       <div class="card" id="tab-news" style="display:none;">
         <h4>Latest News</h4>
         <div id="news-content"></div>
       </div>
+
       <!-- Profile tab -->
       <div class="card" id="tab-profile" style="display:none;">
         <h4>Your Profile</h4>
         <div id="profile-content"></div>
       </div>
+
+      <!-- Categories tab -->
+      <div class="card" id="tab-categories" style="display:none;">
+        <h4>Categories</h4>
+        <div id="categories-content"></div>
+      </div>
+
     </section>
 
     <aside class="right">
-  <div id="communities-container">
-    <div class="card communities">
-      <h4>Communities</h4>
-      <div id="communities-list"></div>
-    </div>
-  </div>
-</aside>
+      <div id="communities-container">
+        <div class="card communities">
+          <h4>Communities</h4>
+          <div id="communities-list"></div>
+        </div>
+      </div>
+    </aside>
 
-  <footer class="footer">Demo Social Dashboard • Responsive HTML/CSS/JS</footer>
+    <footer class="footer">Demo Social Dashboard • Responsive HTML/CSS/JS</footer>
+  </main>
 </div>
 
 <script src="feed.js"></script>
@@ -161,7 +171,8 @@
   const logoutBtn = document.getElementById('logoutBtn');
   logoutBtn.addEventListener('click', () => {
     localStorage.removeItem('loggedIn');
-    window.location.href = 'sign up.html';
+    // consistent filename without space
+    window.location.href = 'signup.html';
   });
 </script>
 </body>

@@ -1,6 +1,6 @@
-// feed.js - Social Dashboard with Editable Profile + Working News (multiple sources + fallback)
+// feed.js - Social Dashboard with Categories (ADD-ONLY mode: categories can be added, not removed)
 
-// Seed data
+// Seed friends
 const seedFriends = [
   { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true },
   { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true },
@@ -10,6 +10,17 @@ const seedFriends = [
   { id:6, name:'Sonia', avatar:'https://i.pravatar.cc/40?img=6', online:false },
 ];
 
+// categories store (persisted in localStorage). In "JUST ADD" mode we provide add/edit limited to rename; no delete.
+let categories = JSON.parse(localStorage.getItem('categories') || 'null') || [
+  { id: 1, name: 'Photography' },
+  { id: 2, name: 'Technology' },
+  { id: 3, name: 'Lifestyle' },
+  { id: 4, name: 'Space' }
+];
+
+// active category filter, null = all
+let activeCategoryId = null;
+
 let posts = [
   {
     id:101,
@@ -17,6 +28,7 @@ let posts = [
     time:'2:34 PM',
     text:'Just took a late walk through the hills. The light was incredible.',
     image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=60&auto=format&fit=crop',
+    categoryId: 1,
     likes:89, comments:4, shares:1, liked:false
   },
   {
@@ -25,6 +37,7 @@ let posts = [
     time:'3:12 AM',
     text:'Foggy mornings are my favorite. Coffee + mist = mood.',
     image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=60&auto=format&fit=crop',
+    categoryId: 3,
     likes:25, comments:6, shares:0, liked:false
   }
 ];
@@ -57,6 +70,11 @@ function setUserProfile(upd) {
   renderTopRightUser();
 }
 
+// persist categories helper
+function saveCategories() {
+  localStorage.setItem('categories', JSON.stringify(categories));
+}
+
 // DOM refs
 const friendsList = document.getElementById('friends-list');
 const feedEl = document.getElementById('feed');
@@ -74,13 +92,18 @@ const navList = document.getElementById('nav-list');
 const tabFeed = document.getElementById('tab-feed');
 const tabNews = document.getElementById('tab-news');
 const tabProfile = document.getElementById('tab-profile');
+const tabCategories = document.getElementById('tab-categories');
 const userImg = document.querySelector('.user img');
 const userName = document.querySelector('.username');
 const addImageBtn = document.getElementById('add-image-btn');
 const postImage = document.getElementById('post-image');
 const preview = document.getElementById('preview');
+const postCategorySelect = document.getElementById('post-category');
+const newCategoryBtn = document.getElementById('new-category-btn');
+const categoriesContent = document.getElementById('categories-content');
+const globalSearch = document.getElementById('global-search');
 
-addImageBtn.addEventListener('click', () => postImage.click());
+if (addImageBtn) addImageBtn.addEventListener('click', () => postImage.click());
 
 postImage.addEventListener('change', (event) => {
   const file = event.target.files[0];
@@ -96,185 +119,53 @@ postImage.addEventListener('change', (event) => {
   }
 });
 
-async function fetchNewsFromNewsAPI(apiKey, pageSize = 8) {
-  // This uses the v2 top-headlines endpoint; subject to CORS and API key limits.
-  const url = `https://newsapi.org/v2/top-headlines?language=en&pageSize=${pageSize}`;
-  try {
-    const res = await fetch(`${url}&apiKey=${encodeURIComponent(apiKey)}`);
-    if(!res.ok) throw new Error(`NewsAPI response ${res.status}`);
-    const data = await res.json();
-    if(data.status !== 'ok') throw new Error('NewsAPI error');
-    return data.articles.map(a => ({
-      title: a.title || 'Untitled',
-      url: a.url || '#',
-      summary: a.description || a.content || '',
-      source: (a.source && a.source.name) || 'NewsAPI'
-    }));
-  } catch (err) {
-    console.warn('NewsAPI failed:', err);
-    throw err;
-  }
-}
-
+// Minimal news fetch helpers used by the app
 async function fetchNewsFromSpaceflight(limit = 8) {
   const url = `https://api.spaceflightnewsapi.net/v3/articles?_limit=${limit}`;
-  try {
-    const res = await fetch(url);
-    if(!res.ok) throw new Error(`Spaceflight API ${res.status}`);
-    const data = await res.json();
-    return data.map(item => ({
-      title: item.title,
-      url: item.url,
-      summary: item.summary,
-      source: item.newsSite || 'Spaceflight'
-    }));
-  } catch (err) {
-    console.warn('Spaceflight API failed:', err);
-    throw err;
-  }
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`Spaceflight API ${res.status}`);
+  const data = await res.json();
+  return data.map(item => ({
+    title: item.title,
+    url: item.url,
+    summary: item.summary,
+    source: item.newsSite || 'Spaceflight'
+  }));
 }
-
 async function fetchNewsFromHN(limit = 8) {
-  // Get front page hits via Algolia HN API
   const url = `https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=${limit}`;
-  try {
-    const res = await fetch(url);
-    if(!res.ok) throw new Error(`HN Algolia ${res.status}`);
-    const data = await res.json();
-    return (data.hits || []).map(h => ({
-      title: h.title || h.story_title || 'Untitled',
-      url: h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`,
-      summary: h.comment_text ? h.comment_text.replace(/<[^>]+>/g,'') : '',
-      source: 'Hacker News'
-    }));
-  } catch (err) {
-    console.warn('HN fetch failed:', err);
-    throw err;
-  }
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`HN Algolia ${res.status}`);
+  const data = await res.json();
+  return (data.hits || []).map(h => ({
+    title: h.title || h.story_title || 'Untitled',
+    url: h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`,
+    summary: h.comment_text ? h.comment_text.replace(/<[^>]+>/g,'') : '',
+    source: 'Hacker News'
+  }));
 }
-
 async function fetchNews(preferredLimit = 8) {
-  // Attempt chain: NewsAPI (if key), Spaceflight, Hacker News
-  const apiKey = localStorage.getItem('newsApiKey');
-  let lastErr = null;
-  if(apiKey){
-    try {
-      const items = await fetchNewsFromNewsAPI(apiKey, preferredLimit);
-      return { items, used: 'newsapi' };
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-
-  // try Spaceflight (public)
-  try {
-    const items = await fetchNewsFromSpaceflight(preferredLimit);
-    return { items, used: 'spaceflight' };
-  } catch (err) {
-    lastErr = err;
-  }
-
-  // fallback to Hacker News
-  try {
-    const items = await fetchNewsFromHN(preferredLimit);
-    return { items, used: 'hackernews' };
-  } catch (err) {
-    lastErr = err;
-  }
-
-  throw lastErr || new Error('No news sources available');
+  try { return { items: await fetchNewsFromSpaceflight(preferredLimit), used: 'spaceflight' }; }
+  catch(e) { return { items: await fetchNewsFromHN(preferredLimit), used: 'hackernews' }; }
 }
-
-// Render news with UI controls: Refresh and Manage API key
 async function renderNews(useCache = false) {
   const container = document.getElementById('news-content');
   if(!container) return;
-  // add controls and place for list
-  container.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div style="font-weight:600">Latest News</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn small" id="refreshNewsBtn">Refresh</button>
-        <button class="btn small" id="manageNewsKeyBtn" title="Set or clear NewsAPI key">News API</button>
-      </div>
-    </div>
-    <div id="news-list" style="min-height:100px;">
-      <div style="color:var(--muted)">Loading news…</div>
-    </div>
-  `;
-  const listEl = document.getElementById('news-list');
-  const refreshBtn = document.getElementById('refreshNewsBtn');
-  const manageBtn = document.getElementById('manageNewsKeyBtn');
-
-  refreshBtn.onclick = () => {
-    // visual feedback
-    refreshBtn.textContent = 'Refreshing...';
-    fetchAndShowNews().finally(()=> refreshBtn.textContent = 'Refresh');
-  };
-
-  manageBtn.onclick = () => {
-    const current = localStorage.getItem('newsApiKey') || '';
-    const key = prompt('Enter NewsAPI.org API key (leave blank to remove):', current);
-    if(key === null) return;
-    if(key.trim() === '') {
-      localStorage.removeItem('newsApiKey');
-      alert('NewsAPI key cleared. Will use fallback sources.');
-    } else {
-      localStorage.setItem('newsApiKey', key.trim());
-      alert('NewsAPI key saved. Next refresh will use NewsAPI.');
-    }
-    fetchAndShowNews();
-  };
-
-  // optionally allow cached lastNews in sessionStorage for quick load
-  if(useCache){
-    try {
-      const cached = sessionStorage.getItem('lastNews');
-      if(cached){
-        const parsed = JSON.parse(cached);
-        showNewsItems(parsed.items, parsed.used);
-      }
-    } catch(e){}
-  }
-
-  // Fetch and render
-  async function fetchAndShowNews(){
-    try {
-      const res = await fetchNews(8);
-      sessionStorage.setItem('lastNews', JSON.stringify(res));
-      showNewsItems(res.items, res.used);
-    } catch (err) {
-      console.error('All news sources failed:', err);
-      listEl.innerHTML = `<div class="muted">Couldn't load news. Try setting a NewsAPI key or check your network.</div>`;
-    }
-  }
-
-  function showNewsItems(items, usedSource) {
-    if(!items || items.length === 0){
-      listEl.innerHTML = `<div class="muted">No news items found.</div>`;
-      return;
-    }
-    listEl.innerHTML = items.map(item => `
-      <div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.03);">
-        <a href="${item.url}" target="_blank" rel="noopener" style="font-weight:600;color:var(--accent);text-decoration:none;">${escapeHtml(item.title)}</a>
-        <div style="color:var(--muted);font-size:14px;margin-top:6px;">${escapeHtml(item.summary || '')}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:6px;">Source: ${escapeHtml(item.source || 'Unknown')}</div>
+  container.innerHTML = `<div style="color:var(--muted)">Loading news…</div>`;
+  try {
+    const r = await fetchNews(6);
+    container.innerHTML = r.items.map(i=>`
+      <div style="margin-bottom:12px">
+        <a href="${i.url}" target="_blank" rel="noopener">${escapeHtml(i.title)}</a>
+        <div style="color:var(--muted);font-size:13px">${escapeHtml(i.summary || '')}</div>
       </div>
     `).join('');
-    // small hint which source used
-    const hint = document.createElement('div');
-    hint.style.marginTop = '8px';
-    hint.style.fontSize = '12px';
-    hint.style.color = 'var(--muted)';
-    hint.textContent = `Source: ${usedSource || 'unknown'} • Updated ${new Date().toLocaleTimeString()}`;
-    listEl.appendChild(hint);
+  } catch(err){
+    container.innerHTML = `<div class="muted">Couldn't load news.</div>`;
   }
-
-  // initial fetch
-  fetchAndShowNews();
 }
 
-// --- existing UI renderer functions ---
+// --- UI renderers ---
 
 function renderTopRightUser() {
   const user = getUserProfile();
@@ -283,14 +174,15 @@ function renderTopRightUser() {
 }
 
 function renderFriends(){
+  if(!friendsList) return;
   friendsList.innerHTML = '';
   seedFriends.forEach(f=>{
     const div = document.createElement('div');
     div.className = 'friend';
     div.innerHTML = `
-      <img src="${f.avatar}" alt="${f.name}" />
+      <img src="${f.avatar}" alt="${escapeHtml(f.name)}" />
       <div style="flex:1">
-        <div style="font-weight:600">${f.name}</div>
+        <div style="font-weight:600">${escapeHtml(f.name)}</div>
         <div style="font-size:12px; color:var(--muted)">${f.online ? 'Online' : 'Offline'}</div>
       </div>
       <div style="width:10px;height:10px;border-radius:50%; background:${f.online ? '#34d399' : '#94a3b8'}"></div>
@@ -299,17 +191,42 @@ function renderFriends(){
   });
 }
 
+function getCategoryName(catId){
+  if(!catId) return 'Uncategorized';
+  const c = categories.find(x=>x.id === catId);
+  return c ? c.name : 'Uncategorized';
+}
+
 function renderFeed(){
+  if(!feedEl) return;
+  const searchTerm = (globalSearch && globalSearch.value || '').trim().toLowerCase();
+  let visible = posts.slice();
+
+  // apply category filter
+  if(activeCategoryId){
+    visible = visible.filter(p => p.categoryId === activeCategoryId);
+  }
+
+  // apply search
+  if(searchTerm){
+    visible = visible.filter(p => (p.text || '').toLowerCase().includes(searchTerm) || getCategoryName(p.categoryId).toLowerCase().includes(searchTerm) || (p.author && p.author.name && p.author.name.toLowerCase().includes(searchTerm)));
+  }
+
   feedEl.innerHTML = '';
-  posts.forEach(post=>{
+  if(visible.length === 0){
+    feedEl.innerHTML = `<div class="card muted" style="padding:12px;">No posts match your filters.</div>`;
+    return;
+  }
+
+  visible.forEach(post=>{
     const article = document.createElement('article');
     article.className = 'post card';
     article.innerHTML = `
       <div class="post-head">
-        <img src="${post.author.avatar}" alt="${post.author.name}" />
+        <img src="${post.author.avatar}" alt="${escapeHtml(post.author.name)}" />
         <div style="flex:1">
-          <div style="font-weight:600">${post.author.name}</div>
-          <div style="font-size:12px; color:var(--muted)">${post.time}</div>
+          <div style="font-weight:600">${escapeHtml(post.author.name)}</div>
+          <div style="font-size:12px; color:var(--muted)">${escapeHtml(post.time)} • <span style="font-weight:600">${escapeHtml(getCategoryName(post.categoryId))}</span></div>
         </div>
         <div style="font-size:18px; opacity:.6">
           <button class="icon-btn menu-btn" data-id="${post.id}" title="Post menu">•••</button>
@@ -328,13 +245,12 @@ function renderFeed(){
           <span style="margin-left:12px">🔁 ${post.shares}</span>
           <button class="icon-btn share-btn" data-id="${post.id}" style="margin-left:12px;" title="Share">Share</button>
         </div>
-        <div style="color:var(--muted); font-size:13px"></div>
       </div>
     `;
     feedEl.appendChild(article);
   });
 
-  // Like handler
+  // attach handlers
   document.querySelectorAll('.like-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = Number(btn.getAttribute('data-id'));
@@ -342,7 +258,6 @@ function renderFeed(){
     });
   });
 
-  // Share handler
   document.querySelectorAll('.share-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = Number(btn.getAttribute('data-id'));
@@ -350,7 +265,6 @@ function renderFeed(){
     });
   });
 
-  // Menu handler
   document.querySelectorAll('.menu-btn').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       const id = Number(btn.getAttribute('data-id'));
@@ -360,6 +274,7 @@ function renderFeed(){
 }
 
 function renderNotifications(){
+  if(!notifList) return;
   notifList.innerHTML = '';
   if(notifications.length === 0){
     notifList.innerHTML = '<div class="muted">No notifications</div>';
@@ -368,12 +283,13 @@ function renderNotifications(){
   notifications.forEach(n=>{
     const div = document.createElement('div');
     div.style.display = 'flex'; div.style.gap='10px'; div.style.marginBottom='8px';
-    div.innerHTML = `<img src="${n.avatar}" style="width:36px;height:36px;border-radius:50%"/><div><div style="font-weight:600">${n.text}</div><div style="font-size:12px;color:var(--muted)">${n.time}</div></div>`;
+    div.innerHTML = `<img src="${n.avatar}" style="width:36px;height:36px;border-radius:50%"/><div><div style="font-weight:600">${escapeHtml(n.text)}</div><div style="font-size:12px;color:var(--muted)">${escapeHtml(n.time)}</div></div>`;
     notifList.appendChild(div);
   });
 }
 
 function renderCommunities(){
+  if(!commList) return;
   commList.innerHTML = '';
   communities.forEach(c=>{
     const row = document.createElement('div');
@@ -381,7 +297,7 @@ function renderCommunities(){
     row.innerHTML = `<div>
     <button class="btn small join-community" data-id="${c.id}" style="background:var(--accent);color:white;border:0;">
       Join
-    </button> ${c.name}
+    </button> ${escapeHtml(c.name)}
     </div>
     <div style="font-size:12px;color:var(--muted)">${c.members} members</div>`;
     commList.appendChild(row);
@@ -392,6 +308,128 @@ function renderCommunities(){
       joinCommunity(cId);
     });
   });
+}
+
+// --- Categories UI & actions (ADD-ONLY mode) ---
+
+function renderPostCategoryOptions() {
+  if(!postCategorySelect) return;
+  postCategorySelect.innerHTML = '';
+  const allOpt = document.createElement('option');
+  allOpt.value = '';
+  allOpt.textContent = '— None —';
+  postCategorySelect.appendChild(allOpt);
+  categories.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = String(c.id);
+    opt.textContent = c.name;
+    postCategorySelect.appendChild(opt);
+  });
+}
+
+function renderCategoriesPage() {
+  if(!categoriesContent) return;
+  // compute counts
+  const counts = {};
+  posts.forEach(p => {
+    const id = p.categoryId || 0;
+    counts[id] = (counts[id] || 0) + 1;
+  });
+  categoriesContent.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-weight:600">Categories</div>
+      <div>
+        <button class="btn small" id="clearCategoryFilterBtn">Show All</button>
+        <button class="btn small" id="addCategoryBtn">Add Category</button>
+      </div>
+    </div>
+    <div id="category-list" style="min-height:100px;"></div>
+  `;
+  const list = document.getElementById('category-list');
+  // All item
+  const allRow = document.createElement('div');
+  allRow.style.display = 'flex'; allRow.style.justifyContent = 'space-between'; allRow.style.marginBottom='8px';
+  allRow.innerHTML = `<div><button class="btn small category-filter" data-id="" style="margin-right:8px;">View</button> All</div><div style="font-size:12px;color:var(--muted)">${posts.length} posts</div>`;
+  list.appendChild(allRow);
+
+  categories.forEach(c=>{
+    const row = document.createElement('div');
+    row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.marginBottom='8px';
+    const cnt = counts[c.id] || 0;
+    // NOTE: no delete button included (JUST ADD). We do include an optional rename button to allow simple corrections.
+    row.innerHTML = `<div><button class="btn small category-filter" data-id="${c.id}" style="margin-right:8px;">View</button> ${escapeHtml(c.name)}</div><div style="font-size:12px;color:var(--muted)">${cnt} posts <button class="btn small rename-cat" data-id="${c.id}" style="margin-left:8px;">Rename</button></div>`;
+    list.appendChild(row);
+  });
+
+  // attach listeners
+  document.querySelectorAll('.category-filter').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idVal = btn.getAttribute('data-id');
+      activeCategoryId = idVal ? Number(idVal) : null;
+      renderFeed();
+      // switch to feed tab
+      setActiveTab('feed');
+    });
+  });
+
+  const clearBtn = document.getElementById('clearCategoryFilterBtn');
+  const addBtn = document.getElementById('addCategoryBtn');
+  if(clearBtn) clearBtn.addEventListener('click', ()=>{
+    activeCategoryId = null;
+    renderFeed();
+  });
+  if(addBtn) addBtn.addEventListener('click', addCategoryPrompt);
+
+  // rename (allowed) — still considered an "add-only" style change because we're not removing categories
+  document.querySelectorAll('.rename-cat').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      const cat = categories.find(c=>c.id===id);
+      if(!cat) return;
+      const name = prompt('Rename category:', cat.name);
+      if(name && name.trim()){
+        cat.name = name.trim();
+        saveCategories();
+        renderPostCategoryOptions();
+        renderCategoriesPage();
+      }
+    });
+  });
+}
+
+function addCategoryPrompt(){
+  const name = prompt('New category name:');
+  if(!name) return;
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  // avoid duplicate names (case-insensitive)
+  const exists = categories.some(c => c.name.toLowerCase() === trimmed.toLowerCase());
+  if(exists){
+    alert('A category with that name already exists.');
+    return;
+  }
+  const id = Date.now();
+  categories.push({ id, name: trimmed });
+  saveCategories();
+  renderPostCategoryOptions();
+  renderCategoriesPage();
+}
+
+// Helper to set UI active tab programmatically
+function setActiveTab(tabName) {
+  if(!navList) return;
+  navList.querySelectorAll('li').forEach(li => li.classList.toggle('active', li.getAttribute('data-tab') === tabName));
+  // show/hide tabs
+  tabFeed.style.display = tabName === 'feed' ? '' : 'none';
+  feedEl.style.display = tabName === 'feed' ? '' : 'none';
+  tabNews.style.display = tabName === 'news' ? '' : 'none';
+  tabProfile.style.display = tabName === 'profile' ? '' : 'none';
+  tabCategories.style.display = tabName === 'Categories' ? '' : 'none';
+  if(tabName === 'news') renderNews(true);
+  if(tabName === 'profile') renderProfile(false);
+  if(tabName === 'Categories') {
+    renderCategoriesPage();
+  }
 }
 
 // actions
@@ -406,39 +444,6 @@ function toggleLike(postId){
   renderFeed();
 }
 
-function createPost(e){
-  e.preventDefault();
-  const text = postText.value.trim();
-  const file = postImage.files[0];
-let imageData = null;
-if(file){
-  const reader = new FileReader();
-  reader.onload = function(e){
-    imageData = e.target.result;
-    actuallyCreatePost(imageData);
-  };
-  reader.readAsDataURL(file);
-} else {
-  actuallyCreatePost(null);
-}
-
-  if(!text && !image) return;
-
-  const user = getUserProfile();
-  const newP = {
-    id: Date.now(),
-    author:{name:user.name, avatar:user.avatar},
-    time:'just now',
-    text,
-    image: image || null,
-    likes:0, comments:0, shares:0, liked:false
-  };
-  posts.unshift(newP);
-  notifications.unshift({ id:Date.now(), text:'You posted to the feed.', time:'just now', avatar:newP.author.avatar });
-  postText.value=''; postImage.value='';
-  renderFeed(); renderNotifications();
-}
-
 function joinCommunity(cId){
   const comm = communities.find(c=>c.id===cId);
   if(comm){
@@ -450,20 +455,27 @@ function joinCommunity(cId){
 
 function sharePost(postId){
   const post = posts.find(p=>p.id===postId);
-  let textToCopy = post.text;
+  if(!post) return;
+  let textToCopy = post.text || '';
   if(post.image) textToCopy += '\n' + post.image;
-  navigator.clipboard.writeText(textToCopy).then(()=>{
-    notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
+  if(post.categoryId) textToCopy += `\nCategory: ${getCategoryName(post.categoryId)}`;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(textToCopy).then(()=>{
+      notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
+      renderNotifications();
+    }).catch(()=> {
+      notifications.unshift({id:Date.now(), text:'Could not copy to clipboard.', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
+      renderNotifications();
+    });
+  } else {
+    notifications.unshift({id:Date.now(), text:'Clipboard not supported.', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
     renderNotifications();
-  }).catch(()=> {
-    notifications.unshift({id:Date.now(), text:'Could not copy to clipboard.', time:'just now', avatar:'https://i.pravatar.cc/36?img=65'});
-    renderNotifications();
-  });
+  }
 }
 
 // Small util to avoid HTML injection when inserting text
 function escapeHtml(str){
-  if(!str) return '';
+  if(!str && str !== 0) return '';
   return String(str).replace(/[&<>"']/g, function(m){
     return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
   });
@@ -474,12 +486,10 @@ function initTheme(){
   const saved = localStorage.getItem('theme');
   if(saved === 'light'){
     body.classList.add('theme-light');
-    themeToggle.textContent = 'Dark';
-    themeToggle.setAttribute('aria-pressed','true');
+    if(themeToggle) { themeToggle.textContent = 'Dark'; themeToggle.setAttribute('aria-pressed','true'); }
   } else {
     body.classList.remove('theme-light');
-    themeToggle.textContent = 'Light';
-    themeToggle.setAttribute('aria-pressed','false');
+    if(themeToggle) { themeToggle.textContent = 'Light'; themeToggle.setAttribute('aria-pressed','false'); }
   }
 }
 
@@ -501,17 +511,19 @@ function renderProfile(editMode = false) {
   const user = getUserProfile();
   const postCount = posts.filter(p => p.author.name === user.name).length;
 
+  if (!profileContent) return;
+
   if (!editMode) {
     profileContent.innerHTML = `
       <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-        <img src="${user.avatar}" alt="${user.name}" style="width:80px;height:80px;border-radius:50%;">
+        <img src="${user.avatar}" alt="${escapeHtml(user.name)}" style="width:80px;height:80px;border-radius:50%;">
         <div>
-          <div style="font-size:22px;font-weight:700;">${user.name}</div>
+          <div style="font-size:22px;font-weight:700;">${escapeHtml(user.name)}</div>
           <div style="color:var(--muted);font-size:15px;">
             ${escapeHtml(user.bio)}
           </div>
           <div style="margin-top:6px; font-size:13px;">
-            <span>Joined: ${user.joined}</span>
+            <span>Joined: ${escapeHtml(user.joined)}</span>
           </div>
         </div>
       </div>
@@ -552,16 +564,16 @@ function renderProfile(editMode = false) {
     form.onsubmit = (e) => {
       e.preventDefault();
       const formData = new FormData(form);
+      const prev = getUserProfile();
       const newProfile = {
-        name: formData.get('name') || getUserProfile().name,
-        avatar: formData.get('avatar') || getUserProfile().avatar,
-        bio: formData.get('bio') || '',
-        joined: getUserProfile().joined,
-        communitiesJoined: getUserProfile().communitiesJoined
+        name: (formData.get('name') || prev.name).trim(),
+        avatar: (formData.get('avatar') || prev.avatar).trim(),
+        bio: (formData.get('bio') || '').trim(),
+        joined: prev.joined,
+        communitiesJoined: prev.communitiesJoined
       };
-      // Save and propagate
       setUserProfile(newProfile);
-      updateCurrentUserName(newProfile);
+      updateCurrentUserName(prev, newProfile);
       renderProfile(false);
     };
     document.getElementById('cancelProfileBtn').onclick = () => renderProfile(false);
@@ -569,25 +581,14 @@ function renderProfile(editMode = false) {
 }
 
 // Update posts authored by user when profile changes
-function updateCurrentUserName(newProfile) {
-  // Use previous profile name from storage before it was updated - but getUserProfile already returns updated,
-  // so we keep this robust by checking any posts that have the previous avatar or a "You" placeholder.
-  const prevName = (function(){
-    // We can attempt to find any post with avatar equal to current newProfile.avatar to avoid renaming wrong posts.
-    // Simpler: update posts where author matches either the previous stored 'lastProfileName' (if any) or 'You'.
-    return sessionStorage.getItem('lastProfileName') || 'You';
-  })();
-
+function updateCurrentUserName(prevProfile, newProfile) {
   posts = posts.map(p => {
-    if(p.author.name === prevName || p.author.avatar === newProfile.avatar || p.author.name === newProfile.name){
+    if(p.author.name === prevProfile.name || p.author.avatar === prevProfile.avatar){
       return { ...p, author: { name: newProfile.name, avatar: newProfile.avatar } };
     }
     return p;
   });
-
-  // remember current name for later updates
   sessionStorage.setItem('lastProfileName', newProfile.name);
-
   renderFeed();
   renderTopRightUser();
 }
@@ -596,10 +597,10 @@ function updateCurrentUserName(newProfile) {
 function openPostMenu(btn, postId){
   let menu = document.getElementById('post-menu-temp');
   if(menu) menu.remove();
-  // only allow delete for user's own posts (match current profile name)
   const user = getUserProfile();
   const post = posts.find(p=>p.id===postId);
-  if(!post || post.author.name!==user.name) return;
+  if(!post || post.author.name !== user.name) return;
+
   menu = document.createElement('div');
   menu.id = 'post-menu-temp';
   menu.style.position = 'absolute';
@@ -612,13 +613,11 @@ function openPostMenu(btn, postId){
   menu.innerHTML = `<button class="btn small" id="delete-post-menu-btn">Delete</button>`;
   document.body.appendChild(menu);
 
-  // Position menu near button
   const rect = btn.getBoundingClientRect();
-  // ensure menu doesn't go off screen
   let left = rect.left;
   if(left + 220 > window.innerWidth) left = window.innerWidth - 240;
   menu.style.left = left + 'px';
-  menu.style.top = (rect.bottom+window.scrollY) + 'px';
+  menu.style.top = (rect.bottom + window.scrollY) + 'px';
 
   document.getElementById('delete-post-menu-btn').onclick = () => {
     posts = posts.filter(p=>p.id!==postId);
@@ -629,7 +628,7 @@ function openPostMenu(btn, postId){
 
   // remove menu if click outside
   window.addEventListener('mousedown', function handler(e){
-    if(!menu.contains(e.target) && e.target!==btn){
+    if(!menu.contains(e.target) && e.target !== btn){
       menu.remove();
       window.removeEventListener('mousedown', handler);
     }
@@ -637,59 +636,53 @@ function openPostMenu(btn, postId){
 }
 
 // Listeners
-themeToggle.addEventListener('click', ()=>{
-  if(body.classList.contains('theme-light')){
-    body.classList.remove('theme-light');
-    themeToggle.textContent='Light';
-    themeToggle.setAttribute('aria-pressed','false');
-    localStorage.setItem('theme','dark');
-  } else {
-    body.classList.add('theme-light');
-    themeToggle.textContent='Dark';
-    themeToggle.setAttribute('aria-pressed','true');
-    localStorage.setItem('theme','light');
-  }
-});
-
-// Nav/tab handler: ensure news tab calls renderNews
-navList.addEventListener('click', (e)=>{
-  if(e.target.tagName==='LI'){
-    navList.querySelectorAll('li').forEach(li=>li.classList.remove('active'));
-    e.target.classList.add('active');
-    const tab = e.target.getAttribute('data-tab');
-    tabFeed.style.display = tab==='feed'? '' : 'none';
-    feedEl.style.display = tab==='feed'? '' : 'none';
-    tabNews.style.display = tab==='news'? '' : 'none';
-    tabProfile.style.display = tab==='profile'? '' : 'none';
-    if(tab==='news') renderNews(true); // try to use cache for snappy UI
-    if(tab==='profile') renderProfile(false);
-  }
-});
-
-// App init
-function init(){
-  renderTopRightUser();
-  renderFriends();
-  renderCommunities();
-  setTimeout(()=>{ renderFeed(); renderNotifications(); }, 300);
-  initTheme();
-  // pre-render news container (but don't fetch until tab opened) - eager fetch optional:
-  // renderNews(true);
+if (themeToggle) {
+  themeToggle.addEventListener('click', ()=>{
+    if(body.classList.contains('theme-light')){
+      body.classList.remove('theme-light');
+      themeToggle.textContent='Light';
+      themeToggle.setAttribute('aria-pressed','false');
+      localStorage.setItem('theme','dark');
+    } else {
+      body.classList.add('theme-light');
+      themeToggle.textContent='Dark';
+      themeToggle.setAttribute('aria-pressed','true');
+      localStorage.setItem('theme','light');
+    }
+  });
 }
 
-init();
+// Nav/tab handler
+if (navList) {
+  navList.addEventListener('click', (e)=>{
+    if(e.target.tagName==='LI'){
+      const tab = e.target.getAttribute('data-tab');
+      setActiveTab(tab);
+    }
+  });
+}
 
-// Clear notifications
-clearNotifsBtn.addEventListener('click', ()=>{
-  notifications = []; renderNotifications();
-});
+// Create post handling
+function createPost(e){
+  e.preventDefault();
+  const text = (postText.value || '').trim();
+  const file = postImage.files[0];
+  const selectedCat = postCategorySelect ? (postCategorySelect.value || '') : '';
 
-// Create post
-postForm.addEventListener('submit', createPost);
-function actuallyCreatePost(){
-  const text = postText.value.trim();
-  const imageData = preview.src || null;
+  const categoryId = selectedCat ? Number(selectedCat) : null;
 
+  if(file){
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      actuallyCreatePost(text, ev.target.result, categoryId);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    actuallyCreatePost(text, null, categoryId);
+  }
+}
+
+function actuallyCreatePost(text, imageData, categoryId){
   if(!text && !imageData) return;
 
   const user = getUserProfile();
@@ -697,25 +690,58 @@ function actuallyCreatePost(){
     id: Date.now(),
     author:{name:user.name, avatar:user.avatar},
     time:'just now',
-    text,
+    text: text,
     image: imageData,
+    categoryId: categoryId,
     likes:0, comments:0, shares:0, liked:false
   };
   posts.unshift(newP);
   notifications.unshift({ id:Date.now(), text:'You posted to the feed.', time:'just now', avatar:newP.author.avatar });
   postText.value=''; 
   postImage.value=''; 
-  preview.style.display='none';
+  if(preview) preview.style.display='none';
+  if(postCategorySelect) postCategorySelect.value = '';
   renderFeed(); 
   renderNotifications();
 }
 
+if (postForm) postForm.addEventListener('submit', createPost);
+
+// new category button in post form
+if (newCategoryBtn) {
+  newCategoryBtn.addEventListener('click', addCategoryPrompt);
+}
+
+// search
+if (globalSearch) {
+  globalSearch.addEventListener('input', () => renderFeed());
+}
+
+// App init
+function init(){
+  renderTopRightUser();
+  renderFriends();
+  renderCommunities();
+  renderPostCategoryOptions();
+  setTimeout(()=>{ renderFeed(); renderNotifications(); }, 150);
+  initTheme();
+}
+init();
+
+// Clear notifications
+if (clearNotifsBtn) {
+  clearNotifsBtn.addEventListener('click', ()=>{
+    notifications = []; renderNotifications();
+  });
+}
 
 // hamburger and overlay events
-hamburger.addEventListener('click', ()=>{
-  if(body.classList.contains('drawer-open')) closeDrawer(); else openDrawer();
-});
-overlay.addEventListener('click', closeDrawer);
+if (hamburger) {
+  hamburger.addEventListener('click', ()=>{
+    if(body.classList.contains('drawer-open')) closeDrawer(); else openDrawer();
+  });
+}
+if (overlay) overlay.addEventListener('click', closeDrawer);
 
 // close drawer with Escape
 document.addEventListener('keydown', (e)=>{
