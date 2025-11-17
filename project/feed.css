@@ -1,376 +1,204 @@
 :root{
-  --bg-dark:#0f1720;
-  --panel-dark:#111827;
-  --card-dark:#111827;
-  --muted-dark:#9aa0a6;
+  --bg:#0b1220;
+  --panel:#0f1720;
+  --card:#0f1a25;
+  --muted:#9aa0a6;
   --accent:#00b4d8;
   --glass: rgba(255,255,255,0.03);
 
   --bg-light:#f5f7fb;
-  --panel-light:#ffffff;
-  --card-light:#ffffff;
-  --muted-light:#6b7280;
-  --text-dark:#0b1220;
+  --text-light:#0b1220;
 }
 
 /* Base */
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  background:var(--bg-dark);
-  color:#e6eef6;
-  transition: background .25s ease, color .25s ease;
-  --muted: var(--muted-dark);
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: linear-gradient(180deg, #071124 0%, var(--bg) 60%);
+  color: #e6eef6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding: 18px;
 }
 
 /* Light theme */
-body.theme-light{
-  background:var(--bg-light);
-  color:var(--text-dark);
-  --muted: var(--muted-light);
+body.theme-light {
+  background: var(--bg-light);
+  color: var(--text-light);
 }
 
 /* container */
-.container{ max-width:1200px; margin:18px auto; padding:16px; }
+.container { max-width: 1200px; margin: 0 auto; }
 
-/* Topbar */
-.topbar{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;}
-.brand{ display:flex; gap:12px; align-items:center;}
-.logo{ font-weight:700; font-size:20px; }
-.search{ display:flex; align-items:center; gap:8px; background:var(--glass); padding:6px 10px; border-radius:999px; min-width:220px;}
-.search input{ background:transparent; border:0; outline:0; min-width:160px; color:inherit; }
-.icon{ width:16px; height:16px; stroke:currentColor; opacity:.8; }
+/* topbar */
+.topbar {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:16px;
+}
+.brand .logo {
+  font-weight:800;
+  font-size:20px;
+  letter-spacing:0.4px;
+  color: #fff;
+  padding:6px 10px;
+  border-radius:8px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  box-shadow: 0 2px 12px rgba(0,0,0,0.45) inset;
+}
+.center-search { flex:1; display:flex; justify-content:center; }
+.search {
+  width: 640px;
+  max-width: 60%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:999px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: 0 6px 22px rgba(2,6,23,0.6);
+}
+.search .icon { width:18px; height:18px; opacity:0.9; color:var(--muted); }
+.search input {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  width:100%;
+  color:inherit;
+  font-size:14px;
+}
 
 /* top-right */
-.top-right{ display:flex; gap:12px; align-items:center;}
-.btn{ background:transparent; border:1px solid rgba(255,255,255,0.08); padding:8px 12px; border-radius:8px; cursor:pointer; color:inherit; }
-.btn.small{ padding:6px 8px; font-size:13px; }
-.user{ display:flex; gap:8px; align-items:center;}
-.user img{ width:36px; height:36px; border-radius:50%; }
-
-/* hamburger */
-.hamburger{
-  display:none; background:transparent; border:0; padding:6px; cursor:pointer; margin-right:8px;
+.top-right { display:flex; gap:12px; align-items:center; }
+.btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  padding:8px 12px;
+  border-radius:8px;
+  color:inherit;
+  cursor:pointer;
 }
-.hamburger span{ display:block; width:22px; height:2px; background:currentColor; margin:4px 0; border-radius:2px; transition:transform .18s ease, opacity .18s ease;}
-/* when drawer open we add .drawer-open to body and animate hamburger */
-body.drawer-open .hamburger span:nth-child(1){ transform: translateY(6px) rotate(45deg);}
-body.drawer-open .hamburger span:nth-child(2){ opacity:0;}
-body.drawer-open .hamburger span:nth-child(3){ transform: translateY(-6px) rotate(-45deg);}
+.btn.primary {
+  background: linear-gradient(90deg, var(--accent), #00e0ff);
+  color: #04202a;
+  border: none;
+  font-weight:600;
+}
+.btn.small { padding:6px 8px; font-size:13px; }
+.user { display:flex; gap:8px; align-items:center; cursor:pointer; }
+.user img { width:36px; height:36px; border-radius:50%; border: 2px solid rgba(255,255,255,0.03); }
 
-/* grid layout */
-.grid{ display:grid; grid-template-columns: 220px 1fr 300px; gap:14px; align-items:start; }
+/* layout grid */
+.grid { display:grid; grid-template-columns: 220px 1fr 300px; gap:14px; align-items:start; }
 
 /* cards */
-.card{ background: rgba(255,255,255,0.03); border-radius:12px; padding:14px; box-shadow: 0 1px 0 rgba(0,0,0,0.25) inset; transition:background .18s ease, color .18s ease; }
-.card h4{ margin:0 0 8px 0; font-size:15px; }
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:12px;
+  padding:14px;
+  box-shadow: 0 6px 24px rgba(2,6,23,0.5);
+  border: 1px solid rgba(255,255,255,0.02);
+}
+.card h4 { margin:0 0 8px 0; font-size:15px; }
 
 /* left nav */
-.left .navcard ul{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px;}
-.left .navcard li{ padding:10px; border-radius:8px; cursor:pointer;}
-.left .navcard li.active{ background: linear-gradient(90deg, rgba(0,180,216,0.12), rgba(0,180,216,0.03)); color:var(--accent); font-weight:600; }
-
-/* friends list */
-.friends .friend{ display:flex; align-items:center; gap:10px; padding:8px 4px; border-radius:8px;}
-.friends img{ width:34px; height:34px; border-radius:50%; }
-
-/* main feed */
-.main .create-post textarea,
-.main .create-post input{ width:100%; padding:10px; margin-bottom:8px; border-radius:8px; background:transparent; border:1px solid rgba(255,255,255,0.06); color:inherit; outline:none; }
-.form-foot{ display:flex; justify-content:space-between; align-items:center;}
-.form-foot .btn{ border-radius:8px; }
-
-/* post card */
-.post{ margin-bottom:12px; border-radius:12px; overflow:hidden; background: rgba(255,255,255,0.02);}
-.post-head{ display:flex; align-items:center; gap:10px; padding:12px; border-bottom:1px solid rgba(255,255,255,0.03);}
-.post-head img{ width:44px; height:44px; border-radius:50%; }
-.post-body{ padding:12px; position:relative; }
-.post-body img{ width:100%; max-height:380px; object-fit:cover; border-radius:8px; margin-top:10px; display:block; }
-
-/* ---- NEW: TikTok-like horizontal action bar design (CSS only) ----
-   Keep the buttons visually like TikTok (circular icons, small counts),
-   but place them in a horizontal row under the image (not stacked vertically).
-   This modifies only styles; no JS changes required here.
-*/
-
-/* Container for the horizontal action bar inside .post-foot */
-.post-foot{
-  display:flex;
-  justify-content:flex-start; /* align actions left; change to center if you prefer centered */
-  align-items:center;
-  gap:16px;
-  padding:12px;
-  border-top:1px solid rgba(255,255,255,0.03);
-  font-size:14px;
-  background: transparent;
+.left .navcard ul { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+.left .navcard li {
+  padding:10px;
+  border-radius:8px;
+  cursor:pointer;
+  transition: all 0.15s ease;
 }
-
-/* Make the action group a compact horizontal pill (optional visual container) */
-.post-foot .actions-row{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  padding:6px 8px;
-  border-radius:12px;
-  background: rgba(255,255,255,0.01);
-}
-
-/* Circular icon buttons resembling TikTok */
-.post-foot .icon-btn{
-  width:56px;
-  height:56px;
-  min-width:56px;
-  padding:0;
-  border-radius:50%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.04);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-  font-size:22px; /* icon size */
-}
-
-/* keep original icon inline content visible and centered */
-.post-foot .icon-btn > *{ pointer-events:none; }
-
-/* small count under the icon */
-.post-foot .icon-btn .like-count,
-.post-foot .icon-btn .comment-count,
-.post-foot .icon-btn .share-count{
-  display:block;
-  font-size:12px;
-  color:var(--muted);
-  margin-top:6px;
-  line-height:1;
-  pointer-events:none;
-}
-
-/* For elements that are plain spans in your markup (e.g., comment and repost spans),
-   style them so they look like the circular buttons with icon + count horizontally */
-.post-foot > div > span,
-.post-foot > div > .stat-pill{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  width:56px;
-  height:56px;
-  min-width:56px;
-  border-radius:50%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
-  border: 1px solid rgba(255,255,255,0.02);
-  box-shadow: 0 6px 12px rgba(0,0,0,0.14);
-  font-size:18px; /* emoji size */
-  color:inherit;
-}
-
-/* Ensure the textual 'Share' button (if present) appears as an icon circle:
-   hide its textual label while keeping accessible text via aria-label.
-   We add a glyph via ::before so design is unchanged without JS changes. */
-.post-foot .share-btn{
-  position:relative;
-  color:transparent; /* hide textual content visually */
-  width:56px;
-  height:56px;
-  padding:0;
-  border-radius:50%;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.04);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.22);
-}
-.post-foot .share-btn::before{
-  content: "📤";
-  position: absolute;
-  left: 50%;
-  top:50%;
-  transform: translate(-50%,-50%);
-  color:inherit;
-  font-size:20px;
-}
-.post-foot .share-btn:focus{ outline:none; }
-
-/* Liked state: preserve accent */
-.post-foot .icon-btn.liked,
-.post-foot .share-btn.liked{
+.left .navcard li:hover { transform: translateX(4px); color:var(--accent); }
+.left .navcard li.active {
+  background: linear-gradient(90deg, rgba(0,180,216,0.12), rgba(0,180,216,0.03));
   color:var(--accent);
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.28), 0 0 0 6px rgba(0,180,216,0.06);
+  font-weight:700;
 }
 
-/* Hover states */
-.post-foot .icon-btn:hover,
-.post-foot > div > span:hover,
-.post-foot .share-btn:hover{
-  transform: translateY(-6px) scale(1.02);
+/* friends & notifications */
+.friends .friend { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+.friends img { width:34px; height:34px; border-radius:50%; }
+
+/* main create post */
+.create-post textarea {
+  width:100%;
+  padding:12px 14px 12px 56px;
+  border-radius:10px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.01);
+  color:inherit;
+  resize:vertical;
 }
-
-/* Responsive: compress sizes on small screens */
-@media (max-width:480px){
-  .post-foot{ gap:8px; padding:10px; }
-  .post-foot .icon-btn,
-  .post-foot > div > span,
-  .post-foot .share-btn{ width:46px; height:46px; min-width:46px; font-size:18px; }
-  .post-foot .icon-btn .like-count,
-  .post-foot .icon-btn .comment-count,
-  .post-foot .icon-btn .share-count{ font-size:11px; margin-top:4px; }
+.add-img {
+  position:absolute;
+  left:12px;
+  top:14px;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:var(--accent);
+  border:none;
+  color:#002028;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
 }
+.post-form-row { margin-top:10px; display:flex; gap:12px; align-items:center; }
+.cat-label { display:flex; gap:8px; align-items:center; font-size:13px; color:var(--muted); }
+.preview { display:none; max-width:100%; margin-top:8px; border-radius:8px; }
 
-/* keep other definitions intact below (unchanged) */
+/* feed list & post card */
+.feed-list { margin-top:12px; display:flex; flex-direction:column; gap:12px; max-width:640px; margin-left:auto; margin-right:auto; }
+.post { overflow:hidden; border-radius:12px; padding:0; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); border:1px solid rgba(255,255,255,0.02); }
+.post-head { display:flex; gap:12px; align-items:center; padding:12px; }
+.post-head img { width:44px; height:44px; border-radius:50%; }
+.post-body { padding:12px; color:inherit; }
+.post-body img { width:100%; max-height:380px; object-fit:cover; border-radius:8px; margin-top:10px; display:block; }
 
-/* right side */
-.right .muted{ color:rgba(255,255,255,0.5); font-size:13px; }
-.card-head{ display:flex; justify-content:space-between; align-items:center; }
-.linkbtn{ background:transparent; border:0; color:inherit; cursor:pointer; font-size:13px; }
+/* action bar (horizontal) */
+.post-foot { padding:12px; border-top:1px solid rgba(255,255,255,0.02); display:flex; align-items:center; gap:12px; }
+.actions-row { display:flex; gap:12px; align-items:center; }
+.icon-btn {
+  width:56px; height:56px; min-width:56px; border-radius:50%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); cursor:pointer;
+  color:inherit; font-size:18px;
+}
+.icon-btn .count { font-size:12px; color:var(--muted); margin-top:6px; }
+
+/* right sidebar */
+.right .card { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.0)); }
 
 /* footer */
-.footer{ text-align:center; padding:18px 0; color:rgba(255,255,255,0.45); font-size:13px; }
+.footer { text-align:center; padding:18px 0; color:rgba(255,255,255,0.45); font-size:13px; margin-top:12px; }
 
-/* overlay for drawer */
-.overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:40; opacity:0; transition:opacity .18s ease; }
-
-/* SIDEBAR behavior for mobile: hidden by default */
-.sidebar{ transform:translateX(0); transition: transform .22s cubic-bezier(.2,.9,.2,1); z-index:50; }
-
-/* Default (desktop) looks */
-body:not(.theme-light) .card{ background: rgba(255,255,255,0.03); }
-body.theme-light .card{ background:var(--card-light); box-shadow: 0 1px 0 rgba(16,24,40,0.04) inset; }
-
-/* Responsive adjustments */
-@media (max-width: 980px){
-  .grid{ grid-template-columns: 1fr; }
-  .left{ order:2; }
-  .main{ order:1; }
-  .right{ order:3; }
-
-  .search{ display:none; }
-  .username{ display:none; }
-  .hamburger{ display:inline-flex; }
-
-  /* Make sidebar a drawer */
-  .sidebar{
-    position:fixed; left:0; top:0; bottom:0; width:280px; transform:translateX(-110%); background:var(--panel-dark); padding:18px; overflow:auto;
-    box-shadow: 8px 0 36px rgba(0,0,0,0.6); border-radius:0 12px 12px 0;
-    transition: transform .22s cubic-bezier(.2,.9,.2,1);
+/* mobile */
+@media (max-width: 980px) {
+  .grid { grid-template-columns: 1fr; }
+  .center-search { display:none; }
+  .hamburger { display:inline-flex; }
+  .sidebar {
+    position: fixed; left:0; top:0; bottom:0; width:300px; transform: translateX(-110%); padding:18px; z-index:60; 
+    background: linear-gradient(180deg, rgba(10,16,28,0.98), rgba(7,10,16,0.98));
+    transition: transform .22s ease;
   }
-  /* when drawer open */
-  body.drawer-open .sidebar{ transform:translateX(0); }
-  body.drawer-open .overlay{ display:block; opacity:1; }
-
-  /* Reduce spacing inside cards for mobile */
-  .card{ padding:12px; border-radius:10px; }
-
-  /* ensure overlay above other elements but under sidebar */
-  .overlay{ z-index:45; }
-  .sidebar{ z-index:50; }
-
-  /* keep right widgets stacked nicely */
-  .right{ margin-top:8px; }
+  body.drawer-open .sidebar { transform: translateX(0); }
+  body.drawer-open .overlay { display:block; opacity:1; }
+  .search { width: 90%; }
+  .feed-list { margin: 12px 0; }
 }
 
-/* small screens: tighten UI */
-@media (max-width:420px){
-  .btn{ padding:6px 8px; font-size:13px; }
-  .logo{ font-size:18px; }
-  .user img{ width:32px; height:32px; }
-}
-.hidden {
-  display: none;
-}
-.clickable {
-  cursor: pointer;
-  transition: 0.2s;
-}
-.clickable:hover {
-  color: var(--accent, #007bff);
-  text-decoration: underline;
-}
-.hidden {
-  display: none !important;
-}
-.unfollow-btn:hover {
-  opacity: 0.9;
-  transform: scale(1.02);
-  transition: 0.15s ease;
-}
+/* utilities */
+.hidden { display:none !important; }
+.muted { color:var(--muted); font-size:13px; }
+.help-muted { color:var(--muted); font-size:13px; }
+.linkbtn { background:transparent; border:0; color:inherit; cursor:pointer; }
 
-.topbar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.center-search {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.top-right {
-  margin-left: auto;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.main .search {
-  background: var(--glass);
-  padding: 10px 14px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.main .search input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: inherit;
-  font-size: 15px;
-}
-
-#feed-container {
-  max-width: 600px;
-  margin: 0 auto;    
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;       
-}
-
-#feed .post {
-  width: 100%;       
-  box-sizing: border-box;
-}
-.right .card {
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 14px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.03);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.25) inset;
-  flex: 1;
-}
-
-.right {
-  display: flex;
-  flex-direction: column;
-  gap: 12px; /* space between cards */
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 220px 1fr 300px; /* left nav | main | right sidebar */
-  gap: 14px;
-}
+/* theme light small adjustments */
+body.theme-light .card { background: #ffffff; color: var(--text-light); box-shadow: 0 1px 0 rgba(16,24,40,0.04) inset; }
