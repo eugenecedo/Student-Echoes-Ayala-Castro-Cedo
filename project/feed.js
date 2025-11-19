@@ -808,7 +808,7 @@
     openModal({ title: 'Notifications', html, confirmText:'Close', cancelText:'' });
   }
 
-  function initSideIcons(){
+   function initSideIcons(){
     if(!sideIconsRoot) return;
     const map = {
       'btn-home': () => setActiveTab('feed'),
@@ -818,7 +818,8 @@
       'btn-explore': () => setActiveTab('categories'),
       'btn-heart': () => setActiveTab('trending'),
       'btn-add': () => { setActiveTab('write'); },
-      'btn-avatar': () => setActiveTab('profile'),
+      // Make sidebar profile button open the profile in edit mode
+      'btn-avatar': () => { setActiveTab('profile'); renderProfile(true); },
       'btn-menu': () => { document.body.classList.toggle('drawer-open'); },
       'btn-grid': () => setActiveTab('trending')
     };
@@ -835,6 +836,23 @@
     updateSideBadges();
   }
 
+ function initProfileIconShortcut() {
+  const profileIcon = document.getElementById('profile-icon');
+  if (profileIcon) {
+    profileIcon.style.cursor = "pointer";
+    profileIcon.tabIndex = 0;
+    profileIcon.addEventListener('click', () => {
+      setActiveTab('profile');
+      renderProfile(true);
+    });
+    profileIcon.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        setActiveTab('profile');
+        renderProfile(true);
+      }
+    });
+  }
+}
   // keyboard shortcut to open write editor: Cmd/Ctrl+K (or Ctrl+K)
   document.addEventListener('keydown', (e) => {
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -842,6 +860,7 @@
       setActiveTab('write');
     }
   });
+
 
   // theme & init
   function initTheme(){
@@ -863,9 +882,11 @@
     renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
     initNavAccessibility();
     restoreTabFromHashOrLast();
-    initSideIcons(); // new wiring
+    initSideIcons();       // keep this
+    initProfileIconShortcut(); // <- ADD THIS LINE just before toast
     toast('Welcome back!');
   }
+
 
   function renderCommunities(){
     const el = document.getElementById('communities-list');
