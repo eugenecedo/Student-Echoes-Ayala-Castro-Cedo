@@ -1,6 +1,10 @@
-// feed.js - Full app script (replace your existing feed.js with this file).
-// Polished UI: side-icons, minimalist action buttons, modal, lightbox, toasts, small animations.
-// Keeps previous features and wiring.
+// feed.js - Full app script with the requested "do all" enhancements:
+// - side-icons pinned to the hamburger (inside header)
+// - SVG icons replace emojis
+// - action buttons icons-only (accessible labels via sr-only)
+// - micro-animations (badge pulse, hover micro-animations)
+// - improved accessibility (aria labels, focus outlines, modal focus trap)
+// - all features preserved (posts, categories, notifications, write, etc.)
 
 (() => {
   const KEY = {
@@ -80,6 +84,17 @@
   function timeAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<10) return 'just now'; if(s<60) return s+'s'; const m=Math.floor(s/60); if(m<60) return m+'m'; const h=Math.floor(m/60); if(h<24) return h+'h'; const d=Math.floor(h/24); if(d<7) return d+'d'; return new Date(ts).toLocaleDateString(); }
   function debounce(fn, wait=220){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
+  // small svg icon helpers (returns inline SVG string)
+  function svgLike(fill = 'none', stroke = 'currentColor') {
+    return `<svg viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.69l-1.06-1.08a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+  }
+  function svgComment() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`;
+  }
+  function svgShare() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
+  }
+
   // -- toast (small notification) --
   function toast(message, opts = {}) {
     if(!toastRoot) return;
@@ -94,25 +109,33 @@
     const timeout = opts.timeout || 3500;
     setTimeout(()=> {
       div.classList.remove('show');
-      setTimeout(()=> div.remove(), 200);
+      setTimeout(()=> div.remove(), 220);
     }, timeout);
   }
 
   // -- modal (accessible, returns promise) --
+  // includes focus trap and restores focus when closed
   function openModal({ title = '', html = '', input = false, placeholder = '', confirmText = 'OK', cancelText = 'Cancel', width = 720 } = {}) {
     return new Promise((resolve) => {
+      const prevFocus = document.activeElement;
+
       // backdrop
       const backdrop = document.createElement('div');
       backdrop.className = 'modal-backdrop';
       backdrop.style.zIndex = 1100;
+
       // modal box
       const box = document.createElement('div');
       box.className = 'modal';
       box.style.maxWidth = width + 'px';
+      box.setAttribute('role','dialog');
+      box.setAttribute('aria-modal','true');
+      box.setAttribute('aria-label', title || 'Dialog');
+
       box.innerHTML = `
         <div class="modal-head">
           <strong>${escapeHtml(title)}</strong>
-          <div><button class="btn small modal-close" aria-label="Close">✕</button></div>
+          <div><button class="btn small modal-close" aria-label="Close dialog">✕</button></div>
         </div>
         <div class="modal-body">${html || ''}</div>
         <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
@@ -120,33 +143,22 @@
           <button class="btn primary modal-confirm">${escapeHtml(confirmText)}</button>
         </div>
       `;
-      // if input required, add a textarea
+
+      // optional textarea input
       if(input) {
-        const inp = document.createElement('textarea');
-        inp.placeholder = placeholder || '';
-        inp.style.width = '100%';
-        inp.style.minHeight = '120px';
-        inp.style.marginTop = '8px';
+        const ta = document.createElement('textarea');
+        ta.placeholder = placeholder || '';
+        ta.style.width = '100%';
+        ta.style.minHeight = '120px';
+        ta.style.marginTop = '8px';
         const body = box.querySelector('.modal-body');
-        body.insertBefore(inp, body.firstChild);
-        setTimeout(()=> inp.focus(), 40);
+        body.insertBefore(ta, body.firstChild);
+        setTimeout(()=> ta.focus(), 40);
       } else {
-        // focus first focusable element
         setTimeout(()=> {
           const t = box.querySelector('button, a, input, textarea, [tabindex]');
           if(t) t.focus();
         }, 40);
-      }
-
-      function cleanup(result) {
-        box.classList.remove('show');
-        backdrop.style.opacity = '0';
-        setTimeout(()=> {
-          backdrop.remove();
-          box.remove();
-          modalRoot.setAttribute('aria-hidden','true');
-        }, 200);
-        resolve(result);
       }
 
       // attach
@@ -158,11 +170,46 @@
         box.classList.add('show');
       });
 
+      // focusable elements for trap
+      function getFocusables(container) {
+        return Array.from(container.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'));
+      }
+
+      const focusables = () => getFocusables(box);
+      function trapFocus(e) {
+        if(e.key === 'Tab') {
+          const f = focusables();
+          if(f.length === 0) { e.preventDefault(); return; }
+          const first = f[0];
+          const last = f[f.length - 1];
+          if(e.shiftKey) {
+            if(document.activeElement === first) { e.preventDefault(); last.focus(); }
+          } else {
+            if(document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        }
+      }
+
+      function cleanup(result) {
+        document.removeEventListener('keydown', trapFocus);
+        document.removeEventListener('keydown', onKeyEscape);
+        box.classList.remove('show');
+        backdrop.style.opacity = '0';
+        setTimeout(()=> {
+          backdrop.remove();
+          box.remove();
+          modalRoot.setAttribute('aria-hidden','true');
+          try { if(prevFocus && prevFocus.focus) prevFocus.focus(); } catch(e){}
+        }, 220);
+        resolve(result);
+      }
+
       // events
       box.querySelector('.modal-close').addEventListener('click', ()=> cleanup(null));
       const cancel = box.querySelector('.modal-cancel');
       if(cancel) cancel.addEventListener('click', ()=> cleanup(null));
-      box.querySelector('.modal-confirm').addEventListener('click', ()=> {
+      const confirm = box.querySelector('.modal-confirm');
+      if(confirm) confirm.addEventListener('click', ()=> {
         if(input) {
           const val = box.querySelector('textarea').value;
           cleanup(val);
@@ -170,15 +217,9 @@
       });
 
       backdrop.addEventListener('click', ()=> cleanup(null));
-      // Escape
-      function onKey(e) { if(e.key === 'Escape') cleanup(null); }
-      document.addEventListener('keydown', onKey);
-      // cleanup also removes listener
-      const orig = cleanup;
-      cleanup = (r) => {
-        document.removeEventListener('keydown', onKey);
-        orig(r);
-      };
+      function onKeyEscape(e) { if(e.key === 'Escape') cleanup(null); }
+      document.addEventListener('keydown', onKeyEscape);
+      document.addEventListener('keydown', trapFocus);
     });
   }
 
@@ -219,7 +260,7 @@
     categories.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; postCategorySelect.appendChild(o); });
   }
 
-  // Minimalist renderFeed (inline action controls)
+  // Minimalist renderFeed: icons (SVG) in action buttons, icon-only visual with sr-only accessible labels
   function renderFeed(){
     if(!feedEl) return;
     const q = (globalSearch && globalSearch.value || '').trim().toLowerCase();
@@ -243,29 +284,29 @@
             <div style="font-weight:600">${escapeHtml(post.author.name)}</div>
             <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(post.createdAt||Date.now()))} • <strong>${escapeHtml(getCategoryName(post.categoryId))}</strong></div>
           </div>
-          <div style="font-size:18px;opacity:.6"><button class="icon-btn menu-btn" data-id="${post.id}" title="Post menu">•••</button></div>
+          <div style="font-size:18px;opacity:.6"><button class="icon-btn menu-btn" data-id="${post.id}" title="Post menu" aria-label="Open post actions">•••</button></div>
         </div>
         <div class="post-body">
           <div>${escapeHtml(post.text)}</div>
           ${post.image?`<img src="${escapeHtml(post.image)}" alt="post image" loading="lazy">`:''}
         </div>
         <div class="post-foot">
-          <div class="actions-row">
-            <button class="action-inline like-btn ${post.liked?'liked':''}" data-id="${post.id}" aria-pressed="${post.liked? 'true':'false'}" title="Like">
-              <span class="ai-icon">❤️</span>
-              <span class="ai-label">Like</span>
+          <div class="actions-row" role="toolbar" aria-label="Post actions">
+            <button class="action-inline like-btn ${post.liked?'liked':''}" data-id="${post.id}" aria-pressed="${post.liked? 'true':'false'}" aria-label="Like post">
+              ${svgLike(post.liked ? 'currentColor' : 'none')}
+              <span class="sr-only">Like</span>
               <span class="count" aria-hidden="true">${post.likes}</span>
             </button>
 
-            <button class="action-inline comment-btn" data-id="${post.id}" title="Comment">
-              <span class="ai-icon">💬</span>
-              <span class="ai-label">Comment</span>
+            <button class="action-inline comment-btn" data-id="${post.id}" aria-label="Comment on post">
+              ${svgComment()}
+              <span class="sr-only">Comment</span>
               <span class="count" aria-hidden="true">${post.comments}</span>
             </button>
 
-            <button class="action-inline share-btn" data-id="${post.id}" title="Share">
-              <span class="ai-icon">📤</span>
-              <span class="ai-label">Share</span>
+            <button class="action-inline share-btn" data-id="${post.id}" aria-label="Share post">
+              ${svgShare()}
+              <span class="sr-only">Share</span>
               <span class="count" aria-hidden="true">${post.shares}</span>
             </button>
           </div>
@@ -280,11 +321,11 @@
       openImageLightbox(src, e.currentTarget.getAttribute('alt') || '');
     });
 
-    // like button handler (existing logic)
+    // like button handler
     feedEl.querySelectorAll('.like-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       toggleLike(id);
-      // subtle feedback
+      // feedback: small pulse on badge and toggled color
       b.classList.add('liked');
       setTimeout(()=> b.classList.remove('liked'), 700);
     });
@@ -317,6 +358,8 @@
     saveState();
     renderFeed();
     updateSideBadges();
+    // pulse notification badge to show activity
+    if(badgeLikesEl) { badgeLikesEl.classList.add('pulse'); setTimeout(()=> badgeLikesEl.classList.remove('pulse'), 1400); }
   }
 
   function sharePost(id){
@@ -599,7 +642,7 @@
     }
   }
 
-  // write story (keeps simple inline editor in tab; Write action opens the tab)
+  // write story (simple inline editor)
   function renderWrite(){
     const el = document.getElementById('write-content');
     if(!el) return;
@@ -743,6 +786,8 @@
       if(notifications && notifications.length > 0){
         badgeNotifsEl.textContent = notifications.length > 9 ? '9+' : String(notifications.length);
         badgeNotifsEl.style.display = 'inline-flex';
+        badgeNotifsEl.classList.add('pulse');
+        setTimeout(()=> badgeNotifsEl.classList.remove('pulse'), 1400);
       } else {
         badgeNotifsEl.style.display = 'none';
       }
@@ -784,6 +829,8 @@
         e.preventDefault();
         try { map[id](); } catch(err){ console.error('side icon handler error', err); }
       });
+      // keyboard accessibility
+      el.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); map[id](); } });
     });
     updateSideBadges();
   }

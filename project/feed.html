@@ -8,7 +8,7 @@
 </head>
 <body>
 <div id="app" class="container">
-  <header class="topbar" role="banner">
+  <header class="topbar" role="banner" aria-label="Top bar" style="position:relative;">
     <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -29,7 +29,7 @@
 
     <div class="top-right">
       <button id="theme-toggle" class="btn small" aria-pressed="false">Light</button>
-      <div class="user" title="Your profile" role="button" tabindex="0">
+      <div class="user" title="Your profile" role="button" tabindex="0" aria-label="Open profile">
         <img src="https://i.pravatar.cc/36?img=7" alt="Your avatar" />
         <span class="username">Marjohn</span>
       </div>
@@ -44,8 +44,20 @@
       <nav class="navcard">
         <ul id="nav-list">
           <li class="active" data-tab="feed" role="tab" tabindex="0">Feed</li>
+          <li data-tab="news" role="tab" tabindex="-1">News</li>
           <li data-tab="profile" role="tab" tabindex="-1">Profile</li>
-          <li data-tab="write" role="tab" tabindex="-1">Write a Story</li>
+
+          <li data-tab="write" role="tab" tabindex="-1">
+            <button class="nav-write" aria-label="Write a Story" title="Write a Story (Cmd/Ctrl+K)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" style="margin-right:8px">
+                <path d="M3 21v-3l11-11 3 3L6 21H3z"></path>
+                <path d="M14 7l3 3"></path>
+              </svg>
+              <span class="nav-write-label">Write</span>
+              <span class="kbd muted nav-write-kbd">⌘K</span>
+            </button>
+          </li>
+
           <li data-tab="mystories" role="tab" tabindex="-1">My Stories</li>
           <li data-tab="categories" role="tab" tabindex="-1">Categories</li>
           <li data-tab="trending" role="tab" tabindex="-1">Trending</li>

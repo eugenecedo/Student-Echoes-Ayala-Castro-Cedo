@@ -1,15 +1,3 @@
-/* feed.css
-   Full stylesheet for the Social Dashboard demo.
-   Includes:
-   - base theme variables (dark + light)
-   - layout (topbar, grid, sidebars)
-   - side-icons (fixed quick-actions bar positioned close to the container)
-   - minimalist inline action buttons for posts (Like / Comment / Share)
-   - modal, lightbox and toast styles
-   - responsive tweaks
-*/
-
-/* Variables */
 :root{
   --bg:#0b1220;
   --panel:#0f1720;
@@ -38,6 +26,19 @@ body {
   line-height:1.3;
 }
 
+/* Accessible visually-hidden helper */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 /* Light theme */
 body.theme-light {
   background: var(--bg-light);
@@ -53,6 +54,7 @@ body.theme-light {
   align-items:center;
   gap:12px;
   margin-bottom:16px;
+  position:relative;
 }
 .brand .logo {
   font-weight:800;
@@ -62,7 +64,7 @@ body.theme-light {
   padding:6px 10px;
   border-radius:8px;
   background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  box-shadow: 0 2px 12px rgba(0,0,0,0.45) inset;
+  box-shadow: 0 1px 6px rgba(2,6,23,0.15) inset;
 }
 .center-search { flex:1; display:flex; justify-content:center; }
 .search {
@@ -75,7 +77,7 @@ body.theme-light {
   border-radius:999px;
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.03);
-  box-shadow: 0 6px 22px rgba(2,6,23,0.6);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.35);
 }
 .search .icon { width:18px; height:18px; opacity:0.9; color:var(--muted); }
 .search input {
@@ -110,13 +112,13 @@ body.theme-light {
 /* layout grid */
 .grid { display:grid; grid-template-columns: 220px 1fr 300px; gap:14px; align-items:start; }
 
-/* cards */
+/* cards (softer, flatter look) */
 .card {
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border-radius:12px;
   padding:14px;
-  box-shadow: 0 6px 24px rgba(2,6,23,0.5);
-  border: 1px solid rgba(255,255,255,0.02);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.18);
+  border: 1px solid rgba(255,255,255,0.01);
 }
 .card h4 { margin:0 0 8px 0; font-size:15px; }
 
@@ -157,59 +159,6 @@ body.theme-light {
   font-size:12px;
 }
 
-/* side icons bar (positioned close to the centered container) */
-.side-icons {
-  position: fixed;
-  /* align near container left edge + small offset so it sits just outside the sidebar */
-  left: calc((100% - var(--container-max-width)) / 2 + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  z-index:80;
-  padding:8px;
-  pointer-events:auto;
-}
-.side-icon {
-  width:44px;
-  height:44px;
-  border-radius:10px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
-  border: 1px solid rgba(255,255,255,0.04);
-  color:inherit;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-  transition:transform .12s ease, background .12s ease;
-  position:relative;
-  overflow:hidden;
-}
-.side-icon svg { width:20px; height:20px; }
-.side-icon img { width:28px; height:28px; border-radius:6px; }
-.side-icon:hover { transform: translateX(6px); color: var(--accent); }
-
-/* small badge (notification dot) */
-.badge {
-  position:absolute;
-  top:6px;
-  right:6px;
-  min-width:10px;
-  height:10px;
-  padding:0 4px;
-  border-radius:999px;
-  background:#ef4444;
-  color:white;
-  font-size:10px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  border: 2px solid rgba(0,0,0,0.12);
-  line-height:1;
-}
-.badge.small { width:9px; height:9px; min-width:9px; padding:0; border-radius:50%; }
-
 /* friends & notifications */
 .friends .friend { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
 .friends img { width:34px; height:34px; border-radius:50%; }
@@ -244,19 +193,61 @@ body.theme-light {
 .cat-label { display:flex; gap:8px; align-items:center; font-size:13px; color:var(--muted); }
 .preview { display:none; max-width:100%; margin-top:8px; border-radius:8px; }
 
-/* feed list & post card */
-.feed-list { margin-top:12px; display:flex; flex-direction:column; gap:12px; max-width:640px; margin-left:auto; margin-right:auto; }
-.post { overflow:hidden; border-radius:12px; padding:0; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); border:1px solid rgba(255,255,255,0.02); }
-.post-head { display:flex; gap:12px; align-items:center; padding:12px; }
-.post-head img { width:44px; height:44px; border-radius:50%; }
-.post-body { padding:12px; color:inherit; }
-.post-body img { width:100%; max-height:380px; object-fit:cover; border-radius:8px; margin-top:10px; display:block; }
+/* --- FEED LAYOUT TWEAKS --- */
+.feed-list {
+  margin-top: 12px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  max-width: 720px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 8px;
+}
 
-/* Minimal inline action buttons (reference Image 2) */
-.post-foot { padding:12px; border-top:1px solid rgba(255,255,255,0.02); display:flex; align-items:center; justify-content:flex-start; gap:12px; }
-.actions-row { display:flex; gap:18px; align-items:center; }
+/* Post card: softer, subtle hover, stable layout */
+.post {
+  overflow:hidden;
+  border-radius:12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+  border:1px solid rgba(255,255,255,0.02);
+  transition: transform .12s ease, box-shadow .12s ease;
+  will-change: transform;
+}
+.post:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(2,6,23,0.18);
+}
 
-/* Minimal inline action button */
+/* consistent padding sections */
+.post-head { display:flex; gap:12px; align-items:center; padding:14px; }
+.post-body { padding: 0 14px 14px 14px; color:inherit; }
+.post-foot { padding:12px 14px 16px 14px; border-top:1px solid rgba(255,255,255,0.02); display:flex; align-items:center; gap:12px; }
+
+/* Avatar */
+.post-head img { width:44px; height:44px; border-radius:50%; object-fit:cover; }
+
+/* Meta / category */
+.post-head .muted { font-size:12px; color:var(--muted); }
+
+/* paragraphs formatting for post text */
+.post-body p { margin:0 0 10px 0; line-height:1.5; color:inherit; }
+
+/* Stabilize images */
+.img-wrap {
+  width:100%;
+  aspect-ratio: 16 / 9;
+  overflow:hidden;
+  border-radius:8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+  margin-top:10px;
+}
+.img-wrap img { width:100%; height:100%; object-fit:cover; display:block; border-radius:8px; }
+.post-body img { max-height:480px; width:100%; height:auto; object-fit:cover; border-radius:8px; }
+
+/* Actions row */
+.actions-row { display:flex; gap:12px; align-items:center; }
 .action-inline {
   background: transparent;
   border: 0;
@@ -266,51 +257,20 @@ body.theme-light {
   gap: 8px;
   color: var(--muted);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   transition: background .12s ease, color .12s ease, transform .06s ease;
-}
-
-/* icon inside the button */
-.action-inline .ai-icon {
-  font-size: 18px;
-  line-height: 1;
-  display:inline-flex;
-  align-items:center;
+  min-width:48px;
   justify-content:center;
-  opacity: .95;
 }
+.action-inline svg { width:18px; height:18px; }
+.action-inline .ai-vis { display:inline-block; margin-left:4px; font-size:13px; color:var(--muted); }
+.action-inline .count { font-size:12px; color:var(--muted); margin-left:6px; opacity:.85; }
+.action-inline:focus { outline: 3px solid rgba(0,180,216,0.12); outline-offset:4px; border-radius:8px; }
+.action-inline:hover { color: var(--accent); background: rgba(0,180,216,0.04); transform: translateY(-1px); }
+.action-inline.liked { color: var(--accent); transform:none; }
 
-/* label text */
-.action-inline .ai-label {
-  font-size: 13px;
-  color: var(--muted);
-  display:inline-block;
-}
-
-/* numeric count (muted) */
-.action-inline .count {
-  font-size: 12px;
-  color: var(--muted);
-  margin-left: 4px;
-  opacity: .85;
-}
-
-/* hover and active visual */
-.action-inline:hover {
-  color: var(--accent);
-  background: rgba(0,180,216,0.04);
-  transform: translateY(-1px);
-}
-.action-inline:active { transform: translateY(0); }
-
-/* liked state */
-.action-inline.liked {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* keep the old circular .icon-btn available for other UI */
+/* keep the old circular .icon-btn available */
 .icon-btn {
   width:56px; height:56px; min-width:56px; border-radius:50%;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -325,52 +285,18 @@ body.theme-light {
 /* footer */
 .footer { text-align:center; padding:18px 0; color:rgba(255,255,255,0.45); font-size:13px; margin-top:12px; }
 
-/* modal and lightbox */
-.modal-backdrop {
-  position: fixed;
-  left:0; right:0; top:0; bottom:0;
-  background: rgba(2,6,23,0.5);
-  opacity:0;
-  transition: opacity .18s ease;
-  z-index:1050;
-}
-.modal {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(.98);
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border-radius:12px;
-  padding:14px;
-  width: 92%;
-  max-width: 720px;
-  box-shadow: 0 18px 60px rgba(2,6,23,0.6);
-  opacity:0;
-  transition: opacity .18s ease, transform .18s ease;
-  z-index:1100;
-}
+/* modal / lightbox */
+.modal-backdrop { position: fixed; left:0; right:0; top:0; bottom:0; background: rgba(2,6,23,0.5); opacity:0; transition: opacity .18s ease; z-index:1050; }
+.modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.98); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; padding:14px; width: 92%; max-width: 720px; box-shadow: 0 12px 40px rgba(2,6,23,0.28); opacity:0; transition: opacity .18s ease, transform .18s ease; z-index:1100; }
 .modal.show { opacity:1; transform: translate(-50%, -50%) scale(1); }
 .modal .modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
 .modal .modal-body { margin-top:12px; max-height:60vh; overflow:auto; }
 .modal .modal-close { background:transparent; border:0; cursor:pointer; }
-
-/* lightbox image */
 .modal .lightbox-img { max-width:100%; max-height:70vh; display:block; margin:12px auto; border-radius:8px; }
 
 /* toast */
 #toast-container { position: fixed; right: 20px; bottom: 20px; z-index:1200; display:flex; flex-direction:column; gap:8px; width:auto; max-width:360px; pointer-events:none; }
-.toast {
-  background: rgba(2,6,23,0.9);
-  color: #e6eef6;
-  padding:10px 12px;
-  border-radius:8px;
-  box-shadow: 0 6px 30px rgba(2,6,23,0.6);
-  opacity:0;
-  transform: translateY(6px);
-  transition: opacity .18s ease, transform .18s ease;
-  pointer-events:auto;
-  font-size:13px;
-}
+.toast { background: rgba(2,6,23,0.9); color: #e6eef6; padding:10px 12px; border-radius:8px; box-shadow: 0 6px 30px rgba(2,6,23,0.6); opacity:0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease; pointer-events:auto; font-size:13px; }
 .toast.show { opacity:1; transform: translateY(0); }
 
 /* mobile */
@@ -378,29 +304,19 @@ body.theme-light {
   .grid { grid-template-columns: 1fr; }
   .center-search { display:none; }
   .hamburger { display:inline-flex; }
-  .sidebar {
-    position: fixed; left:0; top:0; bottom:0; width:300px; transform: translateX(-110%); padding:18px; z-index:60; 
-    background: linear-gradient(180deg, rgba(10,16,28,0.98), rgba(7,10,16,0.98));
-    transition: transform .22s ease;
-  }
+  .sidebar { position: fixed; left:0; top:0; bottom:0; width:300px; transform: translateX(-110%); padding:18px; z-index:60; background: linear-gradient(180deg, rgba(10,16,28,0.98), rgba(7,10,16,0.98)); transition: transform .22s ease; }
   body.drawer-open .sidebar { transform: translateX(0); }
   body.drawer-open .overlay { display:block; opacity:1; }
   .search { width: 90%; }
-  .feed-list { margin: 12px 0; }
-
-  /* hide the fixed side icons on small screens to avoid overlap */
-  .side-icons { display:none; }
-
-  /* compact inline action text on small screens */
-  .action-inline .ai-label { display:none; }
-  .action-inline { padding:6px; gap:6px; }
+  .action-inline .ai-vis { display:none; }
+  .action-inline { padding:8px; gap:6px; }
+  .feed-list { padding-left: 12px; }
+  .img-wrap { aspect-ratio: 4 / 3; }
 }
 
-/* fallback for narrow desktops (prevent side icons from going off-screen) */
+/* fallback for narrow desktops */
 @media (max-width: 1400px) {
-  .side-icons {
-    left: 16px;
-  }
+  .feed-list { padding-left: 24px; }
 }
 
 /* utilities */
@@ -413,8 +329,3 @@ body.theme-light {
 body.theme-light .card { background: #ffffff; color: var(--text-light); box-shadow: 0 1px 0 rgba(16,24,40,0.04) inset; }
 body.theme-light .search { background: rgba(16,24,40,0.02); border-color: rgba(16,24,40,0.04); color:var(--text-light); }
 body.theme-light .nav-write { background: #fff; border-color: rgba(16,24,40,0.04); }
-
-/* small helper: ensure side icons are visually anchored when container is narrower than viewport */
-@media (min-width: calc(var(--container-max-width) + 120px)) {
-  /* nothing needed; default calc left aligns to container */
-}
