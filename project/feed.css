@@ -1,3 +1,15 @@
+/* feed.css
+   Full stylesheet for the Social Dashboard demo.
+   Includes:
+   - base theme variables (dark + light)
+   - layout (topbar, grid, sidebars)
+   - side-icons (fixed quick-actions bar positioned close to the container)
+   - minimalist inline action buttons for posts (Like / Comment / Share)
+   - modal, lightbox and toast styles
+   - responsive tweaks
+*/
+
+/* Variables */
 :root{
   --bg:#0b1220;
   --panel:#0f1720;
@@ -8,10 +20,13 @@
 
   --bg-light:#f5f7fb;
   --text-light:#0b1220;
+
+  --container-max-width: 1200px;
 }
 
-/* Base */
+/* Reset & base */
 * { box-sizing: border-box; }
+html,body { height:100%; }
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
@@ -20,6 +35,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   padding: 18px;
+  line-height:1.3;
 }
 
 /* Light theme */
@@ -29,7 +45,7 @@ body.theme-light {
 }
 
 /* container */
-.container { max-width: 1200px; margin: 0 auto; }
+.container { max-width: var(--container-max-width); margin: 0 auto; }
 
 /* topbar */
 .topbar {
@@ -119,6 +135,81 @@ body.theme-light {
   font-weight:700;
 }
 
+/* compact "Write" nav */
+.nav-write {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.03);
+  padding:8px 10px;
+  border-radius:10px;
+  cursor:pointer;
+  color: inherit;
+  font-weight:600;
+}
+.kbd {
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.02);
+  font-size:12px;
+}
+
+/* side icons bar (positioned close to the centered container) */
+.side-icons {
+  position: fixed;
+  /* align near container left edge + small offset so it sits just outside the sidebar */
+  left: calc((100% - var(--container-max-width)) / 2 + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  z-index:80;
+  padding:8px;
+  pointer-events:auto;
+}
+.side-icon {
+  width:44px;
+  height:44px;
+  border-radius:10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+  border: 1px solid rgba(255,255,255,0.04);
+  color:inherit;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform .12s ease, background .12s ease;
+  position:relative;
+  overflow:hidden;
+}
+.side-icon svg { width:20px; height:20px; }
+.side-icon img { width:28px; height:28px; border-radius:6px; }
+.side-icon:hover { transform: translateX(6px); color: var(--accent); }
+
+/* small badge (notification dot) */
+.badge {
+  position:absolute;
+  top:6px;
+  right:6px;
+  min-width:10px;
+  height:10px;
+  padding:0 4px;
+  border-radius:999px;
+  background:#ef4444;
+  color:white;
+  font-size:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border: 2px solid rgba(0,0,0,0.12);
+  line-height:1;
+}
+.badge.small { width:9px; height:9px; min-width:9px; padding:0; border-radius:50%; }
+
 /* friends & notifications */
 .friends .friend { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
 .friends img { width:34px; height:34px; border-radius:50%; }
@@ -161,9 +252,65 @@ body.theme-light {
 .post-body { padding:12px; color:inherit; }
 .post-body img { width:100%; max-height:380px; object-fit:cover; border-radius:8px; margin-top:10px; display:block; }
 
-/* action bar (horizontal) */
-.post-foot { padding:12px; border-top:1px solid rgba(255,255,255,0.02); display:flex; align-items:center; gap:12px; }
-.actions-row { display:flex; gap:12px; align-items:center; }
+/* Minimal inline action buttons (reference Image 2) */
+.post-foot { padding:12px; border-top:1px solid rgba(255,255,255,0.02); display:flex; align-items:center; justify-content:flex-start; gap:12px; }
+.actions-row { display:flex; gap:18px; align-items:center; }
+
+/* Minimal inline action button */
+.action-inline {
+  background: transparent;
+  border: 0;
+  padding: 6px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: background .12s ease, color .12s ease, transform .06s ease;
+}
+
+/* icon inside the button */
+.action-inline .ai-icon {
+  font-size: 18px;
+  line-height: 1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  opacity: .95;
+}
+
+/* label text */
+.action-inline .ai-label {
+  font-size: 13px;
+  color: var(--muted);
+  display:inline-block;
+}
+
+/* numeric count (muted) */
+.action-inline .count {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 4px;
+  opacity: .85;
+}
+
+/* hover and active visual */
+.action-inline:hover {
+  color: var(--accent);
+  background: rgba(0,180,216,0.04);
+  transform: translateY(-1px);
+}
+.action-inline:active { transform: translateY(0); }
+
+/* liked state */
+.action-inline.liked {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* keep the old circular .icon-btn available for other UI */
 .icon-btn {
   width:56px; height:56px; min-width:56px; border-radius:50%;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -177,6 +324,54 @@ body.theme-light {
 
 /* footer */
 .footer { text-align:center; padding:18px 0; color:rgba(255,255,255,0.45); font-size:13px; margin-top:12px; }
+
+/* modal and lightbox */
+.modal-backdrop {
+  position: fixed;
+  left:0; right:0; top:0; bottom:0;
+  background: rgba(2,6,23,0.5);
+  opacity:0;
+  transition: opacity .18s ease;
+  z-index:1050;
+}
+.modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(.98);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:12px;
+  padding:14px;
+  width: 92%;
+  max-width: 720px;
+  box-shadow: 0 18px 60px rgba(2,6,23,0.6);
+  opacity:0;
+  transition: opacity .18s ease, transform .18s ease;
+  z-index:1100;
+}
+.modal.show { opacity:1; transform: translate(-50%, -50%) scale(1); }
+.modal .modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.modal .modal-body { margin-top:12px; max-height:60vh; overflow:auto; }
+.modal .modal-close { background:transparent; border:0; cursor:pointer; }
+
+/* lightbox image */
+.modal .lightbox-img { max-width:100%; max-height:70vh; display:block; margin:12px auto; border-radius:8px; }
+
+/* toast */
+#toast-container { position: fixed; right: 20px; bottom: 20px; z-index:1200; display:flex; flex-direction:column; gap:8px; width:auto; max-width:360px; pointer-events:none; }
+.toast {
+  background: rgba(2,6,23,0.9);
+  color: #e6eef6;
+  padding:10px 12px;
+  border-radius:8px;
+  box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+  opacity:0;
+  transform: translateY(6px);
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events:auto;
+  font-size:13px;
+}
+.toast.show { opacity:1; transform: translateY(0); }
 
 /* mobile */
 @media (max-width: 980px) {
@@ -192,6 +387,20 @@ body.theme-light {
   body.drawer-open .overlay { display:block; opacity:1; }
   .search { width: 90%; }
   .feed-list { margin: 12px 0; }
+
+  /* hide the fixed side icons on small screens to avoid overlap */
+  .side-icons { display:none; }
+
+  /* compact inline action text on small screens */
+  .action-inline .ai-label { display:none; }
+  .action-inline { padding:6px; gap:6px; }
+}
+
+/* fallback for narrow desktops (prevent side icons from going off-screen) */
+@media (max-width: 1400px) {
+  .side-icons {
+    left: 16px;
+  }
 }
 
 /* utilities */
@@ -202,3 +411,10 @@ body.theme-light {
 
 /* theme light small adjustments */
 body.theme-light .card { background: #ffffff; color: var(--text-light); box-shadow: 0 1px 0 rgba(16,24,40,0.04) inset; }
+body.theme-light .search { background: rgba(16,24,40,0.02); border-color: rgba(16,24,40,0.04); color:var(--text-light); }
+body.theme-light .nav-write { background: #fff; border-color: rgba(16,24,40,0.04); }
+
+/* small helper: ensure side icons are visually anchored when container is narrower than viewport */
+@media (min-width: calc(var(--container-max-width) + 120px)) {
+  /* nothing needed; default calc left aligns to container */
+}

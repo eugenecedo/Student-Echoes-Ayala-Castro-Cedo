@@ -1,5 +1,6 @@
-// feed.js - Polished: visual/UI improvements, modal, lightbox, toasts, small animations.
-// Replace previous feed.js with this file. It keeps all previous app features.
+// feed.js - Full app script (replace your existing feed.js with this file).
+// Polished UI: side-icons, minimalist action buttons, modal, lightbox, toasts, small animations.
+// Keeps previous features and wiring.
 
 (() => {
   const KEY = {
@@ -58,6 +59,11 @@
   const categoriesContent = document.getElementById('categories-content');
   const globalSearch = document.getElementById('global-search');
   const navList = document.getElementById('nav-list');
+
+  // side icons
+  const sideIconsRoot = document.getElementById('sideIcons');
+  const badgeNotifsEl = document.getElementById('badge-notifs');
+  const badgeLikesEl = document.getElementById('badge-likes');
 
   // modal & toast roots
   const modalRoot = document.getElementById('modal-root');
@@ -195,12 +201,13 @@
   function renderNotifications(){
     if(!notifList) return;
     notifList.innerHTML = '';
-    if(notifications.length===0){ notifList.innerHTML='<div class="muted">No notifications</div>'; return; }
+    if(notifications.length===0){ notifList.innerHTML='<div class="muted">No notifications</div>'; updateSideBadges(); return; }
     notifications.forEach(n=>{
       const row = document.createElement('div'); row.style.display='flex'; row.style.gap='8px'; row.style.marginBottom='8px';
       row.innerHTML = `<img src="${escapeHtml(n.avatar)}" style="width:36px;height:36px;border-radius:50%"/><div><div style="font-weight:600">${escapeHtml(n.text)}</div><div class="muted" style="font-size:12px">${escapeHtml(timeAgo(n.createdAt||Date.now()))}</div></div>`;
       notifList.appendChild(row);
     });
+    updateSideBadges();
   }
 
   function getCategoryName(id){ if(!id) return 'Uncategorized'; const c = categories.find(x=>x.id===id); return c ? c.name : 'Uncategorized'; }
@@ -212,6 +219,7 @@
     categories.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; postCategorySelect.appendChild(o); });
   }
 
+  // Minimalist renderFeed (inline action controls)
   function renderFeed(){
     if(!feedEl) return;
     const q = (globalSearch && globalSearch.value || '').trim().toLowerCase();
@@ -243,34 +251,53 @@
         </div>
         <div class="post-foot">
           <div class="actions-row">
-            <button class="icon-btn like-btn ${post.liked?'liked':''}" data-id="${post.id}" aria-pressed="${post.liked? 'true':'false'}">❤️<span class="count">${post.likes}</span></button>
-            <button class="icon-btn comment-btn" data-id="${post.id}">💬<span class="count">${post.comments}</span></button>
-            <button class="icon-btn share-btn" data-id="${post.id}">📤<span class="count">${post.shares}</span></button>
+            <button class="action-inline like-btn ${post.liked?'liked':''}" data-id="${post.id}" aria-pressed="${post.liked? 'true':'false'}" title="Like">
+              <span class="ai-icon">❤️</span>
+              <span class="ai-label">Like</span>
+              <span class="count" aria-hidden="true">${post.likes}</span>
+            </button>
+
+            <button class="action-inline comment-btn" data-id="${post.id}" title="Comment">
+              <span class="ai-icon">💬</span>
+              <span class="ai-label">Comment</span>
+              <span class="count" aria-hidden="true">${post.comments}</span>
+            </button>
+
+            <button class="action-inline share-btn" data-id="${post.id}" title="Share">
+              <span class="ai-icon">📤</span>
+              <span class="ai-label">Share</span>
+              <span class="count" aria-hidden="true">${post.shares}</span>
+            </button>
           </div>
         </div>
       `;
       feedEl.appendChild(art);
     });
 
-    // events
+    // image lightbox
     feedEl.querySelectorAll('.post-body img').forEach(img => img.onclick = (e) => {
       const src = e.currentTarget.getAttribute('src');
       openImageLightbox(src, e.currentTarget.getAttribute('alt') || '');
     });
+
+    // like button handler (existing logic)
     feedEl.querySelectorAll('.like-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       toggleLike(id);
-      // small animation
+      // subtle feedback
       b.classList.add('liked');
       setTimeout(()=> b.classList.remove('liked'), 700);
     });
+
+    // share
     feedEl.querySelectorAll('.share-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       sharePost(id);
     });
+
+    // comment (open modal + increment)
     feedEl.querySelectorAll('.comment-btn').forEach(b => b.onclick = async () => {
       const id = Number(b.dataset.id);
-      // open modal to add comment
       const val = await openModal({ title:'Add a comment', input:true, placeholder:'Write your comment...' });
       if(val && val.trim()){
         posts = posts.map(p => p.id===id ? {...p, comments: (p.comments||0) + 1 } : p);
@@ -279,6 +306,8 @@
         toast('Comment added');
       }
     });
+
+    // post menu
     feedEl.querySelectorAll('.menu-btn').forEach(b => b.onclick = (e) => openPostMenu(e.currentTarget, Number(b.dataset.id)));
   }
 
@@ -287,6 +316,7 @@
     posts = posts.map(p => p.id===id ? {...p, liked: !p.liked, likes: (!p.liked ? p.likes+1 : Math.max(0,p.likes-1)) } : p);
     saveState();
     renderFeed();
+    updateSideBadges();
   }
 
   function sharePost(id){
@@ -569,7 +599,7 @@
     }
   }
 
-  // write story
+  // write story (keeps simple inline editor in tab; Write action opens the tab)
   function renderWrite(){
     const el = document.getElementById('write-content');
     if(!el) return;
@@ -706,6 +736,66 @@
     if(e.key === 'n') { e.preventDefault(); postText && postText.focus(); }
   });
 
+  // side-icons wiring and helpers (new)
+  function updateSideBadges(){
+    // notifications badge
+    if(badgeNotifsEl){
+      if(notifications && notifications.length > 0){
+        badgeNotifsEl.textContent = notifications.length > 9 ? '9+' : String(notifications.length);
+        badgeNotifsEl.style.display = 'inline-flex';
+      } else {
+        badgeNotifsEl.style.display = 'none';
+      }
+    }
+    // simple likes badge: show presence indicator
+    if(badgeLikesEl){
+      const totalLikes = posts.reduce((s,p)=>s+(p.likes||0),0);
+      if(totalLikes > 0){
+        badgeLikesEl.style.display = 'inline-flex';
+      } else {
+        badgeLikesEl.style.display = 'none';
+      }
+    }
+  }
+
+  function showNotificationsModal(){
+    const html = notifications.length === 0 ? `<div class="muted">No notifications</div>` : notifications.map(n => `<div style="display:flex;gap:8px;margin-bottom:10px"><img src="${escapeHtml(n.avatar)}" style="width:36px;height:36px;border-radius:50%"/><div><div style="font-weight:600">${escapeHtml(n.text)}</div><div class="muted" style="font-size:12px">${escapeHtml(timeAgo(n.createdAt||Date.now()))}</div></div></div>`).join('');
+    openModal({ title: 'Notifications', html, confirmText:'Close', cancelText:'' });
+  }
+
+  function initSideIcons(){
+    if(!sideIconsRoot) return;
+    const map = {
+      'btn-home': () => setActiveTab('feed'),
+      'btn-search': () => { globalSearch && globalSearch.focus(); setActiveTab('news'); },
+      'btn-reels': () => setActiveTab('news'),
+      'btn-messenger': () => showNotificationsModal(),
+      'btn-explore': () => setActiveTab('categories'),
+      'btn-heart': () => setActiveTab('trending'),
+      'btn-add': () => { setActiveTab('write'); },
+      'btn-avatar': () => setActiveTab('profile'),
+      'btn-menu': () => { document.body.classList.toggle('drawer-open'); },
+      'btn-grid': () => setActiveTab('trending')
+    };
+    Object.keys(map).forEach(id => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        try { map[id](); } catch(err){ console.error('side icon handler error', err); }
+      });
+    });
+    updateSideBadges();
+  }
+
+  // keyboard shortcut to open write editor: Cmd/Ctrl+K (or Ctrl+K)
+  document.addEventListener('keydown', (e) => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      setActiveTab('write');
+    }
+  });
+
   // theme & init
   function initTheme(){
     try {
@@ -726,6 +816,7 @@
     renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
     initNavAccessibility();
     restoreTabFromHashOrLast();
+    initSideIcons(); // new wiring
     toast('Welcome back!');
   }
 
@@ -736,7 +827,13 @@
   }
 
   // expose debug
-  window.feedApp = { posts, categories, notifications, anonymousPosts, saveState, setActiveTab };
+  window.feedApp = {
+    getPosts: () => posts,
+    getCategories: () => categories,
+    getNotifications: () => notifications,
+    saveState,
+    setActiveTab
+  };
 
   init();
 })();
