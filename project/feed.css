@@ -325,7 +325,29 @@ body.theme-light {
 .help-muted { color:var(--muted); font-size:13px; }
 .linkbtn { background:transparent; border:0; color:inherit; cursor:pointer; }
 
-/* theme light small adjustments */
-body.theme-light .card { background: #ffffff; color: var(--text-light); box-shadow: 0 1px 0 rgba(16,24,40,0.04) inset; }
-body.theme-light .search { background: rgba(16,24,40,0.02); border-color: rgba(16,24,40,0.04); color:var(--text-light); }
-body.theme-light .nav-write { background: #fff; border-color: rgba(16,24,40,0.04); }
+/* Logout button dynamic color based on theme */
+.logout-btn {
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Light background: make logout button red with white text on hover/focus */
+body.theme-light .logout-btn {
+  color: #d32f2f;
+  background: transparent;
+}
+body.theme-light .logout-btn:hover,
+body.theme-light .logout-btn:focus {
+  background: #d32f2f;
+  color: #fff;
+}
+
+/* Dark background: make logout button light red or red background with white text */
+body:not(.theme-light) .logout-btn {
+  color: #ff7675;
+  background: transparent;
+}
+body:not(.theme-light) .logout-btn:hover,
+body:not(.theme-light) .logout-btn:focus {
+  background: #ff7675;
+  color: #222;
+}

@@ -30,12 +30,21 @@
     <div class="top-right">
       <button id="theme-toggle" class="btn small" aria-pressed="false">Light</button>
       <div class="user" title="Your profile" role="button" tabindex="0" aria-label="Open profile">
-      <div class="user">
-      <img id="profile-icon" src="..." alt="Profile" />
-      <span class="username"></span>
-</div>
+        <img id="profile-icon" src="..." alt="Profile" />
+        <span class="username"></span>
       </div>
-      <button id="logoutBtn" class="btn small">Logout</button>
+      <!-- Settings button with dropdown menu (logout inside) -->
+      <div class="settings-dropdown" style="display:inline-block;position:relative;">
+        <button id="settings-btn" class="btn small" aria-label="Settings" title="Settings" style="margin-left: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1.82.33l-.09.09a2 2 0 0 1-2.83 0l-.09-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1.82-.33l.09-.09a2 2 0 0 1 2.83 0l.09.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.09.26.13.53.13.8s-.04.54-.13.8Z"/>
+          </svg>
+        </button>
+        <div id="settings-menu" style="display:none;position:absolute;right:0;top:110%;background:white;border:1px solid #eee;box-shadow:0 2px 8px rgba(0,0,0,0.09);border-radius:8px;min-width:140px;padding:8px 0;z-index:999;">
+         <button id="logoutBtn" class="btn small logout-btn" style="width:100%;text-align:left;">Logout</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -138,7 +147,22 @@
 
 <script src="feed.js"></script>
 <script>
-  // local testing note: to bypass redirect during development, set localStorage.loggedIn = 'true' in console
+  // Settings menu toggle
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsMenu = document.getElementById('settings-menu');
+  if(settingsBtn && settingsMenu) {
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsMenu.style.display = (settingsMenu.style.display === "block") ? "none" : "block";
+    });
+    document.addEventListener('click', function(e) {
+      if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
+        settingsMenu.style.display = "none";
+      }
+    });
+  }
+
+  // Logout inside settings menu
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
