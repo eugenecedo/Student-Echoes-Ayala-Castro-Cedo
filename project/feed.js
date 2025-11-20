@@ -153,7 +153,7 @@
     });
     document.addEventListener('click', function(e) {
       if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
-        settingsMenu.style.display = "none";
+        settingsMenu.style.display = 'none';
       }
     });
   }
@@ -372,7 +372,13 @@
     friendsList.innerHTML = '';
     friends.forEach(f=>{
       const d = document.createElement('div'); d.className='friend';
+      d.style.cursor = 'pointer';
+      d.setAttribute('role','button');
+      d.setAttribute('tabindex','0');
       d.innerHTML = `<img src="${f.avatar}" alt="${escapeHtml(f.name)}"/><div style="flex:1"><div style="font-weight:600">${escapeHtml(f.name)}</div><div class="muted">${f.online?'Online':'Offline'}</div></div><div style="width:10px;height:10px;border-radius:50%;background:${f.online?'#34d399':'#94a3b8'}"></div>`;
+      // clicking a friend opens that friend's profile gallery
+      d.addEventListener('click', () => openProfileGallery(f));
+      d.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileGallery(f); } });
       friendsList.appendChild(d);
     });
   }
@@ -396,6 +402,80 @@
     postCategorySelect.innerHTML='';
     const none = document.createElement('option'); none.value=''; none.textContent='— None —'; postCategorySelect.appendChild(none);
     categories.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; postCategorySelect.appendChild(o); });
+  }
+
+  // Profile gallery (Instagram-like square grid) for any author
+  // author: optional object { name, avatar, bio } - if omitted, shows current user's gallery
+  function openProfileGallery(author) {
+    const current = getUserProfile();
+    const viewed = author && author.name ? author : current;
+    const viewedName = viewed.name;
+    // choose avatar: prefer provided author.avatar else fallback to current user avatar or first matching post author avatar
+    const avatar = viewed.avatar || (function(){
+      const p = posts.find(pp => pp.author && pp.author.name === viewedName);
+      return p ? (p.author.avatar || current.avatar) : current.avatar;
+    })();
+
+    const userPosts = posts.filter(p => p.author && p.author.name === viewedName);
+    const html = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div style="display:flex;gap:12px;align-items:center">
+          <img src="${escapeHtml(avatar)}" alt="${escapeHtml(viewedName)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover">
+          <div>
+            <strong>${escapeHtml(viewedName)}</strong>
+            <div class="muted" style="font-size:13px">${userPosts.length} posts</div>
+          </div>
+        </div>
+        <div>
+          ${ viewedName === current.name ? '<button class="btn small" id="openProfileFromGallery">Open profile</button>' : '' }
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        ${userPosts.length === 0 ? `<div class="muted">No posts yet.</div>` : `<div class="profile-gallery-grid">
+          ${userPosts.map(p => {
+            const thumb = p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml((p.text||'').slice(0,60))}">` : `<div class="pg-txt">${escapeHtml((p.text||'').slice(0,120))}</div>`;
+            return `<button class="profile-gallery-item" data-id="${p.id}" aria-label="Open post">${thumb}</button>`;
+          }).join('')}
+        </div>`}
+      </div>
+    `;
+    // open modal (modal exists synchronously)
+    openModal({ title: `${escapeHtml(viewedName)} — Gallery`, html, confirmText: 'Close', cancelText: '' });
+
+    const modal = modalRoot.querySelector('.modal');
+    if(!modal) return;
+
+    // attach handlers to gallery items
+    modal.querySelectorAll('.profile-gallery-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = Number(btn.dataset.id);
+        const post = posts.find(p => p.id === id);
+        if(!post) return;
+        if(post.image) {
+          // open image in lightbox
+          openImageLightbox(post.image, post.text || '');
+        } else {
+          // open a small post detail modal
+          openModal({
+            title: `${escapeHtml(timeAgo(post.createdAt || Date.now()))}`,
+            html: `<div style="margin-top:8px">${escapeHtml(post.text || '')}</div>`,
+            confirmText: 'Close',
+            cancelText: ''
+          });
+        }
+      });
+    });
+
+    // If gallery opened for current user, the "Open profile" button navigates to profile panel
+    const openProfileBtn = modal.querySelector('#openProfileFromGallery');
+    if(openProfileBtn) openProfileBtn.addEventListener('click', () => {
+      const closeBtn = modal.querySelector('.modal-close');
+      if(closeBtn) closeBtn.click();
+      setTimeout(() => {
+        setActiveTab('profile');
+        renderProfile(false);
+      }, 160);
+    });
   }
 
   // Minimalist renderFeed: icons (SVG) in action buttons, icon-only visual with sr-only accessible labels
@@ -452,6 +532,14 @@
         </div>
       `;
       feedEl.appendChild(art);
+
+      // make the author avatar clickable to open that author's gallery/profile (visible to anyone)
+      const headImg = art.querySelector('.post-head img');
+      if(headImg) {
+        headImg.style.cursor = 'pointer';
+        headImg.addEventListener('click', () => openProfileGallery(post.author));
+        headImg.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileGallery(post.author); } });
+      }
     });
 
     // image lightbox
@@ -998,17 +1086,35 @@
     updateSideBadges();
   }
 
+  // Profile avatar now opens an Instagram-like gallery showing all of the user's posts in square tiles.
   function initProfileIconShortcut() {
     const profileIcon = document.getElementById('profile-icon');
     if (profileIcon) {
       profileIcon.style.cursor = "pointer";
       profileIcon.tabIndex = 0;
       profileIcon.addEventListener('click', () => {
-        setActiveTab('profile');
-        renderProfile(true);
+        // open the gallery modal for the current user
+        openProfileGallery();
       });
       profileIcon.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openProfileGallery();
+        }
+      });
+    }
+
+    // Keep keyboard access to the username element to open profile editing if desired
+    const usernameEl = document.querySelector('.username');
+    if (usernameEl) {
+      usernameEl.tabIndex = 0;
+      usernameEl.addEventListener('click', () => {
+        setActiveTab('profile');
+        renderProfile(true);
+      });
+      usernameEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
           setActiveTab('profile');
           renderProfile(true);
         }
