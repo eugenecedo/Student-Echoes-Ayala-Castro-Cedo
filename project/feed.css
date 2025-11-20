@@ -11,6 +11,37 @@
 
   --container-max-width: 1200px;
 }
+/* TEXT COLOR THEME FIX */
+body {
+  color: #ffffff; /* dark mode text */
+}
+
+body.theme-light {
+  color: #000000; /* light mode text */
+}
+
+/* Make all text elements inherit the theme color */
+.card, .post-body, .post-head, .post-foot,
+.navcard li, .username, .footer,
+input, textarea, select, p, h1, h2, h3, h4, h5, h6 {
+  color: inherit !important;
+}
+
+.muted {
+  color: var(--muted) !important;
+}
+
+.search input {
+  color: inherit !important;
+}
+
+.btn {
+  color: inherit !important;
+}
+
+.create-post textarea {
+  color: inherit !important;
+}
 
 /* Reset & base */
 * { box-sizing: border-box; }
@@ -60,12 +91,13 @@ body.theme-light {
   font-weight:800;
   font-size:20px;
   letter-spacing:0.4px;
-  color: #fff;
+  color: inherit !important;   
   padding:6px 10px;
   border-radius:8px;
   background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   box-shadow: 0 1px 6px rgba(2,6,23,0.15) inset;
 }
+
 .center-search { flex:1; display:flex; justify-content:center; }
 .search {
   width: 640px;
@@ -350,4 +382,45 @@ body:not(.theme-light) .logout-btn:hover,
 body:not(.theme-light) .logout-btn:focus {
   background: #ff7675;
   color: #222;
+}
+.menu-btn {
+  background: transparent !important;
+  border: none !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 4px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-btn svg {
+  opacity: 0.8;
+  transition: opacity .15s ease;
+}
+
+.menu-btn:hover svg {
+  opacity: 1;
+}
+/* Solid background for 3-dots menu modal */
+.modal {
+  background: var(--panel) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* Light mode version */
+body.theme-light .modal {
+  background: #ffffff !important;
+  border: 1px solid #ddd !important;
+}
+/* Apply solid background only to the Post Actions menu */
+.modal[aria-label="Post actions"] {
+  background: var(--panel) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* Light mode version */
+body.theme-light .modal[aria-label="Post actions"] {
+  background: #ffffff !important;
+  border: 1px solid #ddd !important;
 }

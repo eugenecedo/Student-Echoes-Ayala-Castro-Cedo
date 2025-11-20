@@ -123,8 +123,15 @@
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
   }
   function svgMenu() {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>`;
-  }
+  return `
+    <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
+      <circle cx="6" cy="12" r="2"></circle>
+      <circle cx="12" cy="12" r="2"></circle>
+      <circle cx="18" cy="12" r="2"></circle>
+    </svg>
+  `;
+}
+
 
   // -- toast (small notification) --
   function toast(message, opts = {}) {
