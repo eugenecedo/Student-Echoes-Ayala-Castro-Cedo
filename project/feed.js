@@ -1,10 +1,10 @@
-// feed.js - Full app script with the requested "do all" enhancements:
-// - side-icons pinned to the hamburger (inside header)
-// - SVG icons replace emojis
-// - action buttons icons-only (accessible labels via sr-only)
-// - micro-animations (badge pulse, hover micro-animations)
-// - improved accessibility (aria labels, focus outlines, modal focus trap)
-// - all features preserved (posts, categories, notifications, write, etc.)
+// feed.js - Full app script (updated to make the "three dots" menu functional and add threaded comments/replies)
+//
+// Changes in this version:
+// - Posts now store comments as arrays of comment objects (with replies arrays) instead of numeric counts.
+// - The "•••" menu (menu-btn) now shows contextual actions for all posts (report/save/copy link) and owner-only actions (edit/delete).
+// - A comments modal (openComments) renders threaded comments (top-level comments + replies) and lets you reply to specific comments.
+// - Commenting flow was updated to push comment objects and replies, persist to localStorage, update counts, and show notifications/toasts.
 
 (() => {
   const KEY = {
@@ -17,7 +17,7 @@
     LAST_TAB: 'amu_last_tab'
   };
 
-  // seed/default data
+  // seed/default data (comments are arrays with replies)
   const seedFriends = [
     { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true },
     { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true },
@@ -33,9 +33,38 @@
     { id:4, name:'Space' }
   ];
 
+  // default posts now include comments arrays with nested replies
   const defaultPosts = [
-    { id:101, author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'}, createdAt: Date.now()-5*3600*1000, text:'Just took a late walk through the hills. The light was incredible.', image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=60&auto=format&fit=crop', categoryId:1, likes:89, comments:4, shares:1, liked:false },
-    { id:102, author:{name:'Casie', avatar:'https://i.pravatar.cc/48?img=45'}, createdAt: Date.now()-36*3600*1000, text:'Foggy mornings are my favorite. Coffee + mist = mood.', image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=60&auto=format&fit=crop', categoryId:3, likes:25, comments:6, shares:0, liked:false }
+    {
+      id:101,
+      author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'},
+      createdAt: Date.now()-5*3600*1000,
+      text:'Just took a late walk through the hills. The light was incredible.',
+      image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=60&auto=format&fit=crop',
+      categoryId:1,
+      likes:89,
+      shares:1,
+      liked:false,
+      comments: [
+        { id: 1001, author:{name:'Emily', avatar:'https://i.pravatar.cc/36?img=1'}, text: 'So beautiful!', createdAt: Date.now()-4.5*3600*1000, replies:[
+            { id: 1101, author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'}, text: 'Thanks Emily!', createdAt: Date.now()-4.2*3600*1000 }
+          ]
+        },
+        { id: 1002, author:{name:'Fiona', avatar:'https://i.pravatar.cc/36?img=2'}, text: 'Where is that?', createdAt: Date.now()-4*3600*1000, replies:[] }
+      ]
+    },
+    {
+      id:102,
+      author:{name:'Casie', avatar:'https://i.pravatar.cc/48?img=45'},
+      createdAt: Date.now()-36*3600*1000,
+      text:'Foggy mornings are my favorite. Coffee + mist = mood.',
+      image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=60&auto=format&fit=crop',
+      categoryId:3,
+      likes:25,
+      shares:0,
+      liked:false,
+      comments: []
+    }
   ];
 
   // state
@@ -94,6 +123,9 @@
   function svgShare() {
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
   }
+  function svgMenu() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>`;
+  }
 
   // -- toast (small notification) --
   function toast(message, opts = {}) {
@@ -104,7 +136,6 @@
     div.id = id;
     div.innerHTML = `<div>${escapeHtml(message)}</div>`;
     toastRoot.appendChild(div);
-    // show
     requestAnimationFrame(()=> div.classList.add('show'));
     const timeout = opts.timeout || 3500;
     setTimeout(()=> {
@@ -114,17 +145,15 @@
   }
 
   // -- modal (accessible, returns promise) --
-  // includes focus trap and restores focus when closed
+  // Note: modal is appended synchronously, so callers can query modalRoot.querySelector('.modal') immediately after calling openModal(...)
   function openModal({ title = '', html = '', input = false, placeholder = '', confirmText = 'OK', cancelText = 'Cancel', width = 720 } = {}) {
     return new Promise((resolve) => {
       const prevFocus = document.activeElement;
 
-      // backdrop
       const backdrop = document.createElement('div');
       backdrop.className = 'modal-backdrop';
       backdrop.style.zIndex = 1100;
 
-      // modal box
       const box = document.createElement('div');
       box.className = 'modal';
       box.style.maxWidth = width + 'px';
@@ -144,7 +173,6 @@
         </div>
       `;
 
-      // optional textarea input
       if(input) {
         const ta = document.createElement('textarea');
         ta.placeholder = placeholder || '';
@@ -161,7 +189,7 @@
         }, 40);
       }
 
-      // attach
+      // attach synchronously
       modalRoot.appendChild(backdrop);
       modalRoot.appendChild(box);
       modalRoot.setAttribute('aria-hidden','false');
@@ -170,7 +198,6 @@
         box.classList.add('show');
       });
 
-      // focusable elements for trap
       function getFocusables(container) {
         return Array.from(container.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'));
       }
@@ -204,7 +231,6 @@
         resolve(result);
       }
 
-      // events
       box.querySelector('.modal-close').addEventListener('click', ()=> cleanup(null));
       const cancel = box.querySelector('.modal-cancel');
       if(cancel) cancel.addEventListener('click', ()=> cleanup(null));
@@ -227,6 +253,103 @@
   function openImageLightbox(src, alt='') {
     openModal({ title: '', html: `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" class="lightbox-img" />`, confirmText: 'Close', cancelText: '' , width: 980});
   }
+
+  // ---------- NEW: Comments modal & reply support ----------
+  // Opens a modal showing threaded comments for a post and allows adding replies and new comments
+  function openComments(postId) {
+    const post = posts.find(p => p.id === postId);
+    if(!post) return;
+
+    function renderCommentsHtml(comments) {
+      if(!comments || comments.length === 0) return `<div class="muted">No comments yet.</div>`;
+      return comments.map(c => `
+        <div style="margin-bottom:12px;padding:8px;border-radius:8px;background:transparent;">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <img src="${escapeHtml(c.author.avatar)}" style="width:36px;height:36px;border-radius:50%"/>
+            <div style="flex:1">
+              <div style="font-weight:600">${escapeHtml(c.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(c.createdAt))}</span></div>
+              <div style="margin-top:6px">${escapeHtml(c.text)}</div>
+              <div style="margin-top:8px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
+              ${c.replies && c.replies.length ? `<div style="margin-top:8px;margin-left:44px">${c.replies.map(r=>`
+                <div style="margin-bottom:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.01)">
+                  <div style="font-weight:600">${escapeHtml(r.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt))}</span></div>
+                  <div style="margin-top:6px">${escapeHtml(r.text)}</div>
+                  <div style="margin-top:6px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
+                </div>
+              `).join('')}</div>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    const html = `
+      <div style="max-height:58vh;overflow:auto;padding-right:8px">
+        ${renderCommentsHtml(post.comments)}
+      </div>
+      <div style="margin-top:12px">
+        <strong>Add a comment</strong>
+        <div style="margin-top:8px">
+          <textarea id="__newCommentInput" placeholder="Write a comment..." style="width:100%;min-height:80px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
+          <div style="margin-top:8px"><button class="btn primary" id="__submitNewComment">Post comment</button></div>
+        </div>
+      </div>
+    `;
+
+    // open modal and attach handlers immediately (modal elements exist synchronously)
+    openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
+
+    const modal = modalRoot.querySelector('.modal');
+    if(!modal) return;
+
+    const submitBtn = modal.querySelector('#__submitNewComment');
+    const newCommentInput = modal.querySelector('#__newCommentInput');
+    if(submitBtn && newCommentInput) {
+      submitBtn.addEventListener('click', () => {
+        const txt = (newCommentInput.value || '').trim();
+        if(!txt) { toast('Write a comment first'); return; }
+        const u = getUserProfile();
+        const c = { id: Date.now() + Math.floor(Math.random()*99), author: { name: u.name, avatar: u.avatar }, text: txt, createdAt: Date.now(), replies: [] };
+        post.comments = post.comments || [];
+        post.comments.push(c);
+        notifications.unshift({ id: Date.now(), text:'You commented on a post.', createdAt: Date.now(), avatar: u.avatar });
+        saveState(); renderFeed(); renderNotifications();
+        // close and re-open to refresh comments content
+        const closeBtn = modal.querySelector('.modal-close');
+        if(closeBtn) closeBtn.click();
+        setTimeout(()=> openComments(postId), 120);
+        toast('Comment added');
+      });
+    }
+
+    // attach reply button handlers
+    modal.querySelectorAll('.reply-to-comment').forEach(btn => {
+      btn.addEventListener('click', async (ev) => {
+        const cid = Number(btn.dataset.cid);
+        const pid = Number(btn.dataset.pid);
+        const postObj = posts.find(p=>p.id===pid);
+        if(!postObj) return;
+        const comment = (postObj.comments || []).find(c=>c.id===cid);
+        if(!comment) return;
+        const replyText = await openModal({ title: `Reply to ${escapeHtml(comment.author.name)}`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
+        if(replyText && replyText.trim()) {
+          const u = getUserProfile();
+          const reply = { id: Date.now() + Math.floor(Math.random()*99), author: { name: u.name, avatar: u.avatar }, text: replyText.trim(), createdAt: Date.now() };
+          comment.replies = comment.replies || [];
+          comment.replies.push(reply);
+          notifications.unshift({ id: Date.now(), text:`You replied to ${comment.author.name}`, createdAt: Date.now(), avatar: u.avatar });
+          saveState(); renderFeed(); renderNotifications();
+          // refresh
+          const closeBtn = modal.querySelector('.modal-close');
+          if(closeBtn) closeBtn.click();
+          setTimeout(()=> openComments(pid), 120);
+          toast('Reply posted');
+        }
+      });
+    });
+  }
+
+  // ---------- end comments modal ----------
 
   // -- renderers --
   function renderFriends(){
@@ -277,6 +400,7 @@
 
     visible.forEach(post=>{
       const art = document.createElement('article'); art.className='post card';
+      const commentCount = (post.comments && post.comments.length) ? post.comments.length : 0;
       art.innerHTML = `
         <div class="post-head">
           <img src="${escapeHtml(post.author.avatar)}" alt="${escapeHtml(post.author.name)}" />
@@ -284,7 +408,7 @@
             <div style="font-weight:600">${escapeHtml(post.author.name)}</div>
             <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(post.createdAt||Date.now()))} • <strong>${escapeHtml(getCategoryName(post.categoryId))}</strong></div>
           </div>
-          <div style="font-size:18px;opacity:.6"><button class="icon-btn menu-btn" data-id="${post.id}" title="Post menu" aria-label="Open post actions">•••</button></div>
+          <div style="font-size:18px;opacity:.6"><button class="icon-btn menu-btn" data-id="${post.id}" title="Post menu" aria-label="Open post actions">${svgMenu()}</button></div>
         </div>
         <div class="post-body">
           <div>${escapeHtml(post.text)}</div>
@@ -301,7 +425,7 @@
             <button class="action-inline comment-btn" data-id="${post.id}" aria-label="Comment on post">
               ${svgComment()}
               <span class="sr-only">Comment</span>
-              <span class="count" aria-hidden="true">${post.comments}</span>
+              <span class="count" aria-hidden="true">${commentCount}</span>
             </button>
 
             <button class="action-inline share-btn" data-id="${post.id}" aria-label="Share post">
@@ -325,7 +449,6 @@
     feedEl.querySelectorAll('.like-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       toggleLike(id);
-      // feedback: small pulse on badge and toggled color
       b.classList.add('liked');
       setTimeout(()=> b.classList.remove('liked'), 700);
     });
@@ -336,16 +459,10 @@
       sharePost(id);
     });
 
-    // comment (open modal + increment)
-    feedEl.querySelectorAll('.comment-btn').forEach(b => b.onclick = async () => {
+    // comment button now opens threaded comments modal
+    feedEl.querySelectorAll('.comment-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
-      const val = await openModal({ title:'Add a comment', input:true, placeholder:'Write your comment...' });
-      if(val && val.trim()){
-        posts = posts.map(p => p.id===id ? {...p, comments: (p.comments||0) + 1 } : p);
-        notifications.unshift({id:Date.now(), text:'You commented on a post.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
-        saveState(); renderFeed(); renderNotifications();
-        toast('Comment added');
-      }
+      openComments(id);
     });
 
     // post menu
@@ -358,20 +475,22 @@
     saveState();
     renderFeed();
     updateSideBadges();
-    // pulse notification badge to show activity
     if(badgeLikesEl) { badgeLikesEl.classList.add('pulse'); setTimeout(()=> badgeLikesEl.classList.remove('pulse'), 1400); }
   }
 
   function sharePost(id){
     const p = posts.find(x=>x.id===id); if(!p) return;
-    let text = p.text || '';
-    if(p.image) text += '\n' + p.image;
+    let text = (p.text || '') + (p.image ? '\n' + p.image : '');
     if(p.categoryId) text += `\nCategory: ${getCategoryName(p.categoryId)}`;
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(() => {
         notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
         saveState(); renderNotifications();
         toast('Copied post to clipboard!');
+      }).catch(()=> {
+        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+        saveState(); renderNotifications();
+        toast('Clipboard failed');
       });
     } else {
       notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
@@ -380,62 +499,94 @@
     }
   }
 
+  // Make the three-dots menu show contextual options for everyone and owner-only actions for post owner
   function openPostMenu(btn, postId){
     const user = getUserProfile();
     const post = posts.find(p=>p.id===postId);
     if(!post) return;
-    if(post.author.name !== user.name) { toast('No actions on others posts yet'); return; }
-    // modal with choices
+
+    const isOwner = post.author.name === user.name;
+
+    const commonActionsHtml = `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn small" id="pm-save">Save post</button>
+        <button class="btn small" id="pm-copy">Copy link</button>
+        <button class="btn small" id="pm-report" style="background:rgba(255,75,75,0.06)">Report</button>
+      </div>
+    `;
+
+    const ownerActionsHtml = `
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;border-top:1px dashed rgba(255,255,255,0.03);padding-top:8px">
+        <button class="btn small" id="pm-edit">Edit</button>
+        <button class="btn small" id="pm-delete" style="background:rgba(255,75,75,0.12)">Delete</button>
+      </div>
+    `;
+
+    // open modal first (modal exists synchronously), then attach handlers immediately
     openModal({
       title: 'Post actions',
-      html: `<div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn small action-edit" data-action="edit">Edit</button>
-        <button class="btn small action-rename" data-action="renamecat">Change Category</button>
-        <button class="btn small" id="del-post" style="background:rgba(255,75,75,0.12)">Delete</button>
-      </div>`,
+      html: `${commonActionsHtml}${isOwner ? ownerActionsHtml : ''}`,
       confirmText: 'Close',
       cancelText: ''
-    }).then(() => {
-      // attach handlers inside the modal content (since openModal clones html)
-      const modal = modalRoot.querySelector('.modal');
-      if(!modal) return;
-      const editBtn = modal.querySelector('.action-edit');
-      const renameBtn = modal.querySelector('.action-rename');
-      const delBtn = modal.querySelector('#del-post');
-      if(editBtn) editBtn.onclick = async () => {
-        const newText = await openModal({ title: 'Edit post', input:true, placeholder:'Edit your post text', confirmText:'Save' });
-        if(newText !== null) {
-          posts = posts.map(p => p.id===postId ? {...p, text: newText} : p);
-          saveState(); renderFeed();
-          toast('Post updated');
-        }
-      };
-      if(renameBtn) renameBtn.onclick = async () => {
-        const newId = await openModal({ title:'Change Category', input:true, placeholder:'Category ID (leave empty to keep)', confirmText:'Apply' });
-        if(newId !== null) {
-          posts = posts.map(p => p.id===postId ? {...p, categoryId: newId ? Number(newId) : p.categoryId} : p);
-          saveState(); renderFeed();
-          toast('Category updated');
-        }
-      };
-      if(delBtn) delBtn.onclick = async () => {
-        const ok = confirm('Delete this post?');
-        if(!ok) return;
-        posts = posts.filter(p => p.id !== postId);
-        notifications.unshift({id:Date.now(), text:'You deleted a post.', createdAt: Date.now(), avatar:user.avatar});
-        saveState(); renderFeed(); renderNotifications();
-        toast('Post deleted');
-      };
     });
+
+    const modal = modalRoot.querySelector('.modal'); if(!modal) return;
+    const saveBtn = modal.querySelector('#pm-save');
+    const copyBtn = modal.querySelector('#pm-copy');
+    const reportBtn = modal.querySelector('#pm-report');
+    const editBtn = modal.querySelector('#pm-edit');
+    const delBtn = modal.querySelector('#pm-delete');
+
+    if(saveBtn) saveBtn.onclick = () => {
+      notifications.unshift({ id:Date.now(), text:'Post saved', createdAt: Date.now(), avatar:user.avatar });
+      saveState(); renderNotifications(); toast('Saved');
+    };
+    if(copyBtn) copyBtn.onclick = async () => {
+      const link = `${location.origin}${location.pathname}#post-${postId}`;
+      try {
+        await navigator.clipboard.writeText(link);
+        toast('Link copied');
+      } catch(e) {
+        toast('Copy failed');
+      }
+    };
+    if(reportBtn) reportBtn.onclick = () => {
+      openModal({ title:'Report post', input:true, placeholder:'Describe the issue', confirmText:'Report' }).then(val => {
+        if(val && val.trim()){
+          notifications.unshift({id:Date.now(), text:'You reported a post.', createdAt: Date.now(), avatar:user.avatar});
+          saveState(); renderNotifications(); toast('Reported');
+        }
+      });
+    };
+    if(editBtn) editBtn.onclick = async () => {
+      const newText = await openModal({ title: 'Edit post', input:true, placeholder:'Edit your post text', confirmText:'Save', html: escapeHtml(post.text || '') });
+      if(newText !== null) {
+        posts = posts.map(p => p.id===postId ? {...p, text: newText} : p);
+        saveState(); renderFeed();
+        toast('Post updated');
+      }
+      // close actions modal if still open
+      const closeBtn = modal.querySelector('.modal-close');
+      if(closeBtn) closeBtn.click();
+    };
+    if(delBtn) delBtn.onclick = () => {
+      if(!confirm('Delete this post?')) return;
+      posts = posts.filter(p => p.id !== postId);
+      notifications.unshift({id:Date.now(), text:'You deleted a post.', createdAt: Date.now(), avatar:user.avatar});
+      saveState(); renderFeed(); renderNotifications();
+      toast('Post deleted');
+      const closeBtn = modal.querySelector('.modal-close');
+      if(closeBtn) closeBtn.click();
+    };
   }
 
   // post creation & preview
   if(addImageBtn) addImageBtn.onclick = () => postImage && postImage.click();
   if(postImage) postImage.onchange = (e) => {
     const f = e.target.files && e.target.files[0];
-    if(!f){ preview.style.display='none'; preview.src=''; return; }
+    if(!f){ if(preview){ preview.style.display='none'; preview.src=''; } return; }
     const r = new FileReader();
-    r.onload = (ev) => { preview.src = ev.target.result; preview.style.display='block'; };
+    r.onload = (ev) => { if(preview){ preview.src = ev.target.result; preview.style.display='block'; } };
     r.readAsDataURL(f);
   };
 
@@ -447,7 +598,7 @@
     if(!text && !file && (!preview || !preview.src)) { toast('Add text or image'); return; }
     if(file){
       const fr = new FileReader();
-      fr.onload = (ev) => actuallyCreatePost(text, ev.target.result, cat);
+      fr.onload = (ev) => { actuallyCreatePost(text, ev.target.result, cat); };
       fr.readAsDataURL(file);
     } else {
       actuallyCreatePost(text, (preview && preview.src) || null, cat);
@@ -456,7 +607,7 @@
 
   function actuallyCreatePost(text, image, categoryId){
     const u = getUserProfile();
-    const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: text, image: image, categoryId: categoryId, likes:0, comments:0, shares:0, liked:false };
+    const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: text, image: image, categoryId: categoryId, likes:0, comments: [], shares:0, liked:false };
     posts.unshift(p);
     notifications.unshift({id:Date.now(), text:'You posted to the feed.', createdAt: Date.now(), avatar:u.avatar});
     if(postText) postText.value=''; if(postImage) postImage.value=''; if(preview) { preview.src=''; preview.style.display='none'; }
@@ -511,7 +662,7 @@
   }
 
   // profile helpers
-  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) return JSON.parse(raw); return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2 }; }
+  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2 }; }
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
@@ -523,7 +674,7 @@
       cont.innerHTML = `<div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;"><img src="${escapeHtml(u.avatar)}" style="width:80px;height:80px;border-radius:50%;"><div><div style="font-size:22px;font-weight:700;">${escapeHtml(u.name)}</div><div class="muted">${escapeHtml(u.bio)}</div><div style="margin-top:6px;font-size:13px;">Joined: ${escapeHtml(u.joined)}</div></div></div><div><strong>Posts:</strong> ${postCount}<br><strong>Communities:</strong> ${u.communitiesJoined}</div><div style="margin-top:12px;"><button class="btn small" id="editProfileBtn">Edit Profile</button></div>`;
       const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
     } else {
-      cont.innerHTML = `<form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;"><label>Name:<br><input name="name" value="${escapeHtml(u.name)}" style="width:100%;padding:6px;border-radius:6px;"></label><label>Avatar URL:<br><input name="avatar" value="${escapeHtml(u.avatar)}" style="width:100%;padding:6px;border-radius:6px;"></label><label>Bio:<br><textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;">${escapeHtml(u.bio)}</textarea></label><div style="margin-top:12px;"><button class="btn small" type="submit">Save</button><button class="btn small" type="button" id="cancelProfileBtn" style="margin-left:8px">Cancel</button></div></form>`;
+      cont.innerHTML = `<form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;"><label>Name:<br><input name="name" value="${escapeHtml(u.name)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);"></label><label>Avatar URL:<br><input name="avatar" value="${escapeHtml(u.avatar)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);"></label><label>Bio:<br><textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">${escapeHtml(u.bio)}</textarea></label><div style="margin-top:12px;"><button class="btn small" type="submit">Save</button><button class="btn small" type="button" id="cancelProfileBtn" style="margin-left:8px">Cancel</button></div></form>`;
       const form = document.getElementById('editProfileForm'); form.onsubmit = (ev) => { ev.preventDefault(); const fd = new FormData(form); const prev = getUserProfile(); const np = { name: (fd.get('name')||prev.name).trim(), avatar:(fd.get('avatar')||prev.avatar).trim(), bio:(fd.get('bio')||'').trim(), joined: prev.joined, communitiesJoined: prev.communitiesJoined }; setUserProfile(np); renderTopRightUser(); renderFeed(); renderProfile(false); toast('Profile updated'); };
       const cancel = document.getElementById('cancelProfileBtn'); if(cancel) cancel.onclick = () => renderProfile(false);
     }
@@ -587,7 +738,6 @@
       const feedCard = document.getElementById('tab-feed'); if(feedCard) feedCard.classList.add('hidden');
     }
 
-    // per-tab renderers
     if(tab === 'profile') renderProfile(false);
     if(tab === 'categories') renderCategoriesPage();
     if(tab === 'news') renderNews();
@@ -668,7 +818,7 @@
       const categoryId = fd.get('category') ? Number(fd.get('category')) : null;
       if(!title && !body){ toast('Write something first'); return; }
       const u = getUserProfile();
-      const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: (title ? `# ${title}\n\n${body}` : body), image: null, categoryId, likes:0, comments:0, shares:0, liked:false };
+      const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: (title ? `# ${title}\n\n${body}` : body), image: null, categoryId, likes:0, comments:[], shares:0, liked:false };
       posts.unshift(p);
       notifications.unshift({ id:Date.now(), text:'You published a story.', createdAt: Date.now(), avatar:u.avatar });
       saveState(); renderFeed(); renderNotifications();
@@ -713,7 +863,7 @@
   function renderTrending(){
     const el = document.getElementById('trending-content');
     if(!el) return;
-    const byScore = posts.slice().sort((a,b)=> ((b.likes||0)+(b.comments||0)) - ((a.likes||0)+(a.comments||0))).slice(0,5);
+    const byScore = posts.slice().sort((a,b)=> ((b.likes||0)+( (b.comments && b.comments.length) || 0 )) - ((a.likes||0)+((a.comments && a.comments.length) || 0))).slice(0,5);
     const catCounts = {};
     posts.forEach(p => { const id = p.categoryId || 0; catCounts[id] = (catCounts[id] || 0) + 1; });
     const topCats = Object.keys(catCounts).map(k=>({ id: Number(k), count: catCounts[k]})).sort((a,b)=>b.count-a.count).slice(0,5);
@@ -767,21 +917,20 @@
     const is = document.body.classList.toggle('theme-light');
     themeToggle.textContent = is ? 'Dark' : 'Light';
     themeToggle.setAttribute('aria-pressed', String(is));
-    localStorage.setItem(KEY.THEME, is ? 'light' : 'dark');
+    try { localStorage.setItem(KEY.THEME, is ? 'light' : 'dark'); } catch (e) {}
     toast(is ? 'Light theme' : 'Dark theme');
   });
 
   if(clearNotifsBtn) clearNotifsBtn.onclick = () => { notifications = []; saveState(); renderNotifications(); toast('Notifications cleared'); };
 
   document.addEventListener('keydown', (e) => {
-    if(e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA')) return;
+    if(e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable)) return;
     if(e.key === '/') { e.preventDefault(); globalSearch && globalSearch.focus(); }
     if(e.key === 'n') { e.preventDefault(); postText && postText.focus(); }
   });
 
   // side-icons wiring and helpers (new)
   function updateSideBadges(){
-    // notifications badge
     if(badgeNotifsEl){
       if(notifications && notifications.length > 0){
         badgeNotifsEl.textContent = notifications.length > 9 ? '9+' : String(notifications.length);
@@ -792,7 +941,6 @@
         badgeNotifsEl.style.display = 'none';
       }
     }
-    // simple likes badge: show presence indicator
     if(badgeLikesEl){
       const totalLikes = posts.reduce((s,p)=>s+(p.likes||0),0);
       if(totalLikes > 0){
@@ -808,7 +956,7 @@
     openModal({ title: 'Notifications', html, confirmText:'Close', cancelText:'' });
   }
 
-   function initSideIcons(){
+  function initSideIcons(){
     if(!sideIconsRoot) return;
     const map = {
       'btn-home': () => setActiveTab('feed'),
@@ -818,7 +966,6 @@
       'btn-explore': () => setActiveTab('categories'),
       'btn-heart': () => setActiveTab('trending'),
       'btn-add': () => { setActiveTab('write'); },
-      // Make sidebar profile button open the profile in edit mode
       'btn-avatar': () => { setActiveTab('profile'); renderProfile(true); },
       'btn-menu': () => { document.body.classList.toggle('drawer-open'); },
       'btn-grid': () => setActiveTab('trending')
@@ -830,29 +977,29 @@
         e.preventDefault();
         try { map[id](); } catch(err){ console.error('side icon handler error', err); }
       });
-      // keyboard accessibility
       el.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); map[id](); } });
     });
     updateSideBadges();
   }
 
- function initProfileIconShortcut() {
-  const profileIcon = document.getElementById('profile-icon');
-  if (profileIcon) {
-    profileIcon.style.cursor = "pointer";
-    profileIcon.tabIndex = 0;
-    profileIcon.addEventListener('click', () => {
-      setActiveTab('profile');
-      renderProfile(true);
-    });
-    profileIcon.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') {
+  function initProfileIconShortcut() {
+    const profileIcon = document.getElementById('profile-icon');
+    if (profileIcon) {
+      profileIcon.style.cursor = "pointer";
+      profileIcon.tabIndex = 0;
+      profileIcon.addEventListener('click', () => {
         setActiveTab('profile');
         renderProfile(true);
-      }
-    });
+      });
+      profileIcon.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          setActiveTab('profile');
+          renderProfile(true);
+        }
+      });
+    }
   }
-}
+
   // keyboard shortcut to open write editor: Cmd/Ctrl+K (or Ctrl+K)
   document.addEventListener('keydown', (e) => {
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -861,13 +1008,12 @@
     }
   });
 
-
   // theme & init
   function initTheme(){
     try {
       const t = localStorage.getItem(KEY.THEME);
-      if(t === 'light') { document.body.classList.add('theme-light'); themeToggle && (themeToggle.textContent = 'Dark'); themeToggle && themeToggle.setAttribute('aria-pressed','true'); }
-      else { document.body.classList.remove('theme-light'); themeToggle && (themeToggle.textContent = 'Light'); themeToggle && themeToggle.setAttribute('aria-pressed','false'); }
+      if(t === 'light') { document.body.classList.add('theme-light'); if(themeToggle) { themeToggle.textContent = 'Dark'; themeToggle.setAttribute('aria-pressed','true'); } }
+      else { document.body.classList.remove('theme-light'); if(themeToggle) { themeToggle.textContent = 'Light'; themeToggle.setAttribute('aria-pressed','false'); } }
     } catch(e){}
   }
 
@@ -882,11 +1028,10 @@
     renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
     initNavAccessibility();
     restoreTabFromHashOrLast();
-    initSideIcons();       // keep this
-    initProfileIconShortcut(); // <- ADD THIS LINE just before toast
+    initSideIcons();
+    initProfileIconShortcut();
     toast('Welcome back!');
   }
-
 
   function renderCommunities(){
     const el = document.getElementById('communities-list');

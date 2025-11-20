@@ -9,7 +9,7 @@
 <body>
 <div id="app" class="container">
   <header class="topbar" role="banner" aria-label="Top bar" style="position:relative;">
-    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false">
+    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false" type="button">
       <span></span><span></span><span></span>
     </button>
 
@@ -28,21 +28,21 @@
     </div>
 
     <div class="top-right">
-      <button id="theme-toggle" class="btn small" aria-pressed="false">Light</button>
+      <button id="theme-toggle" class="btn small" aria-pressed="false" type="button">Light</button>
       <div class="user" title="Your profile" role="button" tabindex="0" aria-label="Open profile">
-        <img id="profile-icon" src="..." alt="Profile" />
-        <span class="username"></span>
+        <img id="profile-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
+        <span class="username">You</span>
       </div>
-      <!-- Settings button with dropdown menu (logout inside) -->
+
       <div class="settings-dropdown" style="display:inline-block;position:relative;">
-        <button id="settings-btn" class="btn small" aria-label="Settings" title="Settings" style="margin-left: 8px;">
+        <button id="settings-btn" class="btn small" aria-label="Settings" aria-haspopup="true" aria-expanded="false" aria-controls="settings-menu" title="Settings" type="button" style="margin-left: 8px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1.82.33l-.09.09a2 2 0 0 1-2.83 0l-.09-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1.82-.33l.09-.09a2 2 0 0 1 2.83 0l.09.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.09.26.13.53.13.8s-.04.54-.13.8Z"/>
           </svg>
         </button>
-        <div id="settings-menu" style="display:none;position:absolute;right:0;top:110%;background:white;border:1px solid #eee;box-shadow:0 2px 8px rgba(0,0,0,0.09);border-radius:8px;min-width:140px;padding:8px 0;z-index:999;">
-         <button id="logoutBtn" class="btn small logout-btn" style="width:100%;text-align:left;">Logout</button>
+        <div id="settings-menu" role="menu" aria-hidden="true" style="display:none;position:absolute;right:0;top:110%;background:white;border:1px solid #eee;box-shadow:0 2px 8px rgba(0,0,0,0.09);border-radius:8px;min-width:180px;padding:8px 0;z-index:999;">
+          <button id="logoutBtn" role="menuitem" class="btn small logout-btn" style="width:100%;text-align:left;" type="button">Logout</button>
         </div>
       </div>
     </div>
@@ -52,14 +52,14 @@
 
   <main class="grid" role="main">
     <aside class="left sidebar" id="sidebar" role="navigation" aria-label="Primary">
-      <nav class="navcard">
+      <nav class="navcard" role="tablist" aria-label="Primary navigation">
         <ul id="nav-list">
-          <li class="active" data-tab="feed" role="tab" tabindex="0">Feed</li>
-          <li data-tab="news" role="tab" tabindex="-1">News</li>
-          <li data-tab="profile" role="tab" tabindex="-1">Profile</li>
+          <li class="active" data-tab="feed" role="tab" tabindex="0" aria-selected="true">Feed</li>
+          <li data-tab="news" role="tab" tabindex="-1" aria-selected="false">News</li>
+          <li data-tab="profile" role="tab" tabindex="-1" aria-selected="false">Profile</li>
 
-          <li data-tab="write" role="tab" tabindex="-1">
-            <button class="nav-write" aria-label="Write a Story" title="Write a Story (Cmd/Ctrl+K)">
+          <li data-tab="write" role="tab" tabindex="-1" aria-selected="false">
+            <button class="nav-write" aria-label="Write a Story" title="Write a Story (Cmd/Ctrl+K)" type="button">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" style="margin-right:8px">
                 <path d="M3 21v-3l11-11 3 3L6 21H3z"></path>
                 <path d="M14 7l3 3"></path>
@@ -69,10 +69,10 @@
             </button>
           </li>
 
-          <li data-tab="mystories" role="tab" tabindex="-1">My Stories</li>
-          <li data-tab="categories" role="tab" tabindex="-1">Categories</li>
-          <li data-tab="trending" role="tab" tabindex="-1">Trending</li>
-          <li data-tab="anonymous" role="tab" tabindex="-1">Anonymous Room</li>
+          <li data-tab="mystories" role="tab" tabindex="-1" aria-selected="false">My Stories</li>
+          <li data-tab="categories" role="tab" tabindex="-1" aria-selected="false">Categories</li>
+          <li data-tab="trending" role="tab" tabindex="-1" aria-selected="false">Trending</li>
+          <li data-tab="anonymous" role="tab" tabindex="-1" aria-selected="false">Anonymous Room</li>
         </ul>
       </nav>
 
@@ -84,7 +84,7 @@
       <div class="card notifications" aria-label="Notifications">
         <div class="card-head">
           <h4>Notifications</h4>
-          <button id="clear-notifs" class="linkbtn">Clear</button>
+          <button id="clear-notifs" class="linkbtn" type="button">Clear</button>
         </div>
         <div id="notif-list"></div>
       </div>
@@ -94,11 +94,11 @@
       <div id="tab-feed" class="card create-post" role="region" aria-label="Create post">
         <form id="post-form" style="position:relative;">
           <div style="position:relative;">
-            <button type="button" id="add-image-btn" class="add-img" aria-label="Add image">＋</button>
+            <button type="button" id="add-image-btn" class="add-img" aria-label="Add image" aria-controls="post-image">＋</button>
             <textarea id="post-text" placeholder="What's on your mind?" rows="3" aria-label="Post text"></textarea>
           </div>
 
-          <input id="post-image" type="file" accept="image/*" style="display:none;" />
+          <input id="post-image" name="post-image" type="file" accept="image/*" style="display:none;" />
 
           <div class="post-form-row">
             <label class="cat-label">
@@ -146,30 +146,5 @@
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <script src="feed.js"></script>
-<script>
-  // Settings menu toggle
-  const settingsBtn = document.getElementById('settings-btn');
-  const settingsMenu = document.getElementById('settings-menu');
-  if(settingsBtn && settingsMenu) {
-    settingsBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      settingsMenu.style.display = (settingsMenu.style.display === "block") ? "none" : "block";
-    });
-    document.addEventListener('click', function(e) {
-      if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
-        settingsMenu.style.display = "none";
-      }
-    });
-  }
-
-  // Logout inside settings menu
-  const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      localStorage.removeItem('loggedIn');
-      window.location.href = 'log in.html';
-    });
-  }
-</script>
 </body>
 </html>
