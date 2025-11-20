@@ -1,11 +1,6 @@
-// feed.js - Full app script (updated to make the "three dots" menu functional and add threaded comments/replies)
-//
-// Changes in this version:
-// - Posts now store comments as arrays of comment objects (with replies arrays) instead of numeric counts.
-// - The "•••" menu (menu-btn) now shows contextual actions for all posts (report/save/copy link) and owner-only actions (edit/delete).
-// - A comments modal (openComments) renders threaded comments (top-level comments + replies) and lets you reply to specific comments.
-// - Commenting flow was updated to push comment objects and replies, persist to localStorage, update counts, and show notifications/toasts.
-
+// feed.js - Full app script with delegated logout handler (works even if logout button is rendered/replaced dynamically)
+// All previous features preserved: posts, threaded comments, post actions, likes/shares, categories, stories, anonymous room,
+// accessible modals with focus trap, side icons, theme toggle, and the fixed logout behavior (delegated).
 (() => {
   const KEY = {
     CATEGORIES: 'amu_categories',
@@ -75,7 +70,7 @@
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
   let activeCategoryId = null;
 
-  // dom refs
+  // dom refs (queried once on load)
   const friendsList = document.getElementById('friends-list');
   const feedEl = document.getElementById('feed');
   const notifList = document.getElementById('notif-list');
@@ -104,10 +99,14 @@
 
   // helpers
   function saveState(){
-    localStorage.setItem(KEY.CATEGORIES, JSON.stringify(categories));
-    localStorage.setItem(KEY.POSTS, JSON.stringify(posts));
-    localStorage.setItem(KEY.NOTIFS, JSON.stringify(notifications));
-    localStorage.setItem(KEY.ANON, JSON.stringify(anonymousPosts));
+    try {
+      localStorage.setItem(KEY.CATEGORIES, JSON.stringify(categories));
+      localStorage.setItem(KEY.POSTS, JSON.stringify(posts));
+      localStorage.setItem(KEY.NOTIFS, JSON.stringify(notifications));
+      localStorage.setItem(KEY.ANON, JSON.stringify(anonymousPosts));
+    } catch (e) {
+      console.warn('saveState() failed', e);
+    }
   }
   function escapeHtml(s){ if(!s && s!==0) return ''; return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   function timeAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<10) return 'just now'; if(s<60) return s+'s'; const m=Math.floor(s/60); if(m<60) return m+'m'; const h=Math.floor(m/60); if(h<24) return h+'h'; const d=Math.floor(h/24); if(d<7) return d+'d'; return new Date(ts).toLocaleDateString(); }
@@ -144,6 +143,22 @@
     }, timeout);
   }
 
+  // Settings menu toggle
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsMenu = document.getElementById('settings-menu');
+  if(settingsBtn && settingsMenu) {
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsMenu.style.display = (settingsMenu.style.display === "block") ? "none" : "block";
+    });
+    document.addEventListener('click', function(e) {
+      if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
+        settingsMenu.style.display = "none";
+      }
+    });
+  }
+
+  // Logout inside settings menu
   // -- modal (accessible, returns promise) --
   // Note: modal is appended synchronously, so callers can query modalRoot.querySelector('.modal') immediately after calling openModal(...)
   function openModal({ title = '', html = '', input = false, placeholder = '', confirmText = 'OK', cancelText = 'Cancel', width = 720 } = {}) {
@@ -324,7 +339,7 @@
 
     // attach reply button handlers
     modal.querySelectorAll('.reply-to-comment').forEach(btn => {
-      btn.addEventListener('click', async (ev) => {
+      btn.addEventListener('click', async () => {
         const cid = Number(btn.dataset.cid);
         const pid = Number(btn.dataset.pid);
         const postObj = posts.find(p=>p.id===pid);
@@ -522,7 +537,7 @@
       </div>
     `;
 
-    // open modal first (modal exists synchronously), then attach handlers immediately
+    // open modal then attach handlers immediately
     openModal({
       title: 'Post actions',
       html: `${commonActionsHtml}${isOwner ? ownerActionsHtml : ''}`,
@@ -915,6 +930,7 @@
 
   if(themeToggle) themeToggle.addEventListener('click', ()=>{
     const is = document.body.classList.toggle('theme-light');
+    // button text indicates action (pressing it will switch to that label)
     themeToggle.textContent = is ? 'Dark' : 'Light';
     themeToggle.setAttribute('aria-pressed', String(is));
     try { localStorage.setItem(KEY.THEME, is ? 'light' : 'dark'); } catch (e) {}
@@ -1008,6 +1024,98 @@
     }
   });
 
+  // LOGOUT: delegated handler (works even if logout button is added/removed dynamically)
+  // Behavior:
+  // - Click on element matching #logoutBtn anywhere in the document triggers logout
+  // - Keyboard: when #logoutBtn is focused, Enter/Space triggers logout
+  // - Clears demo localStorage keys and redirects to a resolved login path (best-effort)
+  const LOGIN_PATH_CANDIDATES = [
+    'login.html',
+    'log in.html',
+    '/login',
+    '/signin',
+    '/sign-in',
+    'index.html'
+  ];
+
+  async function resolveLoginPath() {
+    for (const candidate of LOGIN_PATH_CANDIDATES) {
+      try {
+        const url = encodeURI(candidate);
+        let ok = false;
+        try {
+          const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+          ok = res && res.ok;
+        } catch (e) {
+          // HEAD may fail on some servers - try GET
+        }
+        if (!ok) {
+          try {
+            const res2 = await fetch(encodeURI(candidate), { method: 'GET', cache: 'no-store' });
+            ok = res2 && res2.ok;
+          } catch (e) {
+            ok = false;
+          }
+        }
+        if (ok) return candidate;
+      } catch (err) {
+        // ignore and try next
+      }
+    }
+    return LOGIN_PATH_CANDIDATES[0];
+  }
+
+  // doLogout is intentionally top-level so delegation can call it
+  async function doLogout() {
+    try {
+      localStorage.removeItem('loggedIn');
+      localStorage.removeItem(KEY.PROFILE);
+      // any other demo keys can be removed here
+    } catch (err) {
+      console.warn('Error clearing storage on logout', err);
+    }
+
+    // close settings menu if present
+    const settingsMenu = document.getElementById('settings-menu');
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsMenu) {
+      settingsMenu.style.display = 'none';
+      settingsMenu.setAttribute('aria-hidden', 'true');
+    }
+    if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
+
+    // determine a reachable login path and redirect
+    try {
+      const dest = await resolveLoginPath();
+      try { location.replace(dest); } catch (e) { location.href = dest; }
+    } catch (err) {
+      try { location.replace('log in.html'); } catch (e) { location.href = 'login.html'; }
+    }
+  }
+
+  // Delegated click and keyboard listeners - robust even if element is recreated
+  function attachDelegatedLogout() {
+    // Click delegation
+    document.addEventListener('click', function delegatedLogoutClick(e) {
+      const btn = e.target.closest && e.target.closest('#logoutBtn');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        doLogout().catch(err => console.error('logout error', err));
+      }
+    }, true); // use capture to ensure we catch before other handlers if necessary
+
+    // Keyboard: Enter/Space when focused on logout button
+    document.addEventListener('keydown', function delegatedLogoutKey(e) {
+      const active = document.activeElement;
+      if (!active) return;
+      if (active.id === 'logoutBtn' && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        doLogout().catch(err => console.error('logout error', err));
+      }
+    });
+  }
+
   // theme & init
   function initTheme(){
     try {
@@ -1030,6 +1138,7 @@
     restoreTabFromHashOrLast();
     initSideIcons();
     initProfileIconShortcut();
+    attachDelegatedLogout(); // delegation-based logout wiring
     toast('Welcome back!');
   }
 
@@ -1045,7 +1154,8 @@
     getCategories: () => categories,
     getNotifications: () => notifications,
     saveState,
-    setActiveTab
+    setActiveTab,
+    doLogout // expose for manual testing
   };
 
   init();
