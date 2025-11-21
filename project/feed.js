@@ -97,6 +97,10 @@
   const modalRoot = document.getElementById('modal-root');
   const toastRoot = document.getElementById('toast-container');
 
+  // Top stories DOM refs (new)
+  const topStoriesList = document.getElementById('top-stories-list');
+  const moreNewsBtn = document.getElementById('more-news-btn');
+
   // helpers
   function saveState(){
     try {
@@ -411,7 +415,7 @@
     categories.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; postCategorySelect.appendChild(o); });
   }
 
-  // Profile gallery (Instagram-like square grid) for any author
+  // Profile gallery (Instagram-like) for any author
   // author: optional object { name, avatar, bio } - if omitted, shows current user's gallery
   function openProfileGallery(author) {
     const current = getUserProfile();
@@ -875,30 +879,111 @@
     setActiveTab(tab);
   }
 
-  // news (unchanged)
+  // news
+  // fetchNews now returns optional publishedAt and image if available; we fetch a larger set and filter client-side for school/today
   async function fetchNews(limit = 6){
     try {
       const res = await fetch(`https://api.spaceflightnewsapi.net/v3/articles?_limit=${limit}`);
       if(!res.ok) throw new Error('Bad response');
       const json = await res.json();
-      return json.map(i => ({ title: i.title, url: i.url, summary: i.summary }));
+      // map includes optional publishedAt fields (try both common names)
+      return json.map(i => ({
+        title: i.title,
+        url: i.url,
+        summary: i.summary || i.summary || '',
+        publishedAt: i.publishedAt || i.published_at || i.published || i.published_date || null,
+        image: i.imageUrl || i.image || i.photos && i.photos[0] || null
+      }));
     } catch(e){
+      // fallback items (includes sample dates/today)
+      const todayTs = Date.now();
       return [
-        { title: 'Local: New design patterns emerging', url:'#', summary:'A short curated story about design trends.' },
-        { title: 'Tech: Web performance tips', url:'#', summary:'How to optimize images and deliver faster pages.' }
+        { title: 'Local: New design patterns emerging', url:'#', summary:'A short curated story about design trends.', publishedAt: todayTs, image: null },
+        { title: 'School: City schools reopen with new safety measures', url:'#', summary:'Local district announces protocols for reopening.', publishedAt: todayTs, image: null },
+        { title: 'Education update: Scholarships announced for students', url:'#', summary:'New scholarship opportunities for local students.', publishedAt: todayTs, image: null },
+        { title: 'Tech: Web performance tips', url:'#', summary:'How to optimize images and deliver faster pages.', publishedAt: todayTs, image: null }
       ];
     }
   }
 
+  // --- School-related keywords used to filter fetched news (new)
+  const SCHOOL_KEYWORDS = [
+    'school','schools','student','students','education','teacher','teachers',
+    'campus','university','college','classroom','tuition','principal','faculty',
+    'k-12','kindergarten','preschool','schoolboard','school board','schoolboard',
+    'scholarship','exam','testing','curriculum'
+  ];
+
+  function isSchoolRelated(item) {
+    if(!item) return false;
+    const text = ((item.title || '') + ' ' + (item.summary || '') + ' ' + (item.url || '')).toLowerCase();
+    return SCHOOL_KEYWORDS.some(k => text.includes(k));
+  }
+
+  function isPublishedToday(item) {
+    if(!item) return false;
+    const pub = item.publishedAt ? new Date(item.publishedAt) : null;
+    if(!pub || isNaN(pub.getTime())) return false;
+    const now = new Date();
+    // compare local date portions (year, month, day)
+    return pub.getFullYear() === now.getFullYear() &&
+           pub.getMonth() === now.getMonth() &&
+           pub.getDate() === now.getDate();
+  }
+
+  // small helper: SVG placeholder data URL for missing thumbs (school icon)
+  function schoolPlaceholderDataUrl(title = '') {
+    const txt = encodeURIComponent((title || '').slice(0,60));
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180'><rect width='100%' height='100%' fill='#e6eef6'/><g font-family='sans-serif' fill='#04202a'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='24'>🏫</text></g></svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+
+  // Updated renderNews to respect window.newsFilter (patched to support 'school-today' too)
   async function renderNews(){
     const el = document.getElementById('news-content');
     if(!el) return;
     el.innerHTML = `<div class="muted">Loading news…</div>`;
     try {
-      const items = await fetchNews(6);
-      el.innerHTML = items.map(i => `<div style="margin-bottom:12px"><a href="${i.url}" target="_blank" rel="noopener">${escapeHtml(i.title)}</a><div class="muted" style="font-size:13px">${escapeHtml((i.summary||'').slice(0,220))}</div></div>`).join('');
-    } catch(e){
+      const items = await fetchNews(50); // fetch a larger set to improve chances of school/today matches
+      let filtered = items;
+
+      if(window.newsFilter === 'school-today') {
+        filtered = items.filter(i => isSchoolRelated(i) && isPublishedToday(i));
+        if(filtered.length === 0) {
+          el.innerHTML = `<div class="muted">No school articles published today were found — showing recent school-related news.</div>`;
+          filtered = items.filter(isSchoolRelated);
+        } else {
+          el.innerHTML = `<div class="muted">Showing school & education news published today.</div>`;
+        }
+      } else if(window.newsFilter === 'school') {
+        filtered = items.filter(isSchoolRelated);
+        if(filtered.length === 0) {
+          el.innerHTML = `<div class="muted">No school-specific articles found — showing general news.</div>`;
+          filtered = items;
+        } else {
+          el.innerHTML = `<div class="muted">Showing school & education news.</div>`;
+        }
+      } else {
+        el.innerHTML = '';
+      }
+
+      // render list (compact)
+      el.innerHTML += filtered.slice(0, 20).map(i => {
+        const thumb = i.image ? `<img src="${escapeHtml(i.image)}" alt="">` : `<img src="${schoolPlaceholderDataUrl(i.title)}" alt="">`;
+        const dateStr = i.publishedAt ? timeAgo(new Date(i.publishedAt).getTime()) : '';
+        return `<div style="margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:0 0 96px;width:96px;height:64px;border-radius:6px;overflow:hidden;background:rgba(0,0,0,0.04)">${thumb}</div>
+          <div style="flex:1">
+            <a href="${escapeHtml(i.url||'#')}" target="_blank" rel="noopener" style="font-weight:600">${escapeHtml(i.title)}</a>
+            <div class="muted" style="font-size:13px;margin-top:6px">${escapeHtml((i.summary||'').slice(0,220))}</div>
+            <div class="muted" style="font-size:12px;margin-top:6px">${escapeHtml(dateStr)}</div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e) {
       el.innerHTML = `<div class="muted">Couldn't load news.</div>`;
+    } finally {
+      // keep window.newsFilter as-is; callers set it when needed
     }
   }
 
@@ -1238,6 +1323,56 @@
     } catch(e){}
   }
 
+  // --- Render Top Stories (school-only filter; shows today's school news when possible) ---
+  async function renderTopStories() {
+    if(!topStoriesList) return;
+    topStoriesList.innerHTML = 'Loading top stories…';
+    try {
+      const items = await fetchNews(50);
+      // Prefer school items published today first
+      let schoolToday = items.filter(i => isSchoolRelated(i) && isPublishedToday(i));
+      let schoolRecent = items.filter(i => isSchoolRelated(i) && !isPublishedToday(i));
+      let showItems = schoolToday.length ? schoolToday.slice(0,6) : (schoolRecent.length ? schoolRecent.slice(0,6) : items.slice(0,6));
+
+      topStoriesList.innerHTML = showItems.map(it => {
+        const thumb = it.image ? `<img src="${escapeHtml(it.image)}" alt="">` : `<img src="${schoolPlaceholderDataUrl(it.title)}" alt="">`;
+        const dateLabel = it.publishedAt ? timeAgo(new Date(it.publishedAt).getTime()) : '';
+        return `<div class="top-stories-item" role="button" tabindex="0" data-url="${escapeHtml(it.url||'#')}">
+          <div class="top-stories-thumb">${thumb}</div>
+          <div class="top-stories-meta">
+            <div class="ts-title">${escapeHtml(it.title)}</div>
+            <div class="muted ts-summary">${escapeHtml((it.summary||'').slice(0,120))}</div>
+            <div class="muted ts-time">${escapeHtml(dateLabel)}</div>
+          </div>
+        </div>`;
+      }).join('');
+
+      // attach click/keyboard handlers
+      topStoriesList.querySelectorAll('.top-stories-item').forEach(node => {
+        node.addEventListener('click', () => {
+          const url = node.dataset.url;
+          if(url && url !== '#') window.open(url, '_blank');
+        });
+        node.addEventListener('keydown', (e) => {
+          if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.click(); }
+        });
+      });
+    } catch (err) {
+      topStoriesList.innerHTML = '<div class="muted">Could not load top stories.</div>';
+      console.warn('renderTopStories error', err);
+    }
+  }
+
+  // --- Wire More news button to open News tab with school-today filter ---
+  if(moreNewsBtn) {
+    moreNewsBtn.addEventListener('click', () => {
+      // prefer strict "today" school filter
+      window.newsFilter = 'school-today';
+      setActiveTab('news');
+      renderNews();
+    });
+  }
+
   function init(){
     initTheme();
     renderTopRightUser();
@@ -1246,6 +1381,7 @@
     renderFeed();
     renderNotifications();
     renderCommunities();
+    renderTopStories(); // <-- populate Top stories card on init
     renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
     initNavAccessibility();
     restoreTabFromHashOrLast();
@@ -1268,7 +1404,9 @@
     getNotifications: () => notifications,
     saveState,
     setActiveTab,
-    doLogout // expose for manual testing
+    doLogout,
+    renderTopStories,
+    renderNews
   };
 
   init();

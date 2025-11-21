@@ -1,3 +1,6 @@
+/* feed.css - cleaned and improved theme + fixes */
+
+/* --- Theme variables --- */
 :root{
   --bg:#0b1220;
   --panel:#0f1720;
@@ -9,55 +12,65 @@
   --bg-light:#f5f7fb;
   --text-light:#0b1220;
 
+  --text-dark: #e6eef6; /* explicit dark-mode text color */
   --container-max-width: 1200px;
 }
-/* TEXT COLOR THEME FIX */
-body {
-  color: #ffffff; /* dark mode text */
-}
 
-body.theme-light {
-  color: #000000; /* light mode text */
-}
-
-/* Make all text elements inherit the theme color */
-.card, .post-body, .post-head, .post-foot,
-.navcard li, .username, .footer,
-input, textarea, select, p, h1, h2, h3, h4, h5, h6 {
-  color: inherit !important;
-}
-
-.muted {
-  color: var(--muted) !important;
-}
-
-.search input {
-  color: inherit !important;
-}
-
-.btn {
-  color: inherit !important;
-}
-
-.create-post textarea {
-  color: inherit !important;
-}
-
-/* Reset & base */
-* { box-sizing: border-box; }
+/* Base theme hookup */
 html,body { height:100%; }
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   background: linear-gradient(180deg, #071124 0%, var(--bg) 60%);
-  color: #e6eef6;
+  color: var(--text-dark);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   padding: 18px;
   line-height:1.3;
 }
 
-/* Accessible visually-hidden helper */
+/* Light theme */
+body.theme-light {
+  background: var(--bg-light);
+  color: var(--text-light);
+}
+
+/* Targeted color inheritance (safer than blanket !important rules)
+   Let components inherit the body color, but avoid forcing inheritance on *every* element,
+   which causes subtle contrast/priority problems. */
+.card, .post-body, .post-head, .post-foot,
+.navcard li, .username, .footer {
+  color: inherit;
+}
+
+/* Form controls should be readable and follow the theme; avoid !important */
+input, textarea, select, button {
+  color: inherit;
+}
+
+/* Muted helper (single authoritative definition) */
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Search input inherit */
+.search input {
+  color: inherit;
+}
+
+/* Buttons should use color: inherit so they adapt to theme */
+.btn {
+  color: inherit;
+}
+
+/* Create-post textarea */
+.create-post textarea {
+  color: inherit;
+}
+
+/* Reset & base utilities */
+* { box-sizing: border-box; }
 .sr-only {
   position: absolute !important;
   width: 1px !important;
@@ -68,12 +81,6 @@ body {
   clip: rect(0, 0, 0, 0) !important;
   white-space: nowrap !important;
   border: 0 !important;
-}
-
-/* Light theme */
-body.theme-light {
-  background: var(--bg-light);
-  color: var(--text-light);
 }
 
 /* container */
@@ -91,13 +98,14 @@ body.theme-light {
   font-weight:800;
   font-size:20px;
   letter-spacing:0.4px;
-  color: inherit !important;   
+  color: inherit;   
   padding:6px 10px;
   border-radius:8px;
   background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   box-shadow: 0 1px 6px rgba(2,6,23,0.15) inset;
 }
 
+/* center search */
 .center-search { flex:1; display:flex; justify-content:center; }
 .search {
   width: 640px;
@@ -369,10 +377,13 @@ body.theme-light {
 
 /* toast */
 #toast-container { position: fixed; right: 20px; bottom: 20px; z-index:1200; display:flex; flex-direction:column; gap:8px; width:auto; max-width:360px; pointer-events:none; }
-.toast { background: rgba(2,6,23,0.9); color: #e6eef6; padding:10px 12px; border-radius:8px; box-shadow: 0 6px 30px rgba(2,6,23,0.6); opacity:0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease; pointer-events:auto; font-size:13px; }
+.toast { background: rgba(2,6,23,0.9); color: var(--text-dark); padding:10px 12px; border-radius:8px; box-shadow: 0 6px 30px rgba(2,6,23,0.6); opacity:0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease; pointer-events:auto; font-size:13px; }
 .toast.show { opacity:1; transform: translateY(0); }
 
-/* mobile */
+/* make toast text readable in light mode */
+body.theme-light .toast { background: #fff; color: var(--text-light); border:1px solid #ddd; }
+
+/* mobile responsiveness */
 @media (max-width: 980px) {
   .grid { grid-template-columns: 1fr; }
   .center-search { display:none; }
@@ -395,7 +406,6 @@ body.theme-light {
 
 /* utilities */
 .hidden { display:none !important; }
-.muted { color:var(--muted); font-size:13px; }
 .help-muted { color:var(--muted); font-size:13px; }
 .linkbtn { background:transparent; border:0; color:inherit; cursor:pointer; }
 
@@ -404,7 +414,6 @@ body.theme-light {
   transition: background 0.2s, color 0.2s;
 }
 
-/* Light background: make logout button red with white text on hover/focus */
 body.theme-light .logout-btn {
   color: #d32f2f;
   background: transparent;
@@ -415,7 +424,6 @@ body.theme-light .logout-btn:focus {
   color: #fff;
 }
 
-/* Dark background: make logout button light red or red background with white text */
 body:not(.theme-light) .logout-btn {
   color: #ff7675;
   background: transparent;
@@ -425,6 +433,7 @@ body:not(.theme-light) .logout-btn:focus {
   background: #ff7675;
   color: #222;
 }
+
 .menu-btn {
   background: transparent !important;
   border: none !important;
@@ -444,25 +453,124 @@ body:not(.theme-light) .logout-btn:focus {
 .menu-btn:hover svg {
   opacity: 1;
 }
-/* Solid background for 3-dots menu modal */
+
+/* modal color overrides (keep consistency with theme) */
 .modal {
   background: var(--panel) !important;
   border: 1px solid rgba(255,255,255,0.06) !important;
 }
-
-/* Light mode version */
 body.theme-light .modal {
   background: #ffffff !important;
   border: 1px solid #ddd !important;
 }
-/* Apply solid background only to the Post Actions menu */
 .modal[aria-label="Post actions"] {
   background: var(--panel) !important;
   border: 1px solid rgba(255,255,255,0.06) !important;
 }
-
-/* Light mode version */
 body.theme-light .modal[aria-label="Post actions"] {
   background: #ffffff !important;
   border: 1px solid #ddd !important;
 }
+
+/* --- Top stories compact list (improved & consistent design) --- */
+.top-stories {
+  padding: 12px;
+}
+
+/* Default: single column so right-sidebar (≈300px) shows full-width items */
+.top-stories-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+/* Two-column layout only on sufficiently wide viewports */
+@media (min-width: 980px) {
+  .top-stories-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.top-stories-item {
+  display: block;
+  gap: 12px;
+  align-items: center;             /* center meta vertically with thumbnail */
+  padding: 10px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+  transition: background .12s ease, transform .12s ease;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.02);
+  min-height: 84px;                /* stabilizes item height across entries */
+}
+
+/* Slightly stronger hover for affordance */
+.top-stories-item:hover {
+  transform: translateY(-3px);
+  background: rgba(255,255,255,0.02);
+}
+
+/* Larger, consistent thumbnail area; scales down on small screens */
+.top-stories-thumb {
+  flex: 0 0 110px;
+  width: 110px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.02);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+/* Ensure images fill the thumb and cover with no whitespace */
+.top-stories-thumb img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  border-radius: 6px; /* slightly inset */
+}
+
+/* Meta block: vertically centered and flexible */
+.top-stories-meta { 
+  flex:1; 
+  min-width:0; 
+  display:flex; 
+  flex-direction:column; 
+  justify-content:center;
+}
+
+/* Headline: tight lines, clamp to two lines for consistency */
+.top-stories .ts-title {
+  font-weight:700;
+  font-size:13px;
+  line-height:1.15;
+  margin-bottom:6px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+
+/* Summary/time styles */
+.top-stories .ts-summary { 
+  font-size:13px; 
+  color:var(--muted); 
+  margin-bottom:6px; 
+  display:block; 
+  max-height:36px; 
+  overflow:hidden; 
+  text-overflow:ellipsis; 
+}
+.top-stories .ts-time { font-size:12px; color:var(--muted); }
+
+/* Adjust thumbnail size on small screens to avoid cramping */
+@media (max-width: 520px) {
+  .top-stories-thumb { flex: 0 0 84px; width:84px; height:56px; }
+  .top-stories-item { min-height: 72px; gap: 8px; padding: 8px; }
+}
+
+.more-news .btn.small { border-radius:999px; padding-left:14px; padding-right:14px; }
