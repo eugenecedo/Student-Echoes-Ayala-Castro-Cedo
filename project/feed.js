@@ -65,6 +65,7 @@
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
   let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
   const friends = seedFriends.slice();
+  // anonymousPosts is an array of post-like objects but stored separately and shown only in Anonymous Room
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
   let activeCategoryId = null;
 
@@ -185,9 +186,7 @@
     });
   }
 
-  // Logout inside settings menu
   // -- modal (accessible, returns promise) --
-  // Note: modal is appended synchronously, so callers can query modalRoot.querySelector('.modal') immediately after calling openModal(...)
   function openModal({ title = '', html = '', input = false, placeholder = '', confirmText = 'OK', cancelText = 'Cancel', width = 720 } = {}) {
     return new Promise((resolve) => {
       const prevFocus = document.activeElement;
@@ -296,8 +295,7 @@
     openModal({ title: '', html: `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" class="lightbox-img" />`, confirmText: 'Close', cancelText: '' , width: 980});
   }
 
-  // ---------- NEW: Comments modal & reply support ----------
-  // Opens a modal showing threaded comments for a post and allows adding replies and new comments
+  // ---------- Comments modal for regular posts ----------
   function openComments(postId) {
     const post = posts.find(p => p.id === postId);
     if(!post) return;
@@ -338,7 +336,6 @@
       </div>
     `;
 
-    // open modal and attach handlers immediately (modal elements exist synchronously)
     openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
 
     const modal = modalRoot.querySelector('.modal');
@@ -356,7 +353,6 @@
         post.comments.push(c);
         notifications.unshift({ id: Date.now(), text:'You commented on a post.', createdAt: Date.now(), avatar: u.avatar });
         saveState(); renderFeed(); renderNotifications();
-        // close and re-open to refresh comments content
         const closeBtn = modal.querySelector('.modal-close');
         if(closeBtn) closeBtn.click();
         setTimeout(()=> openComments(postId), 120);
@@ -364,7 +360,6 @@
       });
     }
 
-    // attach reply button handlers
     modal.querySelectorAll('.reply-to-comment').forEach(btn => {
       btn.addEventListener('click', async () => {
         const cid = Number(btn.dataset.cid);
@@ -381,7 +376,6 @@
           comment.replies.push(reply);
           notifications.unshift({ id: Date.now(), text:`You replied to ${comment.author.name}`, createdAt: Date.now(), avatar: u.avatar });
           saveState(); renderFeed(); renderNotifications();
-          // refresh
           const closeBtn = modal.querySelector('.modal-close');
           if(closeBtn) closeBtn.click();
           setTimeout(()=> openComments(pid), 120);
@@ -391,9 +385,261 @@
     });
   }
 
-  // ---------- end comments modal ----------
+  // ---------- Anonymous feed: render + actions ----------
+  // Anonymous posts are stored in anonymousPosts; they are displayed only in the Anonymous Room.
+  // Each anonymous post: { id, text, createdAt, image?, likes, shares, liked, comments: [ { id, author:{name,avatar}, text, createdAt, replies: [...] } ] }
 
-  // -- renderers --
+  function renderAnonymousRoom(){
+    const el = document.getElementById('anonymous-content');
+    if(!el) return;
+
+    // create UI: a card with create-anon-post form and then a feed list of anonymous posts
+    el.innerHTML = `
+      <div class="card" style="margin-bottom:12px">
+        <form id="anon-create-form" style="position:relative;">
+          <textarea id="anon-text" placeholder="Share anonymously..." rows="3" aria-label="Anonymous post text" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <div class="muted" style="font-size:13px">Posting as anonymous — your username won't appear.</div>
+            <div><button class="btn primary" type="submit">Post anonymously</button></div>
+          </div>
+        </form>
+      </div>
+      <div id="anon-feed-list"></div>
+    `;
+
+    const feedContainer = document.getElementById('anon-feed-list');
+    if(!feedContainer) return;
+
+    // Render anonymous posts (most recent first)
+    function renderAnonList(){
+      if(!feedContainer) return;
+      if(anonymousPosts.length === 0){
+        feedContainer.innerHTML = `<div class="card muted">No anonymous posts yet.</div>`;
+        return;
+      }
+      feedContainer.innerHTML = anonymousPosts.slice().reverse().map(p => {
+        const commentCount = (p.comments && p.comments.length) ? p.comments.length : 0;
+        return `<article class="post card" data-aid="${p.id}">
+          <div class="post-head">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='16' r='10' fill='%23b3cde0'/%3E%3Cpath d='M4 44c0-4 4-6 20-6s20 2 20 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Anonymous avatar" />
+            <div style="flex:1">
+              <div style="font-weight:600">Anonymous</div>
+              <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(p.createdAt || Date.now()))} • <strong>Anonymous Room</strong></div>
+            </div>
+            <div style="font-size:18px;opacity:.6"><button class="icon-btn menu-btn anon-menu-btn" data-id="${p.id}" title="Post menu" aria-label="Open post actions">${svgMenu()}</button></div>
+          </div>
+          <div class="post-body">
+            <div>${escapeHtml(p.text || '')}</div>
+            ${p.image ? `<img src="${escapeHtml(p.image)}" alt="anonymous image" loading="lazy">` : ''}
+          </div>
+          <div class="post-foot">
+            <div class="actions-row" role="toolbar" aria-label="Anonymous post actions">
+              <button class="action-inline anon-like-btn ${p.liked ? 'liked' : ''}" data-id="${p.id}" aria-pressed="${p.liked ? 'true' : 'false'}" aria-label="Like anonymous post">${svgLike(p.liked ? 'currentColor' : 'none')}<span class="sr-only">Like</span><span class="count" aria-hidden="true">${p.likes||0}</span></button>
+              <button class="action-inline anon-comment-btn" data-id="${p.id}" aria-label="Comment on anonymous post">${svgComment()}<span class="sr-only">Comment</span><span class="count" aria-hidden="true">${commentCount}</span></button>
+              <button class="action-inline anon-share-btn" data-id="${p.id}" aria-label="Share anonymous post">${svgShare()}<span class="sr-only">Share</span><span class="count" aria-hidden="true">${p.shares||0}</span></button>
+            </div>
+          </div>
+        </article>`;
+      }).join('');
+      // attach handlers
+      feedContainer.querySelectorAll('.post.card').forEach(node => {
+        const aid = Number(node.dataset.aid);
+        // images lightbox
+        node.querySelectorAll('.post-body img').forEach(img => {
+          img.addEventListener('click', (e) => openImageLightbox(e.currentTarget.getAttribute('src'), 'Anonymous image'));
+        });
+      });
+
+      feedContainer.querySelectorAll('.anon-like-btn').forEach(b => b.onclick = () => {
+        const id = Number(b.dataset.id);
+        toggleAnonLike(id);
+        b.classList.add('liked');
+        setTimeout(()=> b.classList.remove('liked'), 700);
+      });
+
+      feedContainer.querySelectorAll('.anon-share-btn').forEach(b => b.onclick = () => {
+        const id = Number(b.dataset.id);
+        shareAnonPost(id);
+      });
+
+      feedContainer.querySelectorAll('.anon-comment-btn').forEach(b => b.onclick = () => {
+        const id = Number(b.dataset.id);
+        openAnonComments(id);
+      });
+
+      // anon post menu buttons
+      feedContainer.querySelectorAll('.anon-menu-btn').forEach(b => {
+        b.addEventListener('click', (e) => openAnonPostMenu(Number(b.dataset.id)));
+      });
+    }
+
+    // create anon post handler
+    const form = document.getElementById('anon-create-form');
+    if(form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const ta = document.getElementById('anon-text');
+        const text = (ta && ta.value || '').trim();
+        if(!text) { toast('Write something first'); return; }
+        const p = { id: Date.now(), text, createdAt: Date.now(), image: null, likes:0, shares:0, liked:false, comments: [] };
+        anonymousPosts.push(p);
+        saveState();
+        renderAnonymousRoom(); // re-render (keeps the form)
+        toast('Anonymous post added');
+      });
+    }
+
+    renderAnonList();
+  }
+
+  // Anonymous comments modal
+  function openAnonComments(anonId) {
+    const post = anonymousPosts.find(p => p.id === anonId);
+    if(!post) return;
+
+    function renderCommentsHtml(comments) {
+      if(!comments || comments.length === 0) return `<div class="muted">No comments yet.</div>`;
+      return comments.map(c => `
+        <div style="margin-bottom:12px;padding:8px;border-radius:8px;background:transparent;">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:36px;height:36px;border-radius:50%"/>
+            <div style="flex:1">
+              <div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(c.createdAt))}</span></div>
+              <div style="margin-top:6px">${escapeHtml(c.text)}</div>
+              <div style="margin-top:8px"><button class="btn small reply-to-anon-comment" data-cid="${c.id}" data-pid="${anonId}">Reply</button></div>
+              ${c.replies && c.replies.length ? `<div style="margin-top:8px;margin-left:44px">${c.replies.map(r=>`
+                <div style="margin-bottom:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.01)">
+                  <div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt))}</span></div>
+                  <div style="margin-top:6px">${escapeHtml(r.text)}</div>
+                </div>
+              `).join('')}</div>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    const html = `
+      <div style="max-height:58vh;overflow:auto;padding-right:8px">
+        ${renderCommentsHtml(post.comments)}
+      </div>
+      <div style="margin-top:12px">
+        <strong>Add a comment (anonymous)</strong>
+        <div style="margin-top:8px">
+          <textarea id="__newAnonCommentInput" placeholder="Write a comment..." style="width:100%;min-height:80px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
+          <div style="margin-top:8px"><button class="btn primary" id="__submitNewAnonComment">Post comment</button></div>
+        </div>
+      </div>
+    `;
+
+    openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
+
+    const modal = modalRoot.querySelector('.modal');
+    if(!modal) return;
+
+    const submitBtn = modal.querySelector('#__submitNewAnonComment');
+    const newCommentInput = modal.querySelector('#__newAnonCommentInput');
+    if(submitBtn && newCommentInput) {
+      submitBtn.addEventListener('click', () => {
+        const txt = (newCommentInput.value || '').trim();
+        if(!txt) { toast('Write a comment first'); return; }
+        const c = { id: Date.now() + Math.floor(Math.random()*99), text: txt, createdAt: Date.now(), replies: [] };
+        post.comments = post.comments || [];
+        post.comments.push(c);
+        saveState(); renderAnonymousRoom();
+        const closeBtn = modal.querySelector('.modal-close');
+        if(closeBtn) closeBtn.click();
+        setTimeout(()=> openAnonComments(anonId), 120);
+        toast('Comment added');
+      });
+    }
+
+    modal.querySelectorAll('.reply-to-anon-comment').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cid = Number(btn.dataset.cid);
+        const pid = Number(btn.dataset.pid);
+        const p = anonymousPosts.find(x => x.id === pid);
+        if(!p) return;
+        const comment = (p.comments || []).find(c => c.id === cid);
+        if(!comment) return;
+        const replyText = await openModal({ title: `Reply (anonymous)`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
+        if(replyText && replyText.trim()) {
+          const reply = { id: Date.now() + Math.floor(Math.random()*99), text: replyText.trim(), createdAt: Date.now() };
+          comment.replies = comment.replies || [];
+          comment.replies.push(reply);
+          saveState(); renderAnonymousRoom();
+          const closeBtn = modal.querySelector('.modal-close');
+          if(closeBtn) closeBtn.click();
+          setTimeout(()=> openAnonComments(pid), 120);
+          toast('Reply posted');
+        }
+      });
+    });
+  }
+
+  // anon menu for owner actions (delete only, since all posts are anonymous there is no owner transformation)
+  function openAnonPostMenu(anonId){
+    const post = anonymousPosts.find(p => p.id === anonId);
+    if(!post) return;
+    const html = `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn small" id="pm-copy-anon">Copy text</button>
+        <button class="btn small" id="pm-report-anon" style="background:rgba(255,75,75,0.06)">Report</button>
+        <button class="btn small" id="pm-delete-anon" style="background:rgba(255,75,75,0.12)">Delete</button>
+      </div>
+    `;
+    openModal({ title: 'Post actions', html, confirmText: 'Close', cancelText: '' });
+    const modal = modalRoot.querySelector('.modal'); if(!modal) return;
+    const copyBtn = modal.querySelector('#pm-copy-anon');
+    const reportBtn = modal.querySelector('#pm-report-anon');
+    const delBtn = modal.querySelector('#pm-delete-anon');
+
+    if(copyBtn) copyBtn.onclick = () => {
+      const text = post.text + (post.image ? '\n' + post.image : '');
+      navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(()=> toast('Copied')) : toast('Copy not supported');
+    };
+    if(reportBtn) reportBtn.onclick = () => {
+      notifications.unshift({ id: Date.now(), text: 'Reported anonymous post (demo)', createdAt: Date.now(), avatar: getUserProfile().avatar });
+      saveState(); renderNotifications();
+      toast('Reported (demo)');
+    };
+    if(delBtn) delBtn.onclick = () => {
+      if(!confirm('Delete this anonymous post?')) return;
+      anonymousPosts = anonymousPosts.filter(p => p.id !== anonId);
+      saveState(); renderAnonymousRoom(); toast('Anonymous post deleted');
+      const closeBtn = modal.querySelector('.modal-close');
+      if(closeBtn) closeBtn.click();
+    };
+  }
+
+  // anonymous like/share toggles
+  function toggleAnonLike(id){
+    anonymousPosts = anonymousPosts.map(p => p.id===id ? {...p, liked: !p.liked, likes: (!p.liked ? (p.likes||0)+1 : Math.max(0,(p.likes||0)-1)) } : p);
+    saveState();
+    renderAnonymousRoom();
+  }
+
+  function shareAnonPost(id){
+    const p = anonymousPosts.find(x=>x.id===id); if(!p) return;
+    const text = (p.text || '') + (p.image ? '\n' + p.image : '');
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(() => {
+        notifications.unshift({id:Date.now(), text:'Copied anonymous post to clipboard!', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+        saveState(); renderNotifications();
+        toast('Copied anonymous post to clipboard!');
+      }).catch(()=> {
+        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+        saveState(); renderNotifications();
+        toast('Clipboard failed');
+      });
+    } else {
+      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+      saveState(); renderNotifications();
+      toast('Clipboard not supported');
+    }
+  }
+
+  // -- renderers for main UI --
   function renderFriends(){
     if(!friendsList) return;
     friendsList.innerHTML = '';
@@ -403,7 +649,6 @@
       d.setAttribute('role','button');
       d.setAttribute('tabindex','0');
       d.innerHTML = `<img src="${f.avatar}" alt="${escapeHtml(f.name)}"/><div style="flex:1"><div style="font-weight:600">${escapeHtml(f.name)}</div><div class="muted">${f.online?'Online':'Offline'}</div></div><div style="width:10px;height:10px;border-radius:50%;background:${f.online?'#34d399':'#94a3b8'}"></div>`;
-      // clicking a friend opens that friend's profile gallery
       d.addEventListener('click', () => openProfileGallery(f));
       d.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileGallery(f); } });
       friendsList.appendChild(d);
@@ -432,12 +677,10 @@
   }
 
   // Profile gallery (Instagram-like) for any author
-  // author: optional object { name, avatar, bio } - if omitted, shows current user's gallery
   function openProfileGallery(author) {
     const current = getUserProfile();
     const viewed = author && author.name ? author : current;
     const viewedName = viewed.name;
-    // choose avatar: prefer provided author.avatar else fallback to current user avatar or first matching post author avatar
     const avatar = viewed.avatar || (function(){
       const p = posts.find(pp => pp.author && pp.author.name === viewedName);
       return p ? (p.author.avatar || current.avatar) : current.avatar;
@@ -466,23 +709,19 @@
         </div>`}
       </div>
     `;
-    // open modal (modal exists synchronously)
     openModal({ title: `${escapeHtml(viewedName)} — Gallery`, html, confirmText: 'Close', cancelText: '' });
 
     const modal = modalRoot.querySelector('.modal');
     if(!modal) return;
 
-    // attach handlers to gallery items
     modal.querySelectorAll('.profile-gallery-item').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = Number(btn.dataset.id);
         const post = posts.find(p => p.id === id);
         if(!post) return;
         if(post.image) {
-          // open image in lightbox
           openImageLightbox(post.image, post.text || '');
         } else {
-          // open a small post detail modal
           openModal({
             title: `${escapeHtml(timeAgo(post.createdAt || Date.now()))}`,
             html: `<div style="margin-top:8px">${escapeHtml(post.text || '')}</div>`,
@@ -493,7 +732,6 @@
       });
     });
 
-    // If gallery opened for current user, the "Open profile" button navigates to profile panel
     const openProfileBtn = modal.querySelector('#openProfileFromGallery');
     if(openProfileBtn) openProfileBtn.addEventListener('click', () => {
       const closeBtn = modal.querySelector('.modal-close');
@@ -505,7 +743,7 @@
     });
   }
 
-  // Minimalist renderFeed: icons (SVG) in action buttons, icon-only visual with sr-only accessible labels
+  // Minimalist renderFeed: icons (SVG) in action buttons
   function renderFeed(){
     if(!feedEl) return;
     const q = (globalSearch && globalSearch.value || '').trim().toLowerCase();
@@ -560,7 +798,6 @@
       `;
       feedEl.appendChild(art);
 
-      // make the author avatar clickable to open that author's gallery/profile (visible to anyone)
       const headImg = art.querySelector('.post-head img');
       if(headImg) {
         headImg.style.cursor = 'pointer';
@@ -569,13 +806,11 @@
       }
     });
 
-    // image lightbox
     feedEl.querySelectorAll('.post-body img').forEach(img => img.onclick = (e) => {
       const src = e.currentTarget.getAttribute('src');
       openImageLightbox(src, e.currentTarget.getAttribute('alt') || '');
     });
 
-    // like button handler
     feedEl.querySelectorAll('.like-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       toggleLike(id);
@@ -583,23 +818,20 @@
       setTimeout(()=> b.classList.remove('liked'), 700);
     });
 
-    // share
     feedEl.querySelectorAll('.share-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       sharePost(id);
     });
 
-    // comment button now opens threaded comments modal
     feedEl.querySelectorAll('.comment-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       openComments(id);
     });
 
-    // post menu
     feedEl.querySelectorAll('.menu-btn').forEach(b => b.onclick = (e) => openPostMenu(e.currentTarget, Number(b.dataset.id)));
   }
 
-  // actions
+  // actions for regular posts
   function toggleLike(id){
     posts = posts.map(p => p.id===id ? {...p, liked: !p.liked, likes: (!p.liked ? p.likes+1 : Math.max(0,p.likes-1)) } : p);
     saveState();
@@ -629,7 +861,7 @@
     }
   }
 
-  // Make the three-dots menu show contextual options for everyone and owner-only actions for post owner
+  // post menu for regular posts
   function openPostMenu(btn, postId){
     const user = getUserProfile();
     const post = posts.find(p=>p.id===postId);
@@ -652,7 +884,6 @@
       </div>
     `;
 
-    // open modal then attach handlers immediately
     openModal({
       title: 'Post actions',
       html: `${commonActionsHtml}${isOwner ? ownerActionsHtml : ''}`,
@@ -695,7 +926,6 @@
         saveState(); renderFeed();
         toast('Post updated');
       }
-      // close actions modal if still open
       const closeBtn = modal.querySelector('.modal-close');
       if(closeBtn) closeBtn.click();
     };
@@ -710,7 +940,7 @@
     };
   }
 
-  // post creation & preview
+  // post creation & preview for regular posts
   if(addImageBtn) addImageBtn.onclick = () => postImage && postImage.click();
   if(postImage) postImage.onchange = (e) => {
     const f = e.target.files && e.target.files[0];
@@ -896,22 +1126,19 @@
   }
 
   // news
-  // fetchNews now returns optional publishedAt and image if available; we fetch a larger set and filter client-side for school/today
   async function fetchNews(limit = 6){
     try {
       const res = await fetch(`https://api.spaceflightnewsapi.net/v3/articles?_limit=${limit}`);
       if(!res.ok) throw new Error('Bad response');
       const json = await res.json();
-      // map includes optional publishedAt fields (try both common names)
       return json.map(i => ({
         title: i.title,
         url: i.url,
-        summary: i.summary || i.summary || '',
+        summary: i.summary || '',
         publishedAt: i.publishedAt || i.published_at || i.published || i.published_date || null,
-        image: i.imageUrl || i.image || i.photos && i.photos[0] || null
+        image: i.imageUrl || i.image || (i.photos && i.photos[0]) || null
       }));
     } catch(e){
-      // fallback items (includes sample dates/today)
       const todayTs = Date.now();
       return [
         { title: 'Local: New design patterns emerging', url:'#', summary:'A short curated story about design trends.', publishedAt: todayTs, image: null },
@@ -922,7 +1149,6 @@
     }
   }
 
-  // --- School-related keywords used to filter fetched news (new)
   const SCHOOL_KEYWORDS = [
     'school','schools','student','students','education','teacher','teachers',
     'campus','university','college','classroom','tuition','principal','faculty',
@@ -941,26 +1167,22 @@
     const pub = item.publishedAt ? new Date(item.publishedAt) : null;
     if(!pub || isNaN(pub.getTime())) return false;
     const now = new Date();
-    // compare local date portions (year, month, day)
     return pub.getFullYear() === now.getFullYear() &&
            pub.getMonth() === now.getMonth() &&
            pub.getDate() === now.getDate();
   }
 
-  // small helper: SVG placeholder data URL for missing thumbs (school icon)
   function schoolPlaceholderDataUrl(title = '') {
-    const txt = encodeURIComponent((title || '').slice(0,60));
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180'><rect width='100%' height='100%' fill='#e6eef6'/><g font-family='sans-serif' fill='#04202a'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='24'>🏫</text></g></svg>`;
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
 
-  // Updated renderNews to respect window.newsFilter (patched to support 'school-today' too)
   async function renderNews(){
     const el = document.getElementById('news-content');
     if(!el) return;
     el.innerHTML = `<div class="muted">Loading news…</div>`;
     try {
-      const items = await fetchNews(50); // fetch a larger set to improve chances of school/today matches
+      const items = await fetchNews(50);
       let filtered = items;
 
       if(window.newsFilter === 'school-today') {
@@ -983,7 +1205,6 @@
         el.innerHTML = '';
       }
 
-      // render list (compact)
       el.innerHTML += filtered.slice(0, 20).map(i => {
         const thumb = i.image ? `<img src="${escapeHtml(i.image)}" alt="">` : `<img src="${schoolPlaceholderDataUrl(i.title)}" alt="">`;
         const dateStr = i.publishedAt ? timeAgo(new Date(i.publishedAt).getTime()) : '';
@@ -998,12 +1219,10 @@
       }).join('');
     } catch(e) {
       el.innerHTML = `<div class="muted">Couldn't load news.</div>`;
-    } finally {
-      // keep window.newsFilter as-is; callers set it when needed
     }
   }
 
-  // write story (simple inline editor)
+  // write story
   function renderWrite(){
     const el = document.getElementById('write-content');
     if(!el) return;
@@ -1081,38 +1300,6 @@
     el.innerHTML = `<div style="display:flex;gap:12px"><div style="flex:1"><strong>Top posts</strong><div style="margin-top:8px">${byScore.map(p=>`<div style="margin-bottom:8px"><div style="font-weight:600">${escapeHtml((p.text||'').slice(0,80))}</div><div class="muted">${escapeHtml(getCategoryName(p.categoryId))} • ${escapeHtml(String(p.likes))} likes</div></div>`).join('')}</div></div><div style="width:220px"><strong>Top categories</strong><div class="muted" style="margin-top:8px">${topCats.map(c=>`${escapeHtml(getCategoryName(c.id))} — ${c.count} posts`).join('<br>')}</div></div></div>`;
   }
 
-  // anonymous
-  function renderAnonymousRoom(){
-    const el = document.getElementById('anonymous-content');
-    if(!el) return;
-    el.innerHTML = `
-      <div style="margin-bottom:10px">
-        <form id="anonForm" style="display:flex;gap:8px;">
-          <input name="anonText" placeholder="Say something anonymously..." style="flex:1;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"/>
-          <button class="btn small" type="submit">Post</button>
-        </form>
-      </div>
-      <div id="anon-list"></div>
-    `;
-    const list = document.getElementById('anon-list');
-    function refreshAnonList(){
-      if(!list) return;
-      list.innerHTML = anonymousPosts.slice().reverse().map(a => `<div class="card" style="margin-bottom:8px;padding:10px"><div class="muted" style="font-size:12px">${escapeHtml(timeAgo(a.createdAt))}</div><div style="margin-top:6px">${escapeHtml(a.text)}</div></div>`).join('');
-    }
-    refreshAnonList();
-    const form = document.getElementById('anonForm');
-    form.onsubmit = (e) => {
-      e.preventDefault();
-      const fd = new FormData(form);
-      const text = (fd.get('anonText')||'').trim();
-      if(!text) { toast('Write something first'); return; }
-      anonymousPosts.push({ id: Date.now(), text, createdAt: Date.now() });
-      saveState(); refreshAnonList();
-      form.reset();
-      toast('Anonymous post added');
-    };
-  }
-
   // populate writer selects quickly
   function renderPostCategoryOptionsForSelect(selectEl){
     if(!selectEl) return;
@@ -1124,7 +1311,7 @@
     globalSearch.addEventListener('input', debounce(()=>renderFeed(), 180));
   }
 
-  // THEME + MODE BUTTON LOGIC (moved to settings menu)
+  // THEME & MODE BUTTON LOGIC
   function setTheme(isLight) {
     try {
       if(isLight) document.body.classList.add('theme-light');
@@ -1133,13 +1320,11 @@
     } catch (e) {
       console.warn('setTheme error', e);
     }
-    // update both potentially present buttons
     if(themeToggle) {
       themeToggle.textContent = isLight ? 'Dark' : 'Light';
       themeToggle.setAttribute('aria-pressed', String(isLight));
     }
     if(modeBtn) {
-      // label shows current mode
       modeBtn.textContent = isLight ? 'Light' : 'Dark';
       modeBtn.setAttribute('aria-pressed', String(!isLight));
     }
@@ -1151,7 +1336,6 @@
     toast(!isLight ? 'Light theme' : 'Dark theme');
   }
 
-  // update mode button label (called when menu opens)
   function updateModeButtonLabel() {
     if(!modeBtn) return;
     const isLight = document.body.classList.contains('theme-light');
@@ -1163,12 +1347,10 @@
     toggleTheme();
   });
 
-  // wire modeBtn in settings menu
   if(modeBtn) {
     modeBtn.addEventListener('click', (e) => {
       e.preventDefault();
       toggleTheme();
-      // close menu after action for a clear UX
       if(settingsMenu) { settingsMenu.style.display = 'none'; settingsMenu.setAttribute('aria-hidden','true'); }
       if(settingsBtn) settingsBtn.setAttribute('aria-expanded','false');
     });
@@ -1176,7 +1358,6 @@
 
   // Settings modal: Settings & Privacy
   function openSettingsModal() {
-    // load previous settings (demo)
     const saved = (() => {
       try { return JSON.parse(localStorage.getItem(KEY.SETTINGS) || '{}'); } catch(e){ return {}; }
     })();
@@ -1207,7 +1388,6 @@
     openModal({ title: 'Settings and privacy', html, confirmText: 'Save', cancelText: 'Cancel' });
 
     const modal = modalRoot.querySelector('.modal'); if(!modal) return;
-    // clicking confirm should persist demo settings
     const confirm = modal.querySelector('.modal-confirm');
     if(confirm) {
       confirm.addEventListener('click', () => {
@@ -1220,7 +1400,6 @@
         toast('Settings saved');
       });
     }
-    // wire Edit Profile button
     const editBtn = modal.querySelector('#__openEditProfile');
     if(editBtn) {
       editBtn.addEventListener('click', () => {
@@ -1263,7 +1442,6 @@
     settingPrivBtn.addEventListener('click', (e) => {
       e.preventDefault();
       openSettingsModal();
-      // close settings menu for clarity
       if(settingsMenu) { settingsMenu.style.display = 'none'; settingsMenu.setAttribute('aria-hidden','true'); }
       if(settingsBtn) settingsBtn.setAttribute('aria-expanded','false');
     });
@@ -1277,11 +1455,7 @@
     });
   }
 
-  // LOGOUT: delegated handler (works even if logout button is added/removed dynamically)
-  // Behavior:
-  // - Click on element matching #logoutBtn anywhere in the document triggers logout
-  // - Keyboard: when #logoutBtn is focused, Enter/Space triggers logout
-  // - Clears demo localStorage keys and redirects to a resolved login path (best-effort)
+  // LOGOUT / resolveLoginPath / doLogout same as before
   const LOGIN_PATH_CANDIDATES = [
     'login.html',
     'log in.html',
@@ -1299,9 +1473,7 @@
         try {
           const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
           ok = res && res.ok;
-        } catch (e) {
-          // HEAD may fail on some servers - try GET
-        }
+        } catch (e) {}
         if (!ok) {
           try {
             const res2 = await fetch(encodeURI(candidate), { method: 'GET', cache: 'no-store' });
@@ -1311,24 +1483,19 @@
           }
         }
         if (ok) return candidate;
-      } catch (err) {
-        // ignore and try next
-      }
+      } catch (err) {}
     }
     return LOGIN_PATH_CANDIDATES[0];
   }
 
-  // doLogout is intentionally top-level so delegation can call it
   async function doLogout() {
     try {
       localStorage.removeItem('loggedIn');
       localStorage.removeItem(KEY.PROFILE);
-      // any other demo keys can be removed here
     } catch (err) {
       console.warn('Error clearing storage on logout', err);
     }
 
-    // close settings menu if present
     const settingsMenu = document.getElementById('settings-menu');
     const settingsBtn = document.getElementById('settings-btn');
     if (settingsMenu) {
@@ -1337,7 +1504,6 @@
     }
     if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
 
-    // determine a reachable login path and redirect
     try {
       const dest = await resolveLoginPath();
       try { location.replace(dest); } catch (e) { location.href = dest; }
@@ -1346,9 +1512,8 @@
     }
   }
 
-  // Delegated click and keyboard listeners - robust even if element is recreated
+  // Delegated logout
   function attachDelegatedLogout() {
-    // Click delegation
     document.addEventListener('click', function delegatedLogoutClick(e) {
       const btn = e.target.closest && e.target.closest('#logoutBtn');
       if (btn) {
@@ -1356,9 +1521,8 @@
         e.stopPropagation();
         doLogout().catch(err => console.error('logout error', err));
       }
-    }, true); // use capture to ensure we catch before other handlers if necessary
+    }, true);
 
-    // Keyboard: Enter/Space when focused on logout button
     document.addEventListener('keydown', function delegatedLogoutKey(e) {
       const active = document.activeElement;
       if (!active) return;
@@ -1422,14 +1586,13 @@
     updateSideBadges();
   }
 
-  // Profile avatar now opens an Instagram-like gallery showing all of the user's posts in square tiles.
+  // Profile avatar shortcut
   function initProfileIconShortcut() {
     const profileIcon = document.getElementById('profile-icon');
     if (profileIcon) {
       profileIcon.style.cursor = "pointer";
       profileIcon.tabIndex = 0;
       profileIcon.addEventListener('click', () => {
-        // open the gallery modal for the current user
         openProfileGallery();
       });
       profileIcon.addEventListener('keydown', e => {
@@ -1440,7 +1603,6 @@
       });
     }
 
-    // Keep keyboard access to the username element to open profile editing if desired
     const usernameEl = document.querySelector('.username');
     if (usernameEl) {
       usernameEl.tabIndex = 0;
@@ -1458,8 +1620,11 @@
     }
   }
 
-  // keyboard shortcut to open write editor: Cmd/Ctrl+K (or Ctrl+K)
+  // keyboard shortcuts
   document.addEventListener('keydown', (e) => {
+    if(e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable)) return;
+    if(e.key === '/') { e.preventDefault(); globalSearch && globalSearch.focus(); }
+    if(e.key === 'n') { e.preventDefault(); postText && postText.focus(); }
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       setActiveTab('write');
@@ -1472,18 +1637,16 @@
       const t = localStorage.getItem(KEY.THEME);
       if(t === 'light') { document.body.classList.add('theme-light'); if(themeToggle) { themeToggle.textContent = 'Dark'; themeToggle.setAttribute('aria-pressed','true'); } }
       else { document.body.classList.remove('theme-light'); if(themeToggle) { themeToggle.textContent = 'Light'; themeToggle.setAttribute('aria-pressed','false'); } }
-      // reflect on modeBtn as well
       updateModeButtonLabel();
     } catch(e){}
   }
 
-  // --- Render Top Stories (school-only filter; shows today's school news when possible) ---
+  // Top stories
   async function renderTopStories() {
     if(!topStoriesList) return;
     topStoriesList.innerHTML = 'Loading top stories…';
     try {
       const items = await fetchNews(50);
-      // Prefer school items published today first
       let schoolToday = items.filter(i => isSchoolRelated(i) && isPublishedToday(i));
       let schoolRecent = items.filter(i => isSchoolRelated(i) && !isPublishedToday(i));
       let showItems = schoolToday.length ? schoolToday.slice(0,6) : (schoolRecent.length ? schoolRecent.slice(0,6) : items.slice(0,6));
@@ -1501,7 +1664,6 @@
         </div>`;
       }).join('');
 
-      // attach click/keyboard handlers
       topStoriesList.querySelectorAll('.top-stories-item').forEach(node => {
         node.addEventListener('click', () => {
           const url = node.dataset.url;
@@ -1517,10 +1679,8 @@
     }
   }
 
-  // --- Wire More news button to open News tab with school-today filter ---
   if(moreNewsBtn) {
     moreNewsBtn.addEventListener('click', () => {
-      // prefer strict "today" school filter
       window.newsFilter = 'school-today';
       setActiveTab('news');
       renderNews();
@@ -1535,13 +1695,13 @@
     renderFeed();
     renderNotifications();
     renderCommunities();
-    renderTopStories(); // <-- populate Top stories card on init
+    renderTopStories();
     renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
     initNavAccessibility();
     restoreTabFromHashOrLast();
     initSideIcons();
     initProfileIconShortcut();
-    attachDelegatedLogout(); // delegation-based logout wiring
+    attachDelegatedLogout();
     toast('Welcome back!');
   }
 
@@ -1556,6 +1716,7 @@
     getPosts: () => posts,
     getCategories: () => categories,
     getNotifications: () => notifications,
+    getAnonymousPosts: () => anonymousPosts,
     saveState,
     setActiveTab,
     doLogout,
