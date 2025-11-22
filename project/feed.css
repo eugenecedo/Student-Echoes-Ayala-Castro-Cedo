@@ -433,6 +433,79 @@ body:not(.theme-light) .logout-btn:focus {
   background: #ff7675;
   color: #222;
 }
+/* Settings and Privacy button dynamic color based on theme */
+.setting-priv {
+  transition: background 0.2s, color 0.2s;
+}
+
+body.theme-light .setting-priv {
+  color: #363332;
+  background: transparent;
+}
+body.theme-light .setting-priv:hover,
+body.theme-light .setting-priv:focus {
+  background: #363332;
+  color: #fff;
+}
+
+body:not(.theme-light) .setting-priv {
+  color: #363332;
+  background: transparent;
+}
+body:not(.theme-light) .setting-priv:hover,
+body:not(.theme-light) .setting-priv:focus {
+  background: #363332;
+  color: #ffffff;
+}
+/* Help and Support button dynamic color based on theme */
+.setting-priv {
+  transition: background 0.2s, color 0.2s;
+}
+
+body.theme-light .help-btn {
+  color: #363332;
+  background: transparent;
+}
+body.theme-light .help-btn:hover,
+body.theme-light .help-btn:focus {
+  background: #363332;
+  color: #fff;
+}
+
+body:not(.theme-light) .help-btn {
+  color: #363332;
+  background: transparent;
+}
+body:not(.theme-light) .help-btn:hover,
+body:not(.theme-light) .help-btn:focus {
+  background: #363332;
+  color: #ffffff;
+}
+
+/* mode button dynamic color based on theme */
+.setting-priv {
+  transition: background 0.2s, color 0.2s;
+}
+
+body.theme-light .mode-btn {
+  color: #363332;
+  background: transparent;
+}
+body.theme-light .mode-btn:hover,
+body.theme-light .mode-btn:focus {
+  background: #363332;
+  color: #fff;
+}
+
+body:not(.theme-light) .mode-btn {
+  color: #363332;
+  background: transparent;
+}
+body:not(.theme-light) .mode-btn:hover,
+body:not(.theme-light) .mode-btn:focus {
+  background: #363332;
+  color: #ffffff;
+}
 
 .menu-btn {
   background: transparent !important;

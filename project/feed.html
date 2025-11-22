@@ -9,7 +9,7 @@
 <body>
 <div id="app" class="container">
   <header class="topbar" role="banner" aria-label="Top bar" style="position:relative;">
-    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false" type="button">
+    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false" type="button" style="display:none">
       <span></span><span></span><span></span>
     </button>
 
@@ -28,7 +28,9 @@
     </div>
 
     <div class="top-right">
-      <button id="theme-toggle" class="btn small" aria-pressed="false" type="button">Light</button>
+      <!-- kept for compatibility but hidden (mode moved to settings menu) -->
+      <button id="theme-toggle" class="btn small" aria-pressed="false" type="button" style="display:none">Light</button>
+
       <div class="user" title="Your profile" role="button" tabindex="0" aria-label="Open profile">
         <img id="profile-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
         <span class="username">You</span>
@@ -41,8 +43,13 @@
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1.82.33l-.09.09a2 2 0 0 1-2.83 0l-.09-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1.82-.33l.09-.09a2 2 0 0 1 2.83 0l.09.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.09.26.13.53.13.8s-.04.54-.13.8Z"/>
           </svg>
         </button>
-        <div id="settings-menu" role="menu" aria-hidden="true" style="display:none;position:absolute;right:0;top:110%;background:white;border:1px solid #eee;box-shadow:0 2px 8px rgba(0,0,0,0.09);border-radius:8px;min-width:180px;padding:8px 0;z-index:999;">
+        <div id="settings-menu" role="menu" aria-hidden="true" style="display:none;position:absolute;right:0;top:110%;background:white;border:1px solid #eee;box-shadow:0 2px 8px rgba(0,0,0,0.09);border-radius:8px;min-width:220px;padding:8px 0;z-index:999;">
+          <button id="settingPriv" role="menuitem" class="btn small setting-priv" style="width:100%;text-align:left;" type="button">Settings and Privacy</button>
+          <button id="helpBtn" role="menuitem" class="btn small help-btn" style="width:100%;text-align:left;" type="button">Help and Support</button>
+          <!-- Mode button will toggle theme; label is updated by JS to reflect current mode -->
+          <button id="modeBtn" role="menuitem" class="btn small mode-btn" style="width:100%;text-align:left;" type="button">Mode</button>
           <button id="logoutBtn" role="menuitem" class="btn small logout-btn" style="width:100%;text-align:left;" type="button">Logout</button>
+        </div>
         </div>
       </div>
     </div>

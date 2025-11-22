@@ -1,6 +1,3 @@
-// feed.js - Full app script with delegated logout handler (works even if logout button is rendered/replaced dynamically)
-// All previous features preserved: posts, threaded comments, post actions, likes/shares, categories, stories, anonymous room,
-// accessible modals with focus trap, side icons, theme toggle, and the fixed logout behavior (delegated).
 (() => {
   const KEY = {
     CATEGORIES: 'amu_categories',
@@ -9,7 +6,8 @@
     PROFILE: 'userProfile',
     THEME: 'theme',
     ANON: 'amu_anonymous_posts',
-    LAST_TAB: 'amu_last_tab'
+    LAST_TAB: 'amu_last_tab',
+    SETTINGS: 'amu_settings'
   };
 
   // seed/default data (comments are arrays with replies)
@@ -101,6 +99,14 @@
   const topStoriesList = document.getElementById('top-stories-list');
   const moreNewsBtn = document.getElementById('more-news-btn');
 
+  // settings menu buttons
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsMenu = document.getElementById('settings-menu');
+  const settingPrivBtn = document.getElementById('settingPriv');
+  const helpBtn = document.getElementById('helpBtn');
+  const modeBtn = document.getElementById('modeBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
   // helpers
   function saveState(){
     try {
@@ -136,7 +142,6 @@
   `;
 }
 
-
   // -- toast (small notification) --
   function toast(message, opts = {}) {
     if(!toastRoot) return;
@@ -154,18 +159,29 @@
     }, timeout);
   }
 
-  // Settings menu toggle
-  const settingsBtn = document.getElementById('settings-btn');
-  const settingsMenu = document.getElementById('settings-menu');
+  // ensure settings menu toggling keeps ARIA in sync
   if(settingsBtn && settingsMenu) {
+    function setSettingsOpen(open) {
+      settingsBtn.setAttribute('aria-expanded', String(Boolean(open)));
+      settingsMenu.style.display = open ? 'block' : 'none';
+      settingsMenu.setAttribute('aria-hidden', String(!open));
+      if(open) {
+        // Ensure Mode button label is in sync whenever menu opens
+        updateModeButtonLabel();
+      }
+    }
     settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      settingsMenu.style.display = (settingsMenu.style.display === "block") ? "none" : "block";
+      const isOpen = settingsMenu.style.display === 'block';
+      setSettingsOpen(!isOpen);
     });
     document.addEventListener('click', function(e) {
       if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
-        settingsMenu.style.display = 'none';
+        setSettingsOpen(false);
       }
+    });
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape') setSettingsOpen(false);
     });
   }
 
@@ -1108,22 +1124,250 @@
     globalSearch.addEventListener('input', debounce(()=>renderFeed(), 180));
   }
 
+  // THEME + MODE BUTTON LOGIC (moved to settings menu)
+  function setTheme(isLight) {
+    try {
+      if(isLight) document.body.classList.add('theme-light');
+      else document.body.classList.remove('theme-light');
+      localStorage.setItem(KEY.THEME, isLight ? 'light' : 'dark');
+    } catch (e) {
+      console.warn('setTheme error', e);
+    }
+    // update both potentially present buttons
+    if(themeToggle) {
+      themeToggle.textContent = isLight ? 'Dark' : 'Light';
+      themeToggle.setAttribute('aria-pressed', String(isLight));
+    }
+    if(modeBtn) {
+      // label shows current mode
+      modeBtn.textContent = isLight ? 'Light' : 'Dark';
+      modeBtn.setAttribute('aria-pressed', String(!isLight));
+    }
+  }
+
+  function toggleTheme() {
+    const isLight = document.body.classList.contains('theme-light');
+    setTheme(!isLight);
+    toast(!isLight ? 'Light theme' : 'Dark theme');
+  }
+
+  // update mode button label (called when menu opens)
+  function updateModeButtonLabel() {
+    if(!modeBtn) return;
+    const isLight = document.body.classList.contains('theme-light');
+    modeBtn.textContent = isLight ? 'Light' : 'Dark';
+    modeBtn.setAttribute('aria-pressed', String(!isLight));
+  }
+
   if(themeToggle) themeToggle.addEventListener('click', ()=>{
-    const is = document.body.classList.toggle('theme-light');
-    // button text indicates action (pressing it will switch to that label)
-    themeToggle.textContent = is ? 'Dark' : 'Light';
-    themeToggle.setAttribute('aria-pressed', String(is));
-    try { localStorage.setItem(KEY.THEME, is ? 'light' : 'dark'); } catch (e) {}
-    toast(is ? 'Light theme' : 'Dark theme');
+    toggleTheme();
   });
 
-  if(clearNotifsBtn) clearNotifsBtn.onclick = () => { notifications = []; saveState(); renderNotifications(); toast('Notifications cleared'); };
+  // wire modeBtn in settings menu
+  if(modeBtn) {
+    modeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleTheme();
+      // close menu after action for a clear UX
+      if(settingsMenu) { settingsMenu.style.display = 'none'; settingsMenu.setAttribute('aria-hidden','true'); }
+      if(settingsBtn) settingsBtn.setAttribute('aria-expanded','false');
+    });
+  }
 
-  document.addEventListener('keydown', (e) => {
-    if(e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable)) return;
-    if(e.key === '/') { e.preventDefault(); globalSearch && globalSearch.focus(); }
-    if(e.key === 'n') { e.preventDefault(); postText && postText.focus(); }
-  });
+  // Settings modal: Settings & Privacy
+  function openSettingsModal() {
+    // load previous settings (demo)
+    const saved = (() => {
+      try { return JSON.parse(localStorage.getItem(KEY.SETTINGS) || '{}'); } catch(e){ return {}; }
+    })();
+    const profileVisibility = saved.profileVisibility || 'public';
+    const allowIndex = saved.allowIndex === false ? false : true;
+
+    const html = `
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <div style="font-weight:600;margin-bottom:6px">Profile visibility</div>
+          <div><label><input type="radio" name="profileVisibility" value="public" ${profileVisibility==='public' ? 'checked' : ''}/> Public</label> &nbsp; <label><input type="radio" name="profileVisibility" value="private" ${profileVisibility==='private' ? 'checked' : ''}/> Private</label></div>
+          <div class="muted" style="margin-top:6px">When private, your posts won't appear publicly in some listings in this demo.</div>
+        </div>
+
+        <div>
+          <div style="font-weight:600;margin-bottom:6px">Search indexing</div>
+          <label><input type="checkbox" id="__allowIndex" ${allowIndex ? 'checked' : ''}/> Allow search engines to index my profile</label>
+        </div>
+
+        <div>
+          <div style="font-weight:600;margin-bottom:6px">Profile</div>
+          <div class="muted">To edit details, open your profile and click Edit Profile.</div>
+          <div style="margin-top:8px"><button class="btn small" id="__openEditProfile">Edit Profile</button></div>
+        </div>
+      </div>
+    `;
+
+    openModal({ title: 'Settings and privacy', html, confirmText: 'Save', cancelText: 'Cancel' });
+
+    const modal = modalRoot.querySelector('.modal'); if(!modal) return;
+    // clicking confirm should persist demo settings
+    const confirm = modal.querySelector('.modal-confirm');
+    if(confirm) {
+      confirm.addEventListener('click', () => {
+        const selected = modal.querySelector('input[name="profileVisibility"]:checked');
+        const pv = selected ? selected.value : 'public';
+        const allowI = !!modal.querySelector('#__allowIndex') && modal.querySelector('#__allowIndex').checked;
+        try {
+          localStorage.setItem(KEY.SETTINGS, JSON.stringify({ profileVisibility: pv, allowIndex: allowI }));
+        } catch(e){}
+        toast('Settings saved');
+      });
+    }
+    // wire Edit Profile button
+    const editBtn = modal.querySelector('#__openEditProfile');
+    if(editBtn) {
+      editBtn.addEventListener('click', () => {
+        const closeBtn = modal.querySelector('.modal-close');
+        if(closeBtn) closeBtn.click();
+        setTimeout(() => { setActiveTab('profile'); renderProfile(true); }, 160);
+      });
+    }
+  }
+
+  // Help & Support modal
+  function openHelpModal() {
+    const html = `
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-weight:600">Help & Support</div>
+        <div class="muted">FAQ: How do I create a post? — Use the Create post area at the top of the feed. Add an image or text, pick a category and Post.</div>
+        <div class="muted">FAQ: How to change my profile? — Open your profile and click Edit Profile.</div>
+        <div class="muted">If you still need help, send a message to our demo support below.</div>
+        <div style="margin-top:8px"><button class="btn small" id="__contactSupportBtn">Contact support</button></div>
+      </div>
+    `;
+    openModal({ title: 'Help and Support', html, confirmText: 'Close', cancelText: '' });
+
+    const modal = modalRoot.querySelector('.modal'); if(!modal) return;
+    const contactBtn = modal.querySelector('#__contactSupportBtn');
+    if(contactBtn) {
+      contactBtn.addEventListener('click', async () => {
+        const msg = await openModal({ title: 'Contact support', input: true, placeholder: 'Describe your issue', confirmText: 'Send' });
+        if(msg && msg.trim()) {
+          notifications.unshift({ id: Date.now(), text: 'Support request sent', createdAt: Date.now(), avatar: getUserProfile().avatar });
+          saveState(); renderNotifications();
+          toast('Support request sent (demo)');
+        }
+      });
+    }
+  }
+
+  // wire settings menu actions
+  if(settingPrivBtn) {
+    settingPrivBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openSettingsModal();
+      // close settings menu for clarity
+      if(settingsMenu) { settingsMenu.style.display = 'none'; settingsMenu.setAttribute('aria-hidden','true'); }
+      if(settingsBtn) settingsBtn.setAttribute('aria-expanded','false');
+    });
+  }
+  if(helpBtn) {
+    helpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openHelpModal();
+      if(settingsMenu) { settingsMenu.style.display = 'none'; settingsMenu.setAttribute('aria-hidden','true'); }
+      if(settingsBtn) settingsBtn.setAttribute('aria-expanded','false');
+    });
+  }
+
+  // LOGOUT: delegated handler (works even if logout button is added/removed dynamically)
+  // Behavior:
+  // - Click on element matching #logoutBtn anywhere in the document triggers logout
+  // - Keyboard: when #logoutBtn is focused, Enter/Space triggers logout
+  // - Clears demo localStorage keys and redirects to a resolved login path (best-effort)
+  const LOGIN_PATH_CANDIDATES = [
+    'login.html',
+    'log in.html',
+    '/login',
+    '/signin',
+    '/sign-in',
+    'index.html'
+  ];
+
+  async function resolveLoginPath() {
+    for (const candidate of LOGIN_PATH_CANDIDATES) {
+      try {
+        const url = encodeURI(candidate);
+        let ok = false;
+        try {
+          const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+          ok = res && res.ok;
+        } catch (e) {
+          // HEAD may fail on some servers - try GET
+        }
+        if (!ok) {
+          try {
+            const res2 = await fetch(encodeURI(candidate), { method: 'GET', cache: 'no-store' });
+            ok = res2 && res2.ok;
+          } catch (e) {
+            ok = false;
+          }
+        }
+        if (ok) return candidate;
+      } catch (err) {
+        // ignore and try next
+      }
+    }
+    return LOGIN_PATH_CANDIDATES[0];
+  }
+
+  // doLogout is intentionally top-level so delegation can call it
+  async function doLogout() {
+    try {
+      localStorage.removeItem('loggedIn');
+      localStorage.removeItem(KEY.PROFILE);
+      // any other demo keys can be removed here
+    } catch (err) {
+      console.warn('Error clearing storage on logout', err);
+    }
+
+    // close settings menu if present
+    const settingsMenu = document.getElementById('settings-menu');
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsMenu) {
+      settingsMenu.style.display = 'none';
+      settingsMenu.setAttribute('aria-hidden', 'true');
+    }
+    if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
+
+    // determine a reachable login path and redirect
+    try {
+      const dest = await resolveLoginPath();
+      try { location.replace(dest); } catch (e) { location.href = dest; }
+    } catch (err) {
+      try { location.replace('log in.html'); } catch (e) { location.href = 'login.html'; }
+    }
+  }
+
+  // Delegated click and keyboard listeners - robust even if element is recreated
+  function attachDelegatedLogout() {
+    // Click delegation
+    document.addEventListener('click', function delegatedLogoutClick(e) {
+      const btn = e.target.closest && e.target.closest('#logoutBtn');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        doLogout().catch(err => console.error('logout error', err));
+      }
+    }, true); // use capture to ensure we catch before other handlers if necessary
+
+    // Keyboard: Enter/Space when focused on logout button
+    document.addEventListener('keydown', function delegatedLogoutKey(e) {
+      const active = document.activeElement;
+      if (!active) return;
+      if (active.id === 'logoutBtn' && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        doLogout().catch(err => console.error('logout error', err));
+      }
+    });
+  }
 
   // side-icons wiring and helpers (new)
   function updateSideBadges(){
@@ -1222,104 +1466,14 @@
     }
   });
 
-  // LOGOUT: delegated handler (works even if logout button is added/removed dynamically)
-  // Behavior:
-  // - Click on element matching #logoutBtn anywhere in the document triggers logout
-  // - Keyboard: when #logoutBtn is focused, Enter/Space triggers logout
-  // - Clears demo localStorage keys and redirects to a resolved login path (best-effort)
-  const LOGIN_PATH_CANDIDATES = [
-    'login.html',
-    'log in.html',
-    '/login',
-    '/signin',
-    '/sign-in',
-    'index.html'
-  ];
-
-  async function resolveLoginPath() {
-    for (const candidate of LOGIN_PATH_CANDIDATES) {
-      try {
-        const url = encodeURI(candidate);
-        let ok = false;
-        try {
-          const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-          ok = res && res.ok;
-        } catch (e) {
-          // HEAD may fail on some servers - try GET
-        }
-        if (!ok) {
-          try {
-            const res2 = await fetch(encodeURI(candidate), { method: 'GET', cache: 'no-store' });
-            ok = res2 && res2.ok;
-          } catch (e) {
-            ok = false;
-          }
-        }
-        if (ok) return candidate;
-      } catch (err) {
-        // ignore and try next
-      }
-    }
-    return LOGIN_PATH_CANDIDATES[0];
-  }
-
-  // doLogout is intentionally top-level so delegation can call it
-  async function doLogout() {
-    try {
-      localStorage.removeItem('loggedIn');
-      localStorage.removeItem(KEY.PROFILE);
-      // any other demo keys can be removed here
-    } catch (err) {
-      console.warn('Error clearing storage on logout', err);
-    }
-
-    // close settings menu if present
-    const settingsMenu = document.getElementById('settings-menu');
-    const settingsBtn = document.getElementById('settings-btn');
-    if (settingsMenu) {
-      settingsMenu.style.display = 'none';
-      settingsMenu.setAttribute('aria-hidden', 'true');
-    }
-    if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
-
-    // determine a reachable login path and redirect
-    try {
-      const dest = await resolveLoginPath();
-      try { location.replace(dest); } catch (e) { location.href = dest; }
-    } catch (err) {
-      try { location.replace('log in.html'); } catch (e) { location.href = 'login.html'; }
-    }
-  }
-
-  // Delegated click and keyboard listeners - robust even if element is recreated
-  function attachDelegatedLogout() {
-    // Click delegation
-    document.addEventListener('click', function delegatedLogoutClick(e) {
-      const btn = e.target.closest && e.target.closest('#logoutBtn');
-      if (btn) {
-        e.preventDefault();
-        e.stopPropagation();
-        doLogout().catch(err => console.error('logout error', err));
-      }
-    }, true); // use capture to ensure we catch before other handlers if necessary
-
-    // Keyboard: Enter/Space when focused on logout button
-    document.addEventListener('keydown', function delegatedLogoutKey(e) {
-      const active = document.activeElement;
-      if (!active) return;
-      if (active.id === 'logoutBtn' && (e.key === 'Enter' || e.key === ' ')) {
-        e.preventDefault();
-        doLogout().catch(err => console.error('logout error', err));
-      }
-    });
-  }
-
   // theme & init
   function initTheme(){
     try {
       const t = localStorage.getItem(KEY.THEME);
       if(t === 'light') { document.body.classList.add('theme-light'); if(themeToggle) { themeToggle.textContent = 'Dark'; themeToggle.setAttribute('aria-pressed','true'); } }
       else { document.body.classList.remove('theme-light'); if(themeToggle) { themeToggle.textContent = 'Light'; themeToggle.setAttribute('aria-pressed','false'); } }
+      // reflect on modeBtn as well
+      updateModeButtonLabel();
     } catch(e){}
   }
 
