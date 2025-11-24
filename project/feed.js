@@ -1026,20 +1026,158 @@
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
-  function renderProfile(editMode=false){
-    const cont = document.getElementById('profile-content'); if(!cont) return;
-    const u = getUserProfile();
-    const postCount = posts.filter(p=>p.author.name===u.name).length;
-    if(!editMode){
-      cont.innerHTML = `<div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;"><img src="${escapeHtml(u.avatar)}" style="width:80px;height:80px;border-radius:50%;"><div><div style="font-size:22px;font-weight:700;">${escapeHtml(u.name)}</div><div class="muted">${escapeHtml(u.bio)}</div><div style="margin-top:6px;font-size:13px;">Joined: ${escapeHtml(u.joined)}</div></div></div><div><strong>Posts:</strong> ${postCount}<br><strong>Communities:</strong> ${u.communitiesJoined}</div><div style="margin-top:12px;"><button class="btn small" id="editProfileBtn">Edit Profile</button></div>`;
-      const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
-    } else {
-      cont.innerHTML = `<form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;"><label>Name:<br><input name="name" value="${escapeHtml(u.name)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);"></label><label>Avatar URL:<br><input name="avatar" value="${escapeHtml(u.avatar)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);"></label><label>Bio:<br><textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">${escapeHtml(u.bio)}</textarea></label><div style="margin-top:12px;"><button class="btn small" type="submit">Save</button><button class="btn small" type="button" id="cancelProfileBtn" style="margin-left:8px">Cancel</button></div></form>`;
-      const form = document.getElementById('editProfileForm'); form.onsubmit = (ev) => { ev.preventDefault(); const fd = new FormData(form); const prev = getUserProfile(); const np = { name: (fd.get('name')||prev.name).trim(), avatar:(fd.get('avatar')||prev.avatar).trim(), bio:(fd.get('bio')||'').trim(), joined: prev.joined, communitiesJoined: prev.communitiesJoined }; setUserProfile(np); renderTopRightUser(); renderFeed(); renderProfile(false); toast('Profile updated'); };
-      const cancel = document.getElementById('cancelProfileBtn'); if(cancel) cancel.onclick = () => renderProfile(false);
-    }
+
+ function renderProfile(editMode=false){
+  const cont = document.getElementById('profile-content'); if(!cont) return;
+  const u = getUserProfile();
+  const postCount = posts.filter(p=>p.author.name===u.name).length;
+  const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
+
+  if(!editMode){
+    cont.innerHTML = `<div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+      <img src="${escapeHtml(u.avatar || defaultAvatar)}" style="width:80px;height:80px;border-radius:50%;">
+      <div>
+        <div style="font-size:22px;font-weight:700;">${escapeHtml(u.name)}</div>
+        <div class="muted">${escapeHtml(u.bio)}</div>
+        <div style="margin-top:6px;font-size:13px;">Joined: ${escapeHtml(u.joined)}</div>
+      </div>
+    </div>
+    <div>
+      <strong>Posts:</strong> ${postCount}<br>
+      <strong>Communities:</strong> ${u.communitiesJoined}
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn small" id="editProfileBtn">Edit Profile</button>
+    </div>`;
+    const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
+    return;
   }
 
+  let currentAvatar = u.avatar || defaultAvatar;
+  cont.innerHTML = `
+    <form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;">
+      <label>Name:<br>
+        <input name="name" value="${escapeHtml(u.name)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">
+      </label>
+      <div style="margin-top:8px;">
+        <label style="font-weight:600;margin-bottom:4px;">Profile Photo:</label>
+        <div style="display:flex;gap:18px;align-items:center">
+          <img id="avatarPreview" src="${escapeHtml(currentAvatar)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid #ddd;">
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
+            <button type="button" class="btn small" id="pickPhotoBtn">Upload Photo</button>
+            <button type="button" class="btn small" id="takePhotoBtn">Take Photo</button>
+            <button type="button" class="btn small" id="removePhotoBtn" style="color:#d32f2f">Remove Photo</button>
+          </div>
+        </div>
+      </div>
+      <label>Bio:<br>
+        <textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">${escapeHtml(u.bio)}</textarea>
+      </label>
+      <div style="margin-top:12px;">
+        <button class="btn small" type="submit">Save</button>
+        <button class="btn small" type="button" id="cancelProfileBtn" style="margin-left:8px">Cancel</button>
+      </div>
+    </form>
+    <div id="webcam-modal-root"></div>
+  `;
+  const avatarPreview = document.getElementById('avatarPreview');
+  const avatarUpload = document.getElementById('avatarUpload');
+  const pickPhotoBtn = document.getElementById('pickPhotoBtn');
+  const takePhotoBtn = document.getElementById('takePhotoBtn');
+  const removePhotoBtn = document.getElementById('removePhotoBtn');
+  const form = document.getElementById('editProfileForm');
+  const cancel = document.getElementById('cancelProfileBtn');
+  const webcamModalRoot = document.getElementById('webcam-modal-root');
+
+  pickPhotoBtn.onclick = () => avatarUpload.click();
+  avatarUpload.onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        currentAvatar = ev.target.result;
+        avatarPreview.src = currentAvatar;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Webcam/camera take photo
+  takePhotoBtn.onclick = () => {
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      toast('Camera/webcam not supported or permission denied');
+      return;
+    }
+    // Webcam modal
+    webcamModalRoot.innerHTML = `
+      <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1200;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:24px;max-width:340px;text-align:center;box-shadow:0 6px 32px rgba(2,6,23,0.25);position:relative;">
+          <div style="font-weight:700;font-size:16px;margin-bottom:8px;">Take Photo</div>
+          <video id="webcamVideo" autoplay playsinline width="240" height="180" style="border-radius:10px;border:1px solid #dadada;background:#ddd;"></video>
+          <br>
+          <button id="snapPhotoBtn" class="btn primary" style="margin-top:10px;">Take Photo</button>
+          <button id="closeWebcamBtn" class="btn small" style="margin-top:10px;margin-left:8px;">Cancel</button>
+        </div>
+      </div>
+    `;
+    const video = document.getElementById('webcamVideo');
+    const snapBtn = document.getElementById('snapPhotoBtn');
+    const closeBtn = document.getElementById('closeWebcamBtn');
+    let stream = null;
+    navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
+      stream = s;
+      video.srcObject = s;
+    }).catch(() => {
+      toast('Camera access denied');
+      webcamModalRoot.innerHTML = '';
+    });
+    snapBtn.onclick = function(){
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 240;
+      canvas.height = video.videoHeight || 180;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      currentAvatar = canvas.toDataURL('image/png');
+      avatarPreview.src = currentAvatar;
+      if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+      }
+      webcamModalRoot.innerHTML = '';
+    };
+    closeBtn.onclick = function(){
+      if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+      }
+      webcamModalRoot.innerHTML = '';
+    };
+  };
+
+  // Remove photo and use default SVG
+  removePhotoBtn.onclick = () => {
+    // add confirmation dialog
+    if(confirm('Are you sure you want to remove your profile photo?')){
+      currentAvatar = defaultAvatar;
+      avatarPreview.src = defaultAvatar;
+      toast('Profile photo removed');
+    }
+  };
+
+  // Save profile
+  form.onsubmit = function(ev){
+    ev.preventDefault();
+    const fd = new FormData(form), prev = getUserProfile();
+    const np = {
+      name: (fd.get('name')||prev.name).trim(),
+      avatar: currentAvatar, // dataURL or SVG
+      bio: (fd.get('bio')||'').trim(),
+      joined: prev.joined,
+      communitiesJoined: prev.communitiesJoined
+    };
+    setUserProfile(np); renderTopRightUser(); renderFeed(); renderProfile(false);
+    toast('Profile updated');
+  };
+  if(cancel) cancel.onclick = () => renderProfile(false);
+}
   // tabs plumbing (unchanged mapping)
   const TAB_TO_PANEL_ID = {
     feed: 'tab-feed',
@@ -1726,41 +1864,3 @@
 
   init();
 })();
-// Open modal
-document.getElementById('edit-profile-btn').addEventListener('click', () => {
-  document.getElementById('edit-profile-modal').classList.add('show');
-});
-
-// Close modal
-document.querySelector('#edit-profile-modal .modal-close').addEventListener('click', () => {
-  document.getElementById('edit-profile-modal').classList.remove('show');
-});
-
-document.getElementById('save-profile-btn').addEventListener('click', () => {
-  const fileInput = document.getElementById('profile-photo-input');
-  const username = document.getElementById('profile-username-input').value;
-  const bio = document.getElementById('profile-bio-input').value;
-
-  // If a new photo was selected
-  if (fileInput.files && fileInput.files[0]) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById('profile-icon').src = e.target.result;
-
-      // Add to gallery
-      const gallery = document.querySelector('.profile-gallery-grid');
-      const newItem = document.createElement('div');
-      newItem.className = 'profile-gallery-item';
-      newItem.innerHTML = `<img src="${e.target.result}" alt="Profile photo" />`;
-      gallery.prepend(newItem);
-    };
-    reader.readAsDataURL(fileInput.files[0]);
-  }
-
-  // Update username & bio
-  if (username) document.querySelector('.username').textContent = username;
-  if (bio) document.getElementById('profile-bio').textContent = bio;
-
-  // Close modal
-  document.getElementById('edit-profile-modal').classList.remove('show');
-});
