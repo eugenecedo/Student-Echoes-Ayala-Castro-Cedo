@@ -1726,3 +1726,41 @@
 
   init();
 })();
+// Open modal
+document.getElementById('edit-profile-btn').addEventListener('click', () => {
+  document.getElementById('edit-profile-modal').classList.add('show');
+});
+
+// Close modal
+document.querySelector('#edit-profile-modal .modal-close').addEventListener('click', () => {
+  document.getElementById('edit-profile-modal').classList.remove('show');
+});
+
+document.getElementById('save-profile-btn').addEventListener('click', () => {
+  const fileInput = document.getElementById('profile-photo-input');
+  const username = document.getElementById('profile-username-input').value;
+  const bio = document.getElementById('profile-bio-input').value;
+
+  // If a new photo was selected
+  if (fileInput.files && fileInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('profile-icon').src = e.target.result;
+
+      // Add to gallery
+      const gallery = document.querySelector('.profile-gallery-grid');
+      const newItem = document.createElement('div');
+      newItem.className = 'profile-gallery-item';
+      newItem.innerHTML = `<img src="${e.target.result}" alt="Profile photo" />`;
+      gallery.prepend(newItem);
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  }
+
+  // Update username & bio
+  if (username) document.querySelector('.username').textContent = username;
+  if (bio) document.getElementById('profile-bio').textContent = bio;
+
+  // Close modal
+  document.getElementById('edit-profile-modal').classList.remove('show');
+});

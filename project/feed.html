@@ -77,7 +77,6 @@
           </li>
 
           <li data-tab="mystories" role="tab" tabindex="-1" aria-selected="false">My Stories</li>
-          <li data-tab="categories" role="tab" tabindex="-1" aria-selected="false">Categories</li>
           <li data-tab="trending" role="tab" tabindex="-1" aria-selected="false">Trending</li>
           <li data-tab="anonymous" role="tab" tabindex="-1" aria-selected="false">Anonymous Room</li>
         </ul>
@@ -107,14 +106,6 @@
 
           <input id="post-image" name="post-image" type="file" accept="image/*" style="display:none;" />
 
-          <div class="post-form-row">
-            <label class="cat-label">
-              <span class="muted">Category</span>
-              <select id="post-category" aria-label="Post category"></select>
-            </label>
-            <button type="button" id="new-category-btn" class="btn small">New Category</button>
-          </div>
-
           <img id="preview" class="preview" alt="preview" />
 
           <div class="form-foot">
@@ -127,7 +118,28 @@
       <div id="feed" class="feed-list" aria-live="polite"></div>
 
       <div id="tab-news" class="card tab-panel hidden"><h4>Latest News</h4><div id="news-content" class="muted">Loading news…</div></div>
-      <div id="tab-profile" class="card tab-panel hidden"><h4>Your Profile</h4><div id="profile-content"></div></div>
+     <div id="tab-profile" class="card tab-panel hidden">
+  <h4>Your Profile</h4>
+  <div id="profile-content">
+    <!-- Profile header -->
+    <div class="user">
+      <img id="profile-icon" 
+           src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" 
+           alt="Profile avatar" />
+      <span class="username">You</span>
+    </div>
+
+    <!-- Bio -->
+    <p id="profile-bio">This is your bio.</p>
+
+    <!-- Edit button -->
+    <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
+
+    <!-- Gallery grid -->
+    <div class="profile-gallery-grid"></div>
+  </div>
+</div>
+
       <div id="tab-write" class="card tab-panel hidden"><h4>Write a Story</h4><div id="write-content" class="muted"></div></div>
       <div id="tab-mystories" class="card tab-panel hidden"><h4>My Stories</h4><div id="mystories-content" class="muted"></div></div>
       <div id="tab-categories" class="card tab-panel hidden"><h4>Categories</h4><div id="categories-content"></div></div>
@@ -152,6 +164,40 @@
     <footer class="footer">Demo Social Dashboard • Responsive HTML/CSS/JS</footer>
   </main>
 </div>
+
+<!-- Edit Profile Modal -->
+<div id="edit-profile-modal" class="modal" aria-hidden="true">
+  <div class="modal-head">
+    <h4>Edit Profile</h4>
+    <button class="modal-close" type="button">✕</button>
+  </div>
+  <div class="modal-body">
+    <label>
+      Change Photo:
+      <input id="profile-photo-input" type="file" accept="image/*" />
+    </label>
+    <label>
+      Username:
+      <input id="profile-username-input" type="text" />
+    </label>
+    <label>
+      Bio:
+      <textarea id="profile-bio-input"></textarea>
+    </label>
+    <button id="save-profile-btn" class="btn primary" type="button">Save</button>
+  </div>
+</div>
+
+<!-- Modal root (used by JS for comments/edit/lightbox) -->
+<div id="modal-root" aria-hidden="true"></div>
+
+<!-- Toast container -->
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<script src="feed.js"></script>
+</body>
+</html>
+
 
 <!-- Modal root (used by JS for comments/edit/lightbox) -->
 <div id="modal-root" aria-hidden="true"></div>

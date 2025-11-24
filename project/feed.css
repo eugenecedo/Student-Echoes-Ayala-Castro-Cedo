@@ -647,3 +647,38 @@ body.theme-light .modal[aria-label="Post actions"] {
 }
 
 .more-news .btn.small { border-radius:999px; padding-left:14px; padding-right:14px; }
+/* General text inheritance */
+.card, .post-body, .post-head, .post-foot,
+.navcard li, .username, .footer,
+.btn, .search input, .create-post textarea {
+  color: inherit;
+}
+
+/* Muted text stays consistent */
+.muted, .help-muted {
+  color: var(--muted);
+}
+
+/* Settings/Help/Mode/Logout buttons */
+.logout-btn,
+.setting-priv,
+.help-btn,
+.mode-btn {
+  color: inherit; /* inherit theme text */
+  background: transparent;
+  transition: background 0.2s, color 0.2s;
+}
+.logout-btn:hover,
+.setting-priv:hover,
+.help-btn:hover,
+.mode-btn:hover {
+  background: rgba(255,255,255,0.06); /* dark mode hover */
+  color: var(--accent);
+}
+body.theme-light .logout-btn:hover,
+body.theme-light .setting-priv:hover,
+body.theme-light .help-btn:hover,
+body.theme-light .mode-btn:hover {
+  background: #ddd; /* light mode hover */
+  color: var(--text-light);
+}
