@@ -28,7 +28,6 @@
     </div>
 
     <div class="top-right">
-      <!-- kept for compatibility but hidden (mode moved to settings menu) -->
       <button id="theme-toggle" class="btn small" aria-pressed="false" type="button" style="display:none">Light</button>
 
       <div class="user" title="Your profile" role="button" tabindex="0" aria-label="Open profile">
@@ -46,10 +45,8 @@
         <div id="settings-menu" role="menu" aria-hidden="true" style="display:none;position:absolute;right:0;top:110%;background:white;border:1px solid #eee;box-shadow:0 2px 8px rgba(0,0,0,0.09);border-radius:8px;min-width:220px;padding:8px 0;z-index:999;">
           <button id="settingPriv" role="menuitem" class="btn small setting-priv" style="width:100%;text-align:left;" type="button">Settings and Privacy</button>
           <button id="helpBtn" role="menuitem" class="btn small help-btn" style="width:100%;text-align:left;" type="button">Help and Support</button>
-          <!-- Mode button will toggle theme; label is updated by JS to reflect current mode -->
           <button id="modeBtn" role="menuitem" class="btn small mode-btn" style="width:100%;text-align:left;" type="button">Mode</button>
           <button id="logoutBtn" role="menuitem" class="btn small logout-btn" style="width:100%;text-align:left;" type="button">Logout</button>
-        </div>
         </div>
       </div>
     </div>
@@ -104,7 +101,13 @@
             <textarea id="post-text" placeholder="What's on your mind?" rows="3" aria-label="Post text"></textarea>
           </div>
 
-          <input id="post-image" name="post-image" type="file" accept="image/*" style="display:none;" />
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+            <input id="post-image" name="post-image" type="file" accept="image/*" style="display:none;" />
+            <select id="post-category" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;">
+              <option value="">— None —</option>
+            </select>
+            <button id="new-category-btn" class="btn small" type="button">New category</button>
+          </div>
 
           <img id="preview" class="preview" alt="preview" />
 
@@ -118,27 +121,19 @@
       <div id="feed" class="feed-list" aria-live="polite"></div>
 
       <div id="tab-news" class="card tab-panel hidden"><h4>Latest News</h4><div id="news-content" class="muted">Loading news…</div></div>
-     <div id="tab-profile" class="card tab-panel hidden">
-  <h4>Your Profile</h4>
-  <div id="profile-content">
-    <!-- Profile header -->
-    <div class="user">
-      <img id="profile-icon" 
-           src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" 
-           alt="Profile avatar" />
-      <span class="username">You</span>
-    </div>
 
-    <!-- Bio -->
-    <p id="profile-bio">This is your bio.</p>
-
-    <!-- Edit button -->
-    <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
-
-    <!-- Gallery grid -->
-    <div class="profile-gallery-grid"></div>
-  </div>
-</div>
+      <div id="tab-profile" class="card tab-panel hidden">
+        <h4>Your Profile</h4>
+        <div id="profile-content">
+          <div class="user">
+            <img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
+            <span class="username">You</span>
+          </div>
+          <p id="profile-bio">This is your bio.</p>
+          <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
+          <div class="profile-gallery-grid"></div>
+        </div>
+      </div>
 
       <div id="tab-write" class="card tab-panel hidden"><h4>Write a Story</h4><div id="write-content" class="muted"></div></div>
       <div id="tab-mystories" class="card tab-panel hidden"><h4>My Stories</h4><div id="mystories-content" class="muted"></div></div>
@@ -151,53 +146,22 @@
       <div class="card communities">
         <h4>Communities</h4>
         <div id="communities-list"></div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button id="create-community-btn" class="btn small">Create community</button>
+        </div>
       </div>
       <div class="card top-stories" id="top-stories" aria-label="Top stories">
-  <h4>Top stories</h4>
-  <div id="top-stories-list" class="top-stories-list muted" aria-live="polite">Loading top stories…</div>
-  <div class="more-news" style="display:flex;justify-content:center;margin-top:12px;">
-    <button id="more-news-btn" class="btn small" type="button" aria-label="More news">More news ▸</button>
-  </div>
-</div>
+        <h4>Top stories</h4>
+        <div id="top-stories-list" class="top-stories-list muted" aria-live="polite">Loading top stories…</div>
+        <div class="more-news" style="display:flex;justify-content:center;margin-top:12px;">
+          <button id="more-news-btn" class="btn small" type="button" aria-label="More news">More news ▸</button>
+        </div>
+      </div>
     </aside>
 
     <footer class="footer">Demo Social Dashboard • Responsive HTML/CSS/JS</footer>
   </main>
 </div>
-
-<!-- Edit Profile Modal -->
-<div id="edit-profile-modal" class="modal" aria-hidden="true">
-  <div class="modal-head">
-    <h4>Edit Profile</h4>
-    <button class="modal-close" type="button">✕</button>
-  </div>
-  <div class="modal-body">
-    <label>
-      Change Photo:
-      <input id="profile-photo-input" type="file" accept="image/*" />
-    </label>
-    <label>
-      Username:
-      <input id="profile-username-input" type="text" />
-    </label>
-    <label>
-      Bio:
-      <textarea id="profile-bio-input"></textarea>
-    </label>
-    <button id="save-profile-btn" class="btn primary" type="button">Save</button>
-  </div>
-</div>
-
-<!-- Modal root (used by JS for comments/edit/lightbox) -->
-<div id="modal-root" aria-hidden="true"></div>
-
-<!-- Toast container -->
-<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
-
-<script src="feed.js"></script>
-</body>
-</html>
-
 
 <!-- Modal root (used by JS for comments/edit/lightbox) -->
 <div id="modal-root" aria-hidden="true"></div>

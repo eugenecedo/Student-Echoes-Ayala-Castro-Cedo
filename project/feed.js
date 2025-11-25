@@ -7,7 +7,9 @@
     THEME: 'theme',
     ANON: 'amu_anonymous_posts',
     LAST_TAB: 'amu_last_tab',
-    SETTINGS: 'amu_settings'
+    SETTINGS: 'amu_settings',
+    COMMUNITIES: 'amu_communities',
+    ANON_PROFILE: 'amu_anon_profile'
   };
 
   // seed/default data (comments are arrays with replies)
@@ -26,7 +28,6 @@
     { id:4, name:'Space' }
   ];
 
-  // default posts now include comments arrays with nested replies
   const defaultPosts = [
     {
       id:101,
@@ -60,16 +61,27 @@
     }
   ];
 
-  // state
+  // state (persisted)
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
   let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
   const friends = seedFriends.slice();
-  // anonymousPosts is an array of post-like objects but stored separately and shown only in Anonymous Room
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
+  let communities = JSON.parse(localStorage.getItem(KEY.COMMUNITIES) || 'null') || [
+    { id:1, name:'UI/UX Designers', members:54, description:'Designers sharing UI patterns' },
+    { id:2, name:'Frontend Developers', members:16, description:'Frontend tips & discussion' }
+  ];
   let activeCategoryId = null;
 
-  // dom refs (queried once on load)
+  // anonymous avatar palette - four fixed choices
+  const ANON_AVATARS = [
+    { id: 'anon-1', name: 'Pale Moon', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#f7f9fb'/><text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='#04202a'>A</text></svg>`) },
+    { id: 'anon-2', name: 'Blue Wave', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#e6faff'/><text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='#003045'>B</text></svg>`) },
+    { id: 'anon-3', name: 'Soft Coral', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#fff2f0'/><text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='#6a1a12'>C</text></svg>`) },
+    { id: 'anon-4', name: 'Mint', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#e8fff6'/><text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='#004d3a'>D</text></svg>`) }
+  ];
+
+  // dom refs (queried once)
   const friendsList = document.getElementById('friends-list');
   const feedEl = document.getElementById('feed');
   const notifList = document.getElementById('notif-list');
@@ -87,11 +99,6 @@
   const globalSearch = document.getElementById('global-search');
   const navList = document.getElementById('nav-list');
 
-  // side icons
-  const sideIconsRoot = document.getElementById('sideIcons');
-  const badgeNotifsEl = document.getElementById('badge-notifs');
-  const badgeLikesEl = document.getElementById('badge-likes');
-
   // modal & toast roots
   const modalRoot = document.getElementById('modal-root');
   const toastRoot = document.getElementById('toast-container');
@@ -108,6 +115,9 @@
   const modeBtn = document.getElementById('modeBtn');
   const logoutBtn = document.getElementById('logoutBtn');
 
+  // keep anonymous preview data in outer scope
+  let anonPreviewData = null;
+
   // helpers
   function saveState(){
     try {
@@ -115,6 +125,7 @@
       localStorage.setItem(KEY.POSTS, JSON.stringify(posts));
       localStorage.setItem(KEY.NOTIFS, JSON.stringify(notifications));
       localStorage.setItem(KEY.ANON, JSON.stringify(anonymousPosts));
+      localStorage.setItem(KEY.COMMUNITIES, JSON.stringify(communities));
     } catch (e) {
       console.warn('saveState() failed', e);
     }
@@ -134,14 +145,14 @@
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
   }
   function svgMenu() {
-  return `
-    <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
-      <circle cx="6" cy="12" r="2"></circle>
-      <circle cx="12" cy="12" r="2"></circle>
-      <circle cx="18" cy="12" r="2"></circle>
-    </svg>
-  `;
-}
+    return `
+      <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
+        <circle cx="6" cy="12" r="2"></circle>
+        <circle cx="12" cy="12" r="2"></circle>
+        <circle cx="18" cy="12" r="2"></circle>
+      </svg>
+    `;
+  }
 
   // -- toast (small notification) --
   function toast(message, opts = {}) {
@@ -161,16 +172,16 @@
   }
 
   // ensure settings menu toggling keeps ARIA in sync
-  if(settingsBtn && settingsMenu) {
-    function setSettingsOpen(open) {
-      settingsBtn.setAttribute('aria-expanded', String(Boolean(open)));
-      settingsMenu.style.display = open ? 'block' : 'none';
-      settingsMenu.setAttribute('aria-hidden', String(!open));
-      if(open) {
-        // Ensure Mode button label is in sync whenever menu opens
-        updateModeButtonLabel();
-      }
+  function setSettingsOpen(open) {
+    if(!settingsBtn || !settingsMenu) return;
+    settingsBtn.setAttribute('aria-expanded', String(Boolean(open)));
+    settingsMenu.style.display = open ? 'block' : 'none';
+    settingsMenu.setAttribute('aria-hidden', String(!open));
+    if(open) {
+      updateModeButtonLabel();
     }
+  }
+  if(settingsBtn && settingsMenu) {
     settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const isOpen = settingsMenu.style.display === 'block';
@@ -181,7 +192,8 @@
         setSettingsOpen(false);
       }
     });
-    document.addEventListener('keydown', (e) => {
+    settingsBtn.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); setSettingsOpen(!(settingsMenu.style.display === 'block')); }
       if(e.key === 'Escape') setSettingsOpen(false);
     });
   }
@@ -385,23 +397,56 @@
     });
   }
 
-  // ---------- Anonymous feed: render + actions ----------
-  // Anonymous posts are stored in anonymousPosts; they are displayed only in the Anonymous Room.
-  // Each anonymous post: { id, text, createdAt, image?, likes, shares, liked, comments: [ { id, author:{name,avatar}, text, createdAt, replies: [...] } ] }
+  // ---------- Anonymous Room (with avatar chooser + visible image preview) ----------
+  function getSavedAnonProfile() {
+    try {
+      const raw = localStorage.getItem(KEY.ANON_PROFILE);
+      if(!raw) return { avatarId: ANON_AVATARS[0].id };
+      return JSON.parse(raw);
+    } catch(e){ return { avatarId: ANON_AVATARS[0].id }; }
+  }
+  function setSavedAnonProfile(obj) {
+    try { localStorage.setItem(KEY.ANON_PROFILE, JSON.stringify(obj)); } catch(e){}
+  }
 
   function renderAnonymousRoom(){
     const el = document.getElementById('anonymous-content');
     if(!el) return;
+
+    const savedAnon = getSavedAnonProfile();
+    const selectedId = savedAnon.avatarId || ANON_AVATARS[0].id;
 
     // create UI: a card with create-anon-post form and then a feed list of anonymous posts
     el.innerHTML = `
       <div class="card" style="margin-bottom:12px">
         <form id="anon-create-form" style="position:relative;">
           <textarea id="anon-text" placeholder="Share anonymously..." rows="3" aria-label="Anonymous post text" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;"></textarea>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-            <div class="muted" style="font-size:13px">Posting as anonymous — your username won't appear.</div>
-            <div><button class="btn primary" type="submit">Post anonymously</button></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-top:8px;">
+            <div style="flex:1">
+              <div class="anon-avatar-chooser" aria-hidden="false">
+                ${ANON_AVATARS.map(a => `
+                  <button type="button" class="anon-avatar-btn" data-id="${a.id}" title="${escapeHtml(a.name)}" aria-pressed="${a.id===selectedId}">
+                    <img src="${a.src}" alt="${escapeHtml(a.name)}" />
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div style="width:240px;flex-shrink:0;">
+              <img id="anon-preview" class="anon-preview" alt="preview"/>
+              <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+                <button class="btn small" type="button" id="anon-add-image">Add image</button>
+                <button class="btn small anon-remove-preview" type="button" id="anon-remove-preview" style="display:none">Remove</button>
+              </div>
+            </div>
           </div>
+
+          <div style="display:flex;justify-content:flex-end;margin-top:8px">
+            <button class="btn primary" type="submit">Post anonymously</button>
+          </div>
+
+          <input id="anon-image" type="file" accept="image/*" style="display:none">
         </form>
       </div>
       <div id="anon-feed-list"></div>
@@ -409,6 +454,74 @@
 
     const feedContainer = document.getElementById('anon-feed-list');
     if(!feedContainer) return;
+
+    // get references for preview + image input
+    const anonImageInput = document.getElementById('anon-image');
+    const anonAddImageBtn = document.getElementById('anon-add-image');
+    const anonPreviewEl = document.getElementById('anon-preview');
+    const anonRemoveBtn = document.getElementById('anon-remove-preview');
+
+    // initialize preview UI if a preview was selected earlier in the session (keeps it until submit)
+    if(anonPreviewData) {
+      anonPreviewEl.src = anonPreviewData;
+      anonPreviewEl.style.display = 'block';
+      if(anonRemoveBtn) anonRemoveBtn.style.display = 'inline-block';
+    } else {
+      anonPreviewEl.style.display = 'none';
+      if(anonRemoveBtn) anonRemoveBtn.style.display = 'none';
+    }
+
+    // wire avatar chooser + image input
+    el.querySelectorAll('.anon-avatar-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        el.querySelectorAll('.anon-avatar-btn').forEach(b => b.setAttribute('aria-pressed','false'));
+        btn.setAttribute('aria-pressed','true');
+        const id = btn.dataset.id;
+        setSavedAnonProfile({ avatarId: id });
+      });
+    });
+
+    if(anonAddImageBtn) {
+      anonAddImageBtn.addEventListener('click', () => {
+        if(anonImageInput) anonImageInput.click();
+      });
+    }
+
+    if(anonImageInput) {
+      anonImageInput.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if(!f) {
+          anonPreviewData = null;
+          anonPreviewEl.src = '';
+          anonPreviewEl.style.display = 'none';
+          if(anonRemoveBtn) anonRemoveBtn.style.display = 'none';
+          return;
+        }
+        const r = new FileReader();
+        r.onload = (ev) => {
+          anonPreviewData = ev.target.result;
+          anonPreviewEl.src = anonPreviewData;
+          anonPreviewEl.style.display = 'block';
+          if(anonRemoveBtn) anonRemoveBtn.style.display = 'inline-block';
+        };
+        r.readAsDataURL(f);
+      });
+    }
+
+    if(anonRemoveBtn) {
+      anonRemoveBtn.addEventListener('click', () => {
+        anonPreviewData = null;
+        anonPreviewEl.src = '';
+        anonPreviewEl.style.display = 'none';
+        if(anonImageInput) anonImageInput.value = '';
+        anonRemoveBtn.style.display = 'none';
+      });
+    }
+
+    // click preview to view lightbox (bigger)
+    anonPreviewEl && anonPreviewEl.addEventListener('click', () => {
+      if(anonPreviewData) openImageLightbox(anonPreviewData, 'Anonymous preview');
+    });
 
     // Render anonymous posts (most recent first)
     function renderAnonList(){
@@ -419,9 +532,10 @@
       }
       feedContainer.innerHTML = anonymousPosts.slice().reverse().map(p => {
         const commentCount = (p.comments && p.comments.length) ? p.comments.length : 0;
+        const avatarSrc = p.avatarSrc || ANON_AVATARS[0].src;
         return `<article class="post card" data-aid="${p.id}">
           <div class="post-head">
-            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='16' r='10' fill='%23b3cde0'/%3E%3Cpath d='M4 44c0-4 4-6 20-6s20 2 20 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Anonymous avatar" />
+            <img src="${escapeHtml(avatarSrc)}" alt="Anonymous avatar" />
             <div style="flex:1">
               <div style="font-weight:600">Anonymous</div>
               <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(p.createdAt || Date.now()))} • <strong>Anonymous Room</strong></div>
@@ -441,20 +555,14 @@
           </div>
         </article>`;
       }).join('');
-      // attach handlers
-      feedContainer.querySelectorAll('.post.card').forEach(node => {
-        const aid = Number(node.dataset.aid);
-        // images lightbox
-        node.querySelectorAll('.post-body img').forEach(img => {
-          img.addEventListener('click', (e) => openImageLightbox(e.currentTarget.getAttribute('src'), 'Anonymous image'));
-        });
+      // attach handlers (images + actions)
+      feedContainer.querySelectorAll('.post-body img').forEach(img => {
+        img.addEventListener('click', (e) => openImageLightbox(e.currentTarget.getAttribute('src'), 'Anonymous image'));
       });
 
       feedContainer.querySelectorAll('.anon-like-btn').forEach(b => b.onclick = () => {
         const id = Number(b.dataset.id);
         toggleAnonLike(id);
-        b.classList.add('liked');
-        setTimeout(()=> b.classList.remove('liked'), 700);
       });
 
       feedContainer.querySelectorAll('.anon-share-btn').forEach(b => b.onclick = () => {
@@ -467,7 +575,6 @@
         openAnonComments(id);
       });
 
-      // anon post menu buttons
       feedContainer.querySelectorAll('.anon-menu-btn').forEach(b => {
         b.addEventListener('click', (e) => openAnonPostMenu(Number(b.dataset.id)));
       });
@@ -480,11 +587,20 @@
         e.preventDefault();
         const ta = document.getElementById('anon-text');
         const text = (ta && ta.value || '').trim();
-        if(!text) { toast('Write something first'); return; }
-        const p = { id: Date.now(), text, createdAt: Date.now(), image: null, likes:0, shares:0, liked:false, comments: [] };
+        if(!text && !anonPreviewData) { toast('Write something first'); return; }
+        const saved = getSavedAnonProfile();
+        const avatar = ANON_AVATARS.find(a => a.id === saved.avatarId) || ANON_AVATARS[0];
+        const p = { id: Date.now(), text, createdAt: Date.now(), image: anonPreviewData || null, likes:0, shares:0, liked:false, comments: [], avatarId: avatar.id, avatarSrc: avatar.src };
         anonymousPosts.push(p);
         saveState();
-        renderAnonymousRoom(); // re-render (keeps the form)
+        // reset
+        if(ta) ta.value = '';
+        anonPreviewData = null;
+        if(anonImageInput) anonImageInput.value = '';
+        if(anonPreviewEl) { anonPreviewEl.src = ''; anonPreviewEl.style.display = 'none'; }
+        if(anonRemoveBtn) anonRemoveBtn.style.display = 'none';
+        // re-render
+        renderAnonymousRoom();
         toast('Anonymous post added');
       });
     }
@@ -492,7 +608,7 @@
     renderAnonList();
   }
 
-  // Anonymous comments modal
+  // Anonymous comments modal (unchanged from earlier behavior)
   function openAnonComments(anonId) {
     const post = anonymousPosts.find(p => p.id === anonId);
     if(!post) return;
@@ -531,7 +647,6 @@
         </div>
       </div>
     `;
-
     openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
 
     const modal = modalRoot.querySelector('.modal');
@@ -814,8 +929,6 @@
     feedEl.querySelectorAll('.like-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       toggleLike(id);
-      b.classList.add('liked');
-      setTimeout(()=> b.classList.remove('liked'), 700);
     });
 
     feedEl.querySelectorAll('.share-btn').forEach(b => b.onclick = () => {
@@ -837,7 +950,6 @@
     saveState();
     renderFeed();
     updateSideBadges();
-    if(badgeLikesEl) { badgeLikesEl.classList.add('pulse'); setTimeout(()=> badgeLikesEl.classList.remove('pulse'), 1400); }
   }
 
   function sharePost(id){
@@ -999,6 +1111,7 @@
     const head = document.createElement('div'); head.style.display='flex'; head.style.justifyContent='space-between'; head.style.alignItems='center'; head.style.marginBottom='12px';
     head.innerHTML = `<div style="font-weight:600">Categories</div><div><button class="btn small" id="showAllBtn">Show All</button> <button class="btn small" id="addCatBtn">Add Category</button></div>`;
     categoriesContent.appendChild(head);
+
     const list = document.createElement('div');
     const all = document.createElement('div'); all.style.display='flex'; all.style.justifyContent='space-between'; all.style.marginBottom='8px';
     all.innerHTML = `<div><button class="btn small category-filter" data-id="">View</button> All</div><div class="muted">${posts.length} posts</div>`;
@@ -1022,162 +1135,162 @@
   }
 
   // profile helpers
-  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2 }; }
+  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2, joinedCommunities:[] }; }
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
+  function renderProfile(editMode=false){
+    const cont = document.getElementById('profile-content'); if(!cont) return;
+    const u = getUserProfile();
+    const postCount = posts.filter(p=>p.author.name===u.name).length;
+    const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
 
- function renderProfile(editMode=false){
-  const cont = document.getElementById('profile-content'); if(!cont) return;
-  const u = getUserProfile();
-  const postCount = posts.filter(p=>p.author.name===u.name).length;
-  const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
-
-  if(!editMode){
-    cont.innerHTML = `<div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-      <img src="${escapeHtml(u.avatar || defaultAvatar)}" style="width:80px;height:80px;border-radius:50%;">
-      <div>
-        <div style="font-size:22px;font-weight:700;">${escapeHtml(u.name)}</div>
-        <div class="muted">${escapeHtml(u.bio)}</div>
-        <div style="margin-top:6px;font-size:13px;">Joined: ${escapeHtml(u.joined)}</div>
-      </div>
-    </div>
-    <div>
-      <strong>Posts:</strong> ${postCount}<br>
-      <strong>Communities:</strong> ${u.communitiesJoined}
-    </div>
-    <div style="margin-top:12px;">
-      <button class="btn small" id="editProfileBtn">Edit Profile</button>
-    </div>`;
-    const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
-    return;
-  }
-
-  let currentAvatar = u.avatar || defaultAvatar;
-  cont.innerHTML = `
-    <form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;">
-      <label>Name:<br>
-        <input name="name" value="${escapeHtml(u.name)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">
-      </label>
-      <div style="margin-top:8px;">
-        <label style="font-weight:600;margin-bottom:4px;">Profile Photo:</label>
-        <div style="display:flex;gap:18px;align-items:center">
-          <img id="avatarPreview" src="${escapeHtml(currentAvatar)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid #ddd;">
-          <div style="display:flex;flex-direction:column;gap:7px;">
-            <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
-            <button type="button" class="btn small" id="pickPhotoBtn">Upload Photo</button>
-            <button type="button" class="btn small" id="takePhotoBtn">Take Photo</button>
-            <button type="button" class="btn small" id="removePhotoBtn" style="color:#d32f2f">Remove Photo</button>
-          </div>
+    if(!editMode){
+      cont.innerHTML = `<div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+        <img src="${escapeHtml(u.avatar || defaultAvatar)}" style="width:80px;height:80px;border-radius:50%;">
+        <div>
+          <div style="font-size:22px;font-weight:700;">${escapeHtml(u.name)}</div>
+          <div class="muted">${escapeHtml(u.bio)}</div>
+          <div style="margin-top:6px;font-size:13px;">Joined: ${escapeHtml(u.joined)}</div>
         </div>
       </div>
-      <label>Bio:<br>
-        <textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">${escapeHtml(u.bio)}</textarea>
-      </label>
-      <div style="margin-top:12px;">
-        <button class="btn small" type="submit">Save</button>
-        <button class="btn small" type="button" id="cancelProfileBtn" style="margin-left:8px">Cancel</button>
+      <div>
+        <strong>Posts:</strong> ${postCount}<br>
+        <strong>Communities:</strong> ${u.communitiesJoined}
       </div>
-    </form>
-    <div id="webcam-modal-root"></div>
-  `;
-  const avatarPreview = document.getElementById('avatarPreview');
-  const avatarUpload = document.getElementById('avatarUpload');
-  const pickPhotoBtn = document.getElementById('pickPhotoBtn');
-  const takePhotoBtn = document.getElementById('takePhotoBtn');
-  const removePhotoBtn = document.getElementById('removePhotoBtn');
-  const form = document.getElementById('editProfileForm');
-  const cancel = document.getElementById('cancelProfileBtn');
-  const webcamModalRoot = document.getElementById('webcam-modal-root');
-
-  pickPhotoBtn.onclick = () => avatarUpload.click();
-  avatarUpload.onchange = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if(file){
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        currentAvatar = ev.target.result;
-        avatarPreview.src = currentAvatar;
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Webcam/camera take photo
-  takePhotoBtn.onclick = () => {
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      toast('Camera/webcam not supported or permission denied');
+      <div style="margin-top:12px;">
+        <button class="btn small" id="editProfileBtn">Edit Profile</button>
+      </div>`;
+      const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
       return;
     }
-    // Webcam modal
-    webcamModalRoot.innerHTML = `
-      <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1200;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center;">
-        <div style="background:#fff;border-radius:12px;padding:24px;max-width:340px;text-align:center;box-shadow:0 6px 32px rgba(2,6,23,0.25);position:relative;">
-          <div style="font-weight:700;font-size:16px;margin-bottom:8px;">Take Photo</div>
-          <video id="webcamVideo" autoplay playsinline width="240" height="180" style="border-radius:10px;border:1px solid #dadada;background:#ddd;"></video>
-          <br>
-          <button id="snapPhotoBtn" class="btn primary" style="margin-top:10px;">Take Photo</button>
-          <button id="closeWebcamBtn" class="btn small" style="margin-top:10px;margin-left:8px;">Cancel</button>
+
+    let currentAvatar = u.avatar || defaultAvatar;
+    cont.innerHTML = `
+      <form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;">
+        <label>Name:<br>
+          <input name="name" value="${escapeHtml(u.name)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">
+        </label>
+        <div style="margin-top:8px;">
+          <label style="font-weight:600;margin-bottom:4px;">Profile Photo:</label>
+          <div style="display:flex;gap:18px;align-items:center">
+            <img id="avatarPreview" src="${escapeHtml(currentAvatar)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid #ddd;">
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
+              <button type="button" class="btn small" id="pickPhotoBtn">Upload Photo</button>
+              <button type="button" class="btn small" id="takePhotoBtn">Take Photo</button>
+              <button type="button" class="btn small" id="removePhotoBtn" style="color:#d32f2f">Remove Photo</button>
+            </div>
+          </div>
         </div>
-      </div>
+        <label>Bio:<br>
+          <textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">${escapeHtml(u.bio)}</textarea>
+        </label>
+        <div style="margin-top:12px;">
+          <button class="btn small" type="submit">Save</button>
+          <button class="btn small" type="button" id="cancelProfileBtn" style="margin-left:8px">Cancel</button>
+        </div>
+      </form>
+      <div id="webcam-modal-root"></div>
     `;
-    const video = document.getElementById('webcamVideo');
-    const snapBtn = document.getElementById('snapPhotoBtn');
-    const closeBtn = document.getElementById('closeWebcamBtn');
-    let stream = null;
-    navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
-      stream = s;
-      video.srcObject = s;
-    }).catch(() => {
-      toast('Camera access denied');
-      webcamModalRoot.innerHTML = '';
-    });
-    snapBtn.onclick = function(){
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth || 240;
-      canvas.height = video.videoHeight || 180;
-      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-      currentAvatar = canvas.toDataURL('image/png');
-      avatarPreview.src = currentAvatar;
-      if(stream){
-        stream.getTracks().forEach(t=>t.stop());
-      }
-      webcamModalRoot.innerHTML = '';
-    };
-    closeBtn.onclick = function(){
-      if(stream){
-        stream.getTracks().forEach(t=>t.stop());
-      }
-      webcamModalRoot.innerHTML = '';
-    };
-  };
+    const avatarPreview = document.getElementById('avatarPreview');
+    const avatarUpload = document.getElementById('avatarUpload');
+    const pickPhotoBtn = document.getElementById('pickPhotoBtn');
+    const takePhotoBtn = document.getElementById('takePhotoBtn');
+    const removePhotoBtn = document.getElementById('removePhotoBtn');
+    const form = document.getElementById('editProfileForm');
+    const cancel = document.getElementById('cancelProfileBtn');
+    const webcamModalRoot = document.getElementById('webcam-modal-root');
 
-  // Remove photo and use default SVG
-  removePhotoBtn.onclick = () => {
-    // add confirmation dialog
-    if(confirm('Are you sure you want to remove your profile photo?')){
-      currentAvatar = defaultAvatar;
-      avatarPreview.src = defaultAvatar;
-      toast('Profile photo removed');
-    }
-  };
-
-  // Save profile
-  form.onsubmit = function(ev){
-    ev.preventDefault();
-    const fd = new FormData(form), prev = getUserProfile();
-    const np = {
-      name: (fd.get('name')||prev.name).trim(),
-      avatar: currentAvatar, // dataURL or SVG
-      bio: (fd.get('bio')||'').trim(),
-      joined: prev.joined,
-      communitiesJoined: prev.communitiesJoined
+    pickPhotoBtn.onclick = () => avatarUpload.click();
+    avatarUpload.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if(file){
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          currentAvatar = ev.target.result;
+          avatarPreview.src = currentAvatar;
+        };
+        reader.readAsDataURL(file);
+      }
     };
-    setUserProfile(np); renderTopRightUser(); renderFeed(); renderProfile(false);
-    toast('Profile updated');
-  };
-  if(cancel) cancel.onclick = () => renderProfile(false);
-}
+
+    // Webcam/camera take photo
+    takePhotoBtn.onclick = () => {
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        toast('Camera/webcam not supported or permission denied');
+        return;
+      }
+      // Webcam modal
+      webcamModalRoot.innerHTML = `
+        <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1200;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center;">
+          <div style="background:#fff;border-radius:12px;padding:24px;max-width:340px;text-align:center;box-shadow:0 6px 32px rgba(2,6,23,0.25);position:relative;">
+            <div style="font-weight:700;font-size:16px;margin-bottom:8px;">Take Photo</div>
+            <video id="webcamVideo" autoplay playsinline width="240" height="180" style="border-radius:10px;border:1px solid #dadada;background:#ddd;"></video>
+            <br>
+            <button id="snapPhotoBtn" class="btn primary" style="margin-top:10px;">Take Photo</button>
+            <button id="closeWebcamBtn" class="btn small" style="margin-top:10px;margin-left:8px;">Cancel</button>
+          </div>
+        </div>
+      `;
+      const video = document.getElementById('webcamVideo');
+      const snapBtn = document.getElementById('snapPhotoBtn');
+      const closeBtn = document.getElementById('closeWebcamBtn');
+      let stream = null;
+      navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
+        stream = s;
+        video.srcObject = s;
+      }).catch(() => {
+        toast('Camera access denied');
+        webcamModalRoot.innerHTML = '';
+      });
+      snapBtn.onclick = function(){
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 240;
+        canvas.height = video.videoHeight || 180;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        currentAvatar = canvas.toDataURL('image/png');
+        avatarPreview.src = currentAvatar;
+        if(stream){
+          stream.getTracks().forEach(t=>t.stop());
+        }
+        webcamModalRoot.innerHTML = '';
+      };
+      closeBtn.onclick = function(){
+        if(stream){
+          stream.getTracks().forEach(t=>t.stop());
+        }
+        webcamModalRoot.innerHTML = '';
+      };
+    };
+
+    // Remove photo and use default SVG
+    removePhotoBtn.onclick = () => {
+      if(confirm('Are you sure you want to remove your profile photo?')){
+        currentAvatar = defaultAvatar;
+        avatarPreview.src = defaultAvatar;
+        toast('Profile photo removed');
+      }
+    };
+
+    // Save profile
+    form.onsubmit = function(ev){
+      ev.preventDefault();
+      const fd = new FormData(form), prev = getUserProfile();
+      const np = {
+        name: (fd.get('name')||prev.name).trim(),
+        avatar: currentAvatar, // dataURL or SVG
+        bio: (fd.get('bio')||'').trim(),
+        joined: prev.joined,
+        communitiesJoined: prev.communitiesJoined || 0,
+        joinedCommunities: prev.joinedCommunities || []
+      };
+      setUserProfile(np); renderTopRightUser(); renderFeed(); renderProfile(false);
+      toast('Profile updated');
+    };
+    if(cancel) cancel.onclick = () => renderProfile(false);
+  }
+
   // tabs plumbing (unchanged mapping)
   const TAB_TO_PANEL_ID = {
     feed: 'tab-feed',
@@ -1271,7 +1384,7 @@
       const json = await res.json();
       return json.map(i => ({
         title: i.title,
-        url: i.url,
+        url: i.url || i.newsSite || '#',
         summary: i.summary || '',
         publishedAt: i.publishedAt || i.published_at || i.published || i.published_date || null,
         image: i.imageUrl || i.image || (i.photos && i.photos[0]) || null
@@ -1290,8 +1403,7 @@
   const SCHOOL_KEYWORDS = [
     'school','schools','student','students','education','teacher','teachers',
     'campus','university','college','classroom','tuition','principal','faculty',
-    'k-12','kindergarten','preschool','schoolboard','school board','schoolboard',
-    'scholarship','exam','testing','curriculum'
+    'k-12','kindergarten','preschool','schoolboard','scholarship','exam','testing','curriculum','learning','study','district'
   ];
 
   function isSchoolRelated(item) {
@@ -1321,35 +1433,28 @@
     el.innerHTML = `<div class="muted">Loading news…</div>`;
     try {
       const items = await fetchNews(50);
-      let filtered = items;
-
-      if(window.newsFilter === 'school-today') {
-        filtered = items.filter(i => isSchoolRelated(i) && isPublishedToday(i));
-        if(filtered.length === 0) {
-          el.innerHTML = `<div class="muted">No school articles published today were found — showing recent school-related news.</div>`;
-          filtered = items.filter(isSchoolRelated);
-        } else {
-          el.innerHTML = `<div class="muted">Showing school & education news published today.</div>`;
-        }
-      } else if(window.newsFilter === 'school') {
-        filtered = items.filter(isSchoolRelated);
-        if(filtered.length === 0) {
-          el.innerHTML = `<div class="muted">No school-specific articles found — showing general news.</div>`;
-          filtered = items;
-        } else {
-          el.innerHTML = `<div class="muted">Showing school & education news.</div>`;
-        }
+      // filter to school-related items exclusively; if none, show curated fallback and message
+      const schoolItems = items.filter(isSchoolRelated);
+      let filtered = schoolItems;
+      if(filtered.length === 0) {
+        el.innerHTML = `<div class="muted">No education-focused articles were found from the source — showing recent school-related or curated items.</div>`;
+        filtered = [
+          { title: 'Education update: Scholarships announced for students', url:'#', summary:'New scholarship opportunities for local students.', publishedAt: Date.now(), image: null },
+          { title: 'School safety: New protocols', url:'#', summary:'Updates on school safety measures.', publishedAt: Date.now(), image: null },
+          { title: 'Local schools: New teaching methods', url:'#', summary:'A short curated story about teaching practices.', publishedAt: Date.now(), image: null }
+        ];
       } else {
-        el.innerHTML = '';
+        el.innerHTML = `<div class="muted">Showing education & school-related news.</div>`;
       }
 
       el.innerHTML += filtered.slice(0, 20).map(i => {
         const thumb = i.image ? `<img src="${escapeHtml(i.image)}" alt="">` : `<img src="${schoolPlaceholderDataUrl(i.title)}" alt="">`;
         const dateStr = i.publishedAt ? timeAgo(new Date(i.publishedAt).getTime()) : '';
+        const url = (i.url && String(i.url).startsWith('http')) ? i.url : '#';
         return `<div style="margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
           <div style="flex:0 0 96px;width:96px;height:64px;border-radius:6px;overflow:hidden;background:rgba(0,0,0,0.04)">${thumb}</div>
           <div style="flex:1">
-            <a href="${escapeHtml(i.url||'#')}" target="_blank" rel="noopener" style="font-weight:600">${escapeHtml(i.title)}</a>
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="font-weight:600">${escapeHtml(i.title)}</a>
             <div class="muted" style="font-size:13px;margin-top:6px">${escapeHtml((i.summary||'').slice(0,220))}</div>
             <div class="muted" style="font-size:12px;margin-top:6px">${escapeHtml(dateStr)}</div>
           </div>
@@ -1489,8 +1594,7 @@
     modeBtn.addEventListener('click', (e) => {
       e.preventDefault();
       toggleTheme();
-      if(settingsMenu) { settingsMenu.style.display = 'none'; settingsMenu.setAttribute('aria-hidden','true'); }
-      if(settingsBtn) settingsBtn.setAttribute('aria-expanded','false');
+      setSettingsOpen(false);
     });
   }
 
@@ -1580,20 +1684,18 @@
     settingPrivBtn.addEventListener('click', (e) => {
       e.preventDefault();
       openSettingsModal();
-      if(settingsMenu) { settingsMenu.style.display = 'none'; settingsMenu.setAttribute('aria-hidden','true'); }
-      if(settingsBtn) settingsBtn.setAttribute('aria-expanded','false');
+      setSettingsOpen(false);
     });
   }
   if(helpBtn) {
     helpBtn.addEventListener('click', (e) => {
       e.preventDefault();
       openHelpModal();
-      if(settingsMenu) { settingsMenu.style.display = 'none'; settingsMenu.setAttribute('aria-hidden','true'); }
-      if(settingsBtn) settingsBtn.setAttribute('aria-expanded','false');
+      setSettingsOpen(false);
     });
   }
 
-  // LOGOUT / resolveLoginPath / doLogout same as before
+  // LOGOUT / resolveLoginPath / doLogout
   const LOGIN_PATH_CANDIDATES = [
     'login.html',
     'log in.html',
@@ -1634,13 +1736,7 @@
       console.warn('Error clearing storage on logout', err);
     }
 
-    const settingsMenu = document.getElementById('settings-menu');
-    const settingsBtn = document.getElementById('settings-btn');
-    if (settingsMenu) {
-      settingsMenu.style.display = 'none';
-      settingsMenu.setAttribute('aria-hidden', 'true');
-    }
-    if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
+    setSettingsOpen(false);
 
     try {
       const dest = await resolveLoginPath();
@@ -1673,24 +1769,7 @@
 
   // side-icons wiring and helpers (new)
   function updateSideBadges(){
-    if(badgeNotifsEl){
-      if(notifications && notifications.length > 0){
-        badgeNotifsEl.textContent = notifications.length > 9 ? '9+' : String(notifications.length);
-        badgeNotifsEl.style.display = 'inline-flex';
-        badgeNotifsEl.classList.add('pulse');
-        setTimeout(()=> badgeNotifsEl.classList.remove('pulse'), 1400);
-      } else {
-        badgeNotifsEl.style.display = 'none';
-      }
-    }
-    if(badgeLikesEl){
-      const totalLikes = posts.reduce((s,p)=>s+(p.likes||0),0);
-      if(totalLikes > 0){
-        badgeLikesEl.style.display = 'inline-flex';
-      } else {
-        badgeLikesEl.style.display = 'none';
-      }
-    }
+    // placeholder - no side badges in this simplified demo
   }
 
   function showNotificationsModal(){
@@ -1699,28 +1778,7 @@
   }
 
   function initSideIcons(){
-    if(!sideIconsRoot) return;
-    const map = {
-      'btn-home': () => setActiveTab('feed'),
-      'btn-search': () => { globalSearch && globalSearch.focus(); setActiveTab('news'); },
-      'btn-reels': () => setActiveTab('news'),
-      'btn-messenger': () => showNotificationsModal(),
-      'btn-explore': () => setActiveTab('categories'),
-      'btn-heart': () => setActiveTab('trending'),
-      'btn-add': () => { setActiveTab('write'); },
-      'btn-avatar': () => { setActiveTab('profile'); renderProfile(true); },
-      'btn-menu': () => { document.body.classList.toggle('drawer-open'); },
-      'btn-grid': () => setActiveTab('trending')
-    };
-    Object.keys(map).forEach(id => {
-      const el = document.getElementById(id);
-      if(!el) return;
-      el.addEventListener('click', (e) => {
-        e.preventDefault();
-        try { map[id](); } catch(err){ console.error('side icon handler error', err); }
-      });
-      el.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); map[id](); } });
-    });
+    // placeholder for optional side icon wiring
     updateSideBadges();
   }
 
@@ -1789,10 +1847,18 @@
       let schoolRecent = items.filter(i => isSchoolRelated(i) && !isPublishedToday(i));
       let showItems = schoolToday.length ? schoolToday.slice(0,6) : (schoolRecent.length ? schoolRecent.slice(0,6) : items.slice(0,6));
 
+      if(showItems.length === 0) {
+        showItems = [
+          { title: 'Education update: Scholarships announced for students', url:'#', summary:'New scholarship opportunities for local students.', publishedAt: Date.now(), image: null },
+          { title: 'School safety: New protocols', url:'#', summary:'Updates on school safety measures.', publishedAt: Date.now(), image: null }
+        ];
+      }
+
       topStoriesList.innerHTML = showItems.map(it => {
         const thumb = it.image ? `<img src="${escapeHtml(it.image)}" alt="">` : `<img src="${schoolPlaceholderDataUrl(it.title)}" alt="">`;
         const dateLabel = it.publishedAt ? timeAgo(new Date(it.publishedAt).getTime()) : '';
-        return `<div class="top-stories-item" role="button" tabindex="0" data-url="${escapeHtml(it.url||'#')}">
+        const url = (it.url && String(it.url).startsWith('http')) ? it.url : '#';
+        return `<div class="top-stories-item" role="button" tabindex="0" data-url="${escapeHtml(url)}">
           <div class="top-stories-thumb">${thumb}</div>
           <div class="top-stories-meta">
             <div class="ts-title">${escapeHtml(it.title)}</div>
@@ -1825,6 +1891,100 @@
     });
   }
 
+  // Communities: render and actions (join/create)
+  function renderCommunities(){
+    const el = document.getElementById('communities-list');
+    if(!el) return;
+    const u = getUserProfile();
+    const joined = u.joinedCommunities || [];
+    el.innerHTML = '';
+    communities.forEach(c => {
+      const div = document.createElement('div');
+      div.style.display = 'flex';
+      div.style.justifyContent = 'space-between';
+      div.style.alignItems = 'center';
+      div.style.marginBottom = '8px';
+      div.innerHTML = `<div><div style="font-weight:600">${escapeHtml(c.name)}</div><div class="muted" style="font-size:12px">${escapeHtml(c.description || '')}</div></div>
+        <div>
+          <button class="btn small join-comm-btn" data-id="${c.id}">${joined.includes(c.id) ? 'Joined' : 'Join'}</button>
+        </div>`;
+      el.appendChild(div);
+    });
+
+    el.querySelectorAll('.join-comm-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = Number(btn.dataset.id);
+        toggleJoinCommunity(id);
+      });
+    });
+
+    const createBtn = document.getElementById('create-community-btn');
+    if(createBtn) {
+      createBtn.onclick = () => {
+        openModal({ title: 'Create community', input: true, placeholder: 'Community name', confirmText: 'Create' }).then(name => {
+          if(!name || !name.trim()) return;
+          const trimmed = name.trim();
+          openModal({ title: 'Community description', input:true, placeholder: 'Short description', confirmText: 'Create' }).then(desc => {
+            const id = Date.now();
+            communities.push({ id, name: trimmed, members: 1, description: (desc||'').trim() });
+            const u = getUserProfile();
+            u.joinedCommunities = u.joinedCommunities || [];
+            u.joinedCommunities.push(id);
+            u.communitiesJoined = (u.communitiesJoined || 0) + 1;
+            setUserProfile(u);
+            saveState(); renderCommunities();
+            toast('Community created and joined');
+          });
+        });
+      };
+    }
+  }
+
+  function toggleJoinCommunity(id){
+    const u = getUserProfile();
+    u.joinedCommunities = u.joinedCommunities || [];
+    const idx = u.joinedCommunities.indexOf(id);
+    const comm = communities.find(c => c.id === id);
+    if(idx === -1){
+      u.joinedCommunities.push(id);
+      if(comm) comm.members = (comm.members||0)+1;
+      u.communitiesJoined = (u.communitiesJoined || 0) + 1;
+    } else {
+      u.joinedCommunities.splice(idx,1);
+      if(comm) comm.members = Math.max(0,(comm.members||0)-1);
+      u.communitiesJoined = Math.max(0,(u.communitiesJoined||0)-1);
+    }
+    setUserProfile(u);
+    saveState();
+    renderCommunities();
+  }
+
+  // Top-level helpers: clear notifs, show notifications
+  if(clearNotifsBtn) {
+    clearNotifsBtn.addEventListener('click', () => {
+      if(!confirm('Clear all notifications?')) return;
+      notifications = [];
+      saveState();
+      renderNotifications();
+      toast('Notifications cleared');
+    });
+  }
+
+  // expose debug
+  window.feedApp = {
+    getPosts: () => posts,
+    getCategories: () => categories,
+    getNotifications: () => notifications,
+    getAnonymousPosts: () => anonymousPosts,
+    getCommunities: () => communities,
+    saveState,
+    setActiveTab,
+    doLogout,
+    renderTopStories,
+    renderNews
+  };
+
+  // initialization
   function init(){
     initTheme();
     renderTopRightUser();
@@ -1837,30 +1997,10 @@
     renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
     initNavAccessibility();
     restoreTabFromHashOrLast();
-    initSideIcons();
     initProfileIconShortcut();
     attachDelegatedLogout();
     toast('Welcome back!');
   }
-
-  function renderCommunities(){
-    const el = document.getElementById('communities-list');
-    if(!el) return;
-    el.innerHTML = `<div class="muted">UI/UX Designers — 54 members<br>Frontend Developers — 16 members</div>`;
-  }
-
-  // expose debug
-  window.feedApp = {
-    getPosts: () => posts,
-    getCategories: () => categories,
-    getNotifications: () => notifications,
-    getAnonymousPosts: () => anonymousPosts,
-    saveState,
-    setActiveTab,
-    doLogout,
-    renderTopStories,
-    renderNews
-  };
 
   init();
 })();
