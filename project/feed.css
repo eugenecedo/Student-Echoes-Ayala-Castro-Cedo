@@ -1,4 +1,3 @@
-/* feed.css - cleaned and improved theme + fixes */
 
 /* --- Theme variables --- */
 :root{
@@ -11,6 +10,7 @@
 
   --bg-light:#f5f7fb;
   --text-light:#0b1220;
+  --muted: #9aa0a6;  
 
   --text-dark: #e6eef6; /* explicit dark-mode text color */
   --container-max-width: 1200px;
@@ -33,6 +33,8 @@ body {
 body.theme-light {
   background: var(--bg-light);
   color: var(--text-light);
+  --muted: #555; 
+
 }
 
 /* Targeted color inheritance */
@@ -419,7 +421,7 @@ body.theme-light .logout-btn {
 body.theme-light .logout-btn:hover,
 body.theme-light .logout-btn:focus {
   background: #d32f2f;
-  color: #fff;
+  color: inherit;
 }
 
 body:not(.theme-light) .logout-btn {
@@ -468,7 +470,7 @@ body.theme-light .help-btn {
 body.theme-light .help-btn:hover,
 body.theme-light .help-btn:focus {
   background: #363332;
-  color: #fff;
+  color: inherit;
 }
 
 body:not(.theme-light) .help-btn {
@@ -493,7 +495,7 @@ body.theme-light .mode-btn {
 body.theme-light .mode-btn:hover,
 body.theme-light .mode-btn:focus {
   background: #363332;
-  color: #fff;
+  color: inherit;
 }
 
 body:not(.theme-light) .mode-btn {
@@ -503,7 +505,7 @@ body:not(.theme-light) .mode-btn {
 body:not(.theme-light) .mode-btn:hover,
 body:not(.theme-light) .mode-btn:focus {
   background: #363332;
-  color: #ffffff;
+  color: inherit;
 }
 
 /* small pill for side badges (if added) */
@@ -595,3 +597,24 @@ body.theme-light .modal {
 .top-stories .ts-title { font-weight:700; font-size:13px; line-height:1.15; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; line-clamp:2; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 .top-stories .ts-summary { font-size:13px; color:var(--muted); margin-bottom:6px; display:block; max-height:36px; overflow:hidden; text-overflow:ellipsis; }
 .top-stories .ts-time { font-size:12px; color:var(--muted); }
+
+#post-category {
+  background: var(--bg-dark);
+  color: var(--text-dark);
+}
+
+body.theme-light #post-category {
+  background: var(--bg-light);
+  color: var(--text-light);
+}
+
+/* Style the option items */
+#post-category option {
+  background: var(--bg-dark);
+  color: var(--text-dark);
+}
+
+body.theme-light #post-category option {
+  background: var(--bg-light);
+  color: var(--text-light);
+}

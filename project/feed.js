@@ -880,7 +880,7 @@
   function renderPostCategoryOptions(){
     if(!postCategorySelect) return;
     postCategorySelect.innerHTML='';
-    const none = document.createElement('option'); none.value=''; none.textContent='— None —'; postCategorySelect.appendChild(none);
+    const none = document.createElement('option'); none.value=''; none.textContent='Categories'; postCategorySelect.appendChild(none);
     categories.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; postCategorySelect.appendChild(o); });
   }
 

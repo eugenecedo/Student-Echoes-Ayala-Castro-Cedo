@@ -68,8 +68,7 @@
                 <path d="M3 21v-3l11-11 3 3L6 21H3z"></path>
                 <path d="M14 7l3 3"></path>
               </svg>
-              <span class="nav-write-label">Write</span>
-              <span class="kbd muted nav-write-kbd">⌘K</span>
+              <span class="nav-write-label">Write Post</span>
             </button>
           </li>
 
@@ -104,15 +103,12 @@
           <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
             <input id="post-image" name="post-image" type="file" accept="image/*" style="display:none;" />
             <select id="post-category" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;">
-              <option value="">— None —</option>
             </select>
-            <button id="new-category-btn" class="btn small" type="button">New category</button>
           </div>
 
           <img id="preview" class="preview" alt="preview" />
 
           <div class="form-foot">
-            <div class="help-muted">Tip: Press "n" to focus new post, "/" to focus search</div>
             <button type="submit" class="btn primary">Post</button>
           </div>
         </form>
