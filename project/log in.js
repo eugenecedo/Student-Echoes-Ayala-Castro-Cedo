@@ -1,4 +1,15 @@
-// login script — stores a proper userProfile so feed.js shows the user's name
+/* log in.js
+ *
+ * Login page script for the demo. When the user submits their credentials:
+ * - Basic client-side validation is performed (non-empty)
+ * - A friendly display name is derived from the email local part (demo-only)
+ * - A userProfile object is created and saved to localStorage under "userProfile"
+ * - "loggedIn" flag is set in localStorage
+ * - Redirects to feed.html so the main app uses the saved profile
+ *
+ * Note: In production you would authenticate against a server and use the response
+ * to populate the profile securely.
+ */
 document.getElementById("loginForm").addEventListener("submit", function(e) {
   e.preventDefault();
 
@@ -21,7 +32,7 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
   // Build profile object matching feed.js expectations
   const profile = {
     name: displayName,
-    avatar: 'https://i.pravatar.cc/80?u=' + encodeURIComponent(email),
+    avatar: 'https://i.pravatar.cc/80?u=' + encodeURIComponent(email), // deterministic avatar by email
     bio: '',
     joined: new Date().toLocaleDateString(),
     communitiesJoined: 0,
@@ -31,11 +42,12 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
   try {
     localStorage.setItem("loggedIn", "true");
     localStorage.setItem("userEmail", email);
-    localStorage.setItem("userProfile", JSON.stringify(profile)); // key feed.js reads
+    // IMPORTANT: store under key 'userProfile' because feed.js's getUserProfile() reads KEY.PROFILE
+    localStorage.setItem("userProfile", JSON.stringify(profile));
   } catch (err) {
     console.warn('Could not persist login to localStorage', err);
   }
 
-  // Redirect to feed which reads the userProfile and updates UI
+  // Redirect to feed which will read the saved userProfile and show the username
   window.location.href = "feed.html";
 });

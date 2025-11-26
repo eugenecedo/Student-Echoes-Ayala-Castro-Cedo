@@ -71,11 +71,23 @@
   </div>
 
   <script>
-    // signup script — saves the display name the user enters into userProfile
+    /* sign-up.js
+ *
+ * Signup (create account) page script. Behavior for the demo:
+ * - Validates required fields and terms checkbox
+ * - Derives a display name from first+last name (or contact) and builds a
+ *   userProfile object in the format expected by feed.js
+ * - Persists the profile to localStorage under "userProfile" and sets "loggedIn"
+ * - Redirects to feed.html
+ *
+ * In production you would POST the data to a server, validate on server,
+ * create the account, and then use the server response to populate the profile.
+ */
 (function() {
-  // Toggle password visibility (re-usable)
+  // Toggle password visibility
   const togglePassword = document.getElementById('togglePassword');
   const passwordInput = document.getElementById('password');
+
   if (togglePassword && passwordInput) {
     togglePassword.addEventListener('click', () => {
       const isPassword = passwordInput.type === 'password';
@@ -84,6 +96,7 @@
     });
   }
 
+  // Helper: derive display name from first/last or contact (email local part)
   function deriveDisplayNameFromForm(first, last, contact) {
     first = (first || '').trim();
     last = (last || '').trim();
@@ -99,6 +112,7 @@
     return 'User';
   }
 
+  // Helper: make userProfile object matching feed.js format
   function makeUserProfile(displayName, contact) {
     return {
       name: displayName,
@@ -110,6 +124,7 @@
     };
   }
 
+  // Signup form submission handler
   const signupForm = document.getElementById('signup-form');
   if (signupForm) {
     signupForm.addEventListener('submit', function(e) {
@@ -130,23 +145,25 @@
         return;
       }
 
-      // In a real app: POST to server and wait for success. Here we simulate success by storing locally.
+      // Simulate server success: create a profile and persist locally
       const displayName = deriveDisplayNameFromForm(firstName, lastName, contact);
       const profile = makeUserProfile(displayName, contact);
 
       try {
-        localStorage.setItem('userProfile', JSON.stringify(profile)); // key feed.js expects
+        // Write exact key feed.js expects
+        localStorage.setItem('userProfile', JSON.stringify(profile));
         localStorage.setItem('loggedIn', 'true');
         localStorage.setItem('userEmail', contact);
       } catch (err) {
         console.warn('Could not save profile to localStorage', err);
       }
 
+      // Redirect to feed; feed reads userProfile and shows the name everywhere
       window.location.href = 'feed.html';
     });
   }
 
-  // Ensure the "Log in" link just navigates (no auto-login)
+  // "Log in" link should navigate to login page without auto-login in demo
   const signupLink = document.getElementById('signup-link');
   if (signupLink) {
     signupLink.addEventListener('click', function(e) {
