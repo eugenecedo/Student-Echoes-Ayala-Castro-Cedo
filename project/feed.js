@@ -73,12 +73,15 @@
   ];
   let activeCategoryId = null;
 
-  // anonymous avatar palette - four fixed choices
+  // NEW: currently viewed profile (null = current user). When you click another user's avatar, set this to that user object (with name/avatar/bio optional)
+  let viewedProfileUser = null;
+
+  // anonymous avatar palette - four cute avatar choices
   const ANON_AVATARS = [
-    { id: 'anon-1', name: 'Pale Moon', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#f7f9fb'/><text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='#04202a'>A</text></svg>`) },
-    { id: 'anon-2', name: 'Blue Wave', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#e6faff'/><text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='#003045'>B</text></svg>`) },
-    { id: 'anon-3', name: 'Soft Coral', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#fff2f0'/><text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='#6a1a12'>C</text></svg>`) },
-    { id: 'anon-4', name: 'Mint', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#e8fff6'/><text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='#004d3a'>D</text></svg>`) }
+    { id: 'anon-1', name: 'Kitty', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#fff7f7'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='#ff6b81'>🐱</text></svg>`) },
+    { id: 'anon-2', name: 'Puppy', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#f7fff6'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='#3fb24a'>🐶</text></svg>`) },
+    { id: 'anon-3', name: 'Foxy', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#fff8ec'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='26' fill='#ff7a2d'>🦊</text></svg>`) },
+    { id: 'anon-4', name: 'Bunny', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#eef9ff'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='26' fill='#2b9bd6'>🐰</text></svg>`) }
   ];
 
   // dom refs (queried once)
@@ -532,7 +535,7 @@
       }
       feedContainer.innerHTML = anonymousPosts.slice().reverse().map(p => {
         const commentCount = (p.comments && p.comments.length) ? p.comments.length : 0;
-        const avatarSrc = p.avatarSrc || ANON_AVATARS[0].src;
+        const avatarSrc = p.avatarSrc || (ANON_AVATARS.find(a=>a.id===p.avatarId) || ANON_AVATARS[0]).src;
         return `<article class="post card" data-aid="${p.id}">
           <div class="post-head">
             <img src="${escapeHtml(avatarSrc)}" alt="Anonymous avatar" />
@@ -714,7 +717,7 @@
       navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(()=> toast('Copied')) : toast('Copy not supported');
     };
     if(reportBtn) reportBtn.onclick = () => {
-      notifications.unshift({ id: Date.now(), text: 'Reported anonymous post (demo)', createdAt: Date.now(), avatar: getUserProfile().avatar });
+      notifications.unshift({ id:Date.now(), text: 'Reported anonymous post (demo)', createdAt: Date.now(), avatar: getUserProfile().avatar });
       saveState(); renderNotifications();
       toast('Reported (demo)');
     };
@@ -764,8 +767,11 @@
       d.setAttribute('role','button');
       d.setAttribute('tabindex','0');
       d.innerHTML = `<img src="${f.avatar}" alt="${escapeHtml(f.name)}"/><div style="flex:1"><div style="font-weight:600">${escapeHtml(f.name)}</div><div class="muted">${f.online?'Online':'Offline'}</div></div><div style="width:10px;height:10px;border-radius:50%;background:${f.online?'#34d399':'#94a3b8'}"></div>`;
-      d.addEventListener('click', () => openProfileGallery(f));
-      d.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileGallery(f); } });
+      // Clicking a friend opens their profile page (stalking)
+      d.addEventListener('click', () => {
+        openProfileView({ name: f.name, avatar: f.avatar });
+      });
+      d.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileView({ name: f.name, avatar: f.avatar }); } });
       friendsList.appendChild(d);
     });
   }
@@ -791,17 +797,31 @@
     categories.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; postCategorySelect.appendChild(o); });
   }
 
-  // Profile gallery (Instagram-like) for any author
+  // NEW helper: openProfileView(user) sets the viewedProfileUser and navigates to profile tab
+  function openProfileView(user) {
+    // user: { name: string, avatar?: string, bio?: string, joined?: string }
+    viewedProfileUser = user || null;
+    setActiveTab('profile');
+    renderProfile(false);
+  }
+
+  // Profile gallery (Instagram-like) for any author (keeps modal gallery but now "Open profile" goes to the profile tab)
   function openProfileGallery(author) {
     const current = getUserProfile();
     const viewed = author && author.name ? author : current;
     const viewedName = viewed.name;
     const avatar = viewed.avatar || (function(){
-      const p = posts.find(pp => pp.author && pp.author.name === viewedName);
-      return p ? (p.author.avatar || current.avatar) : current.avatar;
+      const p = posts.find(pp => (pp.author && pp.author.name === viewedName) || (pp.author_name && pp.author_name === viewedName));
+      return p ? (p.author && p.author.avatar) || p.author_avatar || current.avatar : current.avatar;
     })();
 
-    const userPosts = posts.filter(p => p.author && p.author.name === viewedName);
+    // Find posts authored by this viewed person — check different fields
+    const userPosts = posts.filter(p => {
+      const an = (p.author && p.author.name) || p.author_name || '';
+      if(!an) return false;
+      return an.toLowerCase() === (viewedName || '').toLowerCase();
+    });
+
     const html = `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="display:flex;gap:12px;align-items:center">
@@ -812,7 +832,7 @@
           </div>
         </div>
         <div>
-          ${ viewedName === current.name ? '<button class="btn small" id="openProfileFromGallery">Open profile</button>' : '' }
+          ${ viewedName === current.name ? '<button class="btn small" id="openProfileFromGallery">Open profile</button>' : `<button class="btn small" id="openProfileFromGalleryOther">Open profile</button>` }
         </div>
       </div>
       <div style="margin-top:12px">
@@ -847,11 +867,26 @@
       });
     });
 
+    // "Open profile" button now takes you to the profile page (stalk mode)
     const openProfileBtn = modal.querySelector('#openProfileFromGallery');
     if(openProfileBtn) openProfileBtn.addEventListener('click', () => {
       const closeBtn = modal.querySelector('.modal-close');
       if(closeBtn) closeBtn.click();
       setTimeout(() => {
+        // view current user's profile
+        viewedProfileUser = null;
+        setActiveTab('profile');
+        renderProfile(false);
+      }, 160);
+    });
+
+    const openProfileOtherBtn = modal.querySelector('#openProfileFromGalleryOther');
+    if(openProfileOtherBtn) openProfileOtherBtn.addEventListener('click', () => {
+      const closeBtn = modal.querySelector('.modal-close');
+      if(closeBtn) closeBtn.click();
+      setTimeout(() => {
+        // view the profile of the 'viewed' author from the gallery
+        viewedProfileUser = { name: viewedName, avatar: avatar };
         setActiveTab('profile');
         renderProfile(false);
       }, 160);
@@ -878,9 +913,9 @@
       const commentCount = (post.comments && post.comments.length) ? post.comments.length : 0;
       art.innerHTML = `
         <div class="post-head">
-          <img src="${escapeHtml(post.author.avatar)}" alt="${escapeHtml(post.author.name)}" />
+          <img src="${escapeHtml((post.author && post.author.avatar) || post.author_avatar || 'https://i.pravatar.cc/48')}" alt="${escapeHtml((post.author && post.author.name) || post.author_name || 'User')}" />
           <div style="flex:1">
-            <div style="font-weight:600">${escapeHtml(post.author.name)}</div>
+            <div style="font-weight:600">${escapeHtml((post.author && post.author.name) || post.author_name || 'Unknown')}</div>
             <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(post.createdAt||Date.now()))} • <strong>${escapeHtml(getCategoryName(post.categoryId))}</strong></div>
           </div>
           <div style="font-size:18px;opacity:.6"><button class="icon-btn menu-btn" data-id="${post.id}" title="Post menu" aria-label="Open post actions">${svgMenu()}</button></div>
@@ -916,8 +951,16 @@
       const headImg = art.querySelector('.post-head img');
       if(headImg) {
         headImg.style.cursor = 'pointer';
-        headImg.addEventListener('click', () => openProfileGallery(post.author));
-        headImg.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileGallery(post.author); } });
+        // Clicking another user's avatar should navigate to their profile page (view their posts)
+        headImg.addEventListener('click', () => {
+          const authorObj = post.author && post.author.name ? { name: post.author.name, avatar: post.author.avatar } : (post.author_name ? { name: post.author_name, avatar: post.author_avatar } : null);
+          if(authorObj && authorObj.name) {
+            openProfileView(authorObj);
+          } else {
+            openProfileGallery(post.author || { name: post.author_name });
+          }
+        });
+        headImg.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const authorObj = post.author && post.author.name ? { name: post.author.name, avatar: post.author.avatar } : (post.author_name ? { name: post.author_name, avatar: post.author_avatar } : null); if(authorObj && authorObj.name) openProfileView(authorObj); else openProfileGallery(post.author || { name: post.author_name }); } });
       }
     });
 
@@ -979,7 +1022,7 @@
     const post = posts.find(p=>p.id===postId);
     if(!post) return;
 
-    const isOwner = post.author.name === user.name;
+    const isOwner = ((post.author && post.author.name) || post.author_name) === user.name;
 
     const commonActionsHtml = `
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -1139,156 +1182,277 @@
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
+  // Updated renderProfile to show a profile page for either the current user or another user.
+  // renderProfile(editMode=false) uses viewedProfileUser to determine which profile to show.
   function renderProfile(editMode=false){
     const cont = document.getElementById('profile-content'); if(!cont) return;
-    const u = getUserProfile();
-    const postCount = posts.filter(p=>p.author.name===u.name).length;
-    const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
+    const currentUser = getUserProfile();
+    const viewed = viewedProfileUser || null; // if null => show current user
+    const isViewingOwn = !viewed || (viewed && viewed.name && viewed.name === currentUser.name);
 
-    if(!editMode){
-      cont.innerHTML = `<div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-        <img src="${escapeHtml(u.avatar || defaultAvatar)}" style="width:80px;height:80px;border-radius:50%;">
-        <div>
-          <div style="font-size:22px;font-weight:700;">${escapeHtml(u.name)}</div>
-          <div class="muted">${escapeHtml(u.bio)}</div>
-          <div style="margin-top:6px;font-size:13px;">Joined: ${escapeHtml(u.joined)}</div>
-        </div>
-      </div>
-      <div>
-        <strong>Posts:</strong> ${postCount}<br>
-        <strong>Communities:</strong> ${u.communitiesJoined}
-      </div>
-      <div style="margin-top:12px;">
-        <button class="btn small" id="editProfileBtn">Edit Profile</button>
-      </div>`;
-      const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
-      return;
+    // helper to get avatar/bio for a viewed user (try local posts or passed avatar)
+    function resolveProfileData(name, fallback) {
+      const profile = { name: name || (fallback && fallback.name) || 'Unknown', avatar: (fallback && fallback.avatar) || null, bio: (fallback && fallback.bio) || '' };
+      // try to find a post authored by them to grab avatar
+      const p = posts.find(pp => {
+        const an = (pp.author && pp.author.name) || pp.author_name || '';
+        return an && name && an.toLowerCase() === name.toLowerCase();
+      });
+      if(p) {
+        profile.avatar = profile.avatar || ((p.author && p.author.avatar) || p.author_avatar);
+      }
+      return profile;
     }
 
-    let currentAvatar = u.avatar || defaultAvatar;
-    cont.innerHTML = `
-      <form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;">
-        <label>Name:<br>
-          <input name="name" value="${escapeHtml(u.name)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">
-        </label>
-        <div style="margin-top:8px;">
-          <label style="font-weight:600;margin-bottom:4px;">Profile Photo:</label>
-          <div style="display:flex;gap:18px;align-items:center">
-            <img id="avatarPreview" src="${escapeHtml(currentAvatar)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid #ddd;">
-            <div style="display:flex;flex-direction:column;gap:7px;">
-              <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
-              <button type="button" class="btn small" id="pickPhotoBtn">Upload Photo</button>
-              <button type="button" class="btn small" id="takePhotoBtn">Take Photo</button>
-              <button type="button" class="btn small" id="removePhotoBtn" style="color:#d32f2f">Remove Photo</button>
-            </div>
+    if(isViewingOwn && !editMode) {
+      // show current user with edit button
+      const u = currentUser;
+      const postItems = posts.filter(p => {
+        const authorName = (p.author && p.author.name) || p.author_name || '';
+        if(!authorName) return false;
+        return authorName.toLowerCase() === String(u.name).toLowerCase();
+      });
+      const postCount = postItems.length;
+      const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
+
+      cont.innerHTML = `
+        <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+          <img src="${escapeHtml(u.avatar || defaultAvatar)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">
+          <div>
+            <div style="font-size:22px;font-weight:700;">${escapeHtml(u.name)}</div>
+            <div class="muted">${escapeHtml(u.bio)}</div>
+            <div style="margin-top:6px;font-size:13px;">Joined: ${escapeHtml(u.joined)}</div>
           </div>
         </div>
-        <label>Bio:<br>
-          <textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">${escapeHtml(u.bio)}</textarea>
-        </label>
-        <div style="margin-top:12px;">
-          <button class="btn small" type="submit">Save</button>
-          <button class="btn small" type="button" id="cancelProfileBtn" style="margin-left:8px">Cancel</button>
+        <div>
+          <strong>Posts:</strong> ${postCount}<br>
+          <strong>Communities:</strong> ${u.communitiesJoined || 0}
         </div>
-      </form>
-      <div id="webcam-modal-root"></div>
-    `;
-    const avatarPreview = document.getElementById('avatarPreview');
-    const avatarUpload = document.getElementById('avatarUpload');
-    const pickPhotoBtn = document.getElementById('pickPhotoBtn');
-    const takePhotoBtn = document.getElementById('takePhotoBtn');
-    const removePhotoBtn = document.getElementById('removePhotoBtn');
-    const form = document.getElementById('editProfileForm');
-    const cancel = document.getElementById('cancelProfileBtn');
-    const webcamModalRoot = document.getElementById('webcam-modal-root');
-
-    pickPhotoBtn.onclick = () => avatarUpload.click();
-    avatarUpload.onchange = (e) => {
-      const file = e.target.files && e.target.files[0];
-      if(file){
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-          currentAvatar = ev.target.result;
-          avatarPreview.src = currentAvatar;
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-
-    // Webcam/camera take photo
-    takePhotoBtn.onclick = () => {
-      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-        toast('Camera/webcam not supported or permission denied');
-        return;
-      }
-      // Webcam modal
-      webcamModalRoot.innerHTML = `
-        <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1200;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center;">
-          <div style="background:#fff;border-radius:12px;padding:24px;max-width:340px;text-align:center;box-shadow:0 6px 32px rgba(2,6,23,0.25);position:relative;">
-            <div style="font-weight:700;font-size:16px;margin-bottom:8px;">Take Photo</div>
-            <video id="webcamVideo" autoplay playsinline width="240" height="180" style="border-radius:10px;border:1px solid #dadada;background:#ddd;"></video>
-            <br>
-            <button id="snapPhotoBtn" class="btn primary" style="margin-top:10px;">Take Photo</button>
-            <button id="closeWebcamBtn" class="btn small" style="margin-top:10px;margin-left:8px;">Cancel</button>
+        <div style="margin-top:12px;">
+          <button class="btn small" id="editProfileBtn">Edit Profile</button>
+        </div>
+        <hr style="margin:12px 0;opacity:.06" />
+        <div style="margin-top:12px">
+          <strong>Your posts</strong>
+          <div style="margin-top:8px">
+            ${postItems.length === 0 ? `<div class="muted">You haven't posted yet.</div>` : `<div class="profile-gallery-grid" aria-live="polite">
+              ${postItems.map(p => {
+                const thumb = p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml((p.text||'').slice(0,60))}">` : `<div class="pg-txt">${escapeHtml((p.text||'').slice(0,120))}</div>`;
+                return `<button class="profile-gallery-item" data-id="${p.id}" aria-label="Open post">${thumb}</button>`;
+              }).join('')}
+            </div>`}
           </div>
         </div>
       `;
-      const video = document.getElementById('webcamVideo');
-      const snapBtn = document.getElementById('snapPhotoBtn');
-      const closeBtn = document.getElementById('closeWebcamBtn');
-      let stream = null;
-      navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
-        stream = s;
-        video.srcObject = s;
-      }).catch(() => {
-        toast('Camera access denied');
-        webcamModalRoot.innerHTML = '';
+
+      // wire edit button
+      const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
+
+      // wire gallery item clicks
+      cont.querySelectorAll('.profile-gallery-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = Number(btn.dataset.id);
+          const post = posts.find(p => p.id === id);
+          if(!post) return;
+          if(post.image) {
+            openImageLightbox(post.image, post.text || '');
+          } else {
+            openModal({
+              title: `${escapeHtml(timeAgo(post.createdAt || Date.now()))}`,
+              html: `<div style="margin-top:8px">${escapeHtml(post.text || '')}</div>`,
+              confirmText: 'Close',
+              cancelText: ''
+            });
+          }
+        });
       });
-      snapBtn.onclick = function(){
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth || 240;
-        canvas.height = video.videoHeight || 180;
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        currentAvatar = canvas.toDataURL('image/png');
-        avatarPreview.src = currentAvatar;
-        if(stream){
-          stream.getTracks().forEach(t=>t.stop());
-        }
-        webcamModalRoot.innerHTML = '';
-      };
-      closeBtn.onclick = function(){
-        if(stream){
-          stream.getTracks().forEach(t=>t.stop());
-        }
-        webcamModalRoot.innerHTML = '';
-      };
-    };
 
-    // Remove photo and use default SVG
-    removePhotoBtn.onclick = () => {
-      if(confirm('Are you sure you want to remove your profile photo?')){
-        currentAvatar = defaultAvatar;
-        avatarPreview.src = defaultAvatar;
-        toast('Profile photo removed');
-      }
-    };
+      return;
+    }
 
-    // Save profile
-    form.onsubmit = function(ev){
-      ev.preventDefault();
-      const fd = new FormData(form), prev = getUserProfile();
-      const np = {
-        name: (fd.get('name')||prev.name).trim(),
-        avatar: currentAvatar, // dataURL or SVG
-        bio: (fd.get('bio')||'').trim(),
-        joined: prev.joined,
-        communitiesJoined: prev.communitiesJoined || 0,
-        joinedCommunities: prev.joinedCommunities || []
+    // viewing someone else's profile OR editing own profile
+    if(isViewingOwn && editMode) {
+      // show edit UI for own profile (existing behavior)
+      let currentAvatar = currentUser.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
+      cont.innerHTML = `
+        <form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;">
+          <label>Name:<br>
+            <input name="name" value="${escapeHtml(currentUser.name)}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">
+          </label>
+          <div style="margin-top:8px;">
+            <label style="font-weight:600;margin-bottom:4px;">Profile Photo:</label>
+            <div style="display:flex;gap:18px;align-items:center">
+              <img id="avatarPreview" src="${escapeHtml(currentAvatar)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid #ddd;">
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
+                <button type="button" class="btn small" id="pickPhotoBtn">Upload Photo</button>
+                <button type="button" class="btn small" id="takePhotoBtn">Take Photo</button>
+                <button type="button" class="btn small" id="removePhotoBtn" style="color:#d32f2f">Remove Photo</button>
+              </div>
+            </div>
+          </div>
+          <label>Bio:<br>
+            <textarea name="bio" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">${escapeHtml(currentUser.bio)}</textarea>
+          </label>
+          <div style="margin-top:12px;">
+            <button class="btn small" type="submit">Save</button>
+            <button class="btn small" type="button" id="cancelProfileBtn" style="margin-left:8px">Cancel</button>
+          </div>
+        </form>
+        <div id="webcam-modal-root"></div>
+      `;
+      const avatarPreview = document.getElementById('avatarPreview');
+      const avatarUpload = document.getElementById('avatarUpload');
+      const pickPhotoBtn = document.getElementById('pickPhotoBtn');
+      const takePhotoBtn = document.getElementById('takePhotoBtn');
+      const removePhotoBtn = document.getElementById('removePhotoBtn');
+      const form = document.getElementById('editProfileForm');
+      const cancel = document.getElementById('cancelProfileBtn');
+      const webcamModalRoot = document.getElementById('webcam-modal-root');
+
+      pickPhotoBtn.onclick = () => avatarUpload.click();
+      avatarUpload.onchange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if(file){
+          const reader = new FileReader();
+          reader.onload = function(ev) {
+            currentAvatar = ev.target.result;
+            avatarPreview.src = currentAvatar;
+          };
+          reader.readAsDataURL(file);
+        }
       };
-      setUserProfile(np); renderTopRightUser(); renderFeed(); renderProfile(false);
-      toast('Profile updated');
-    };
-    if(cancel) cancel.onclick = () => renderProfile(false);
+
+      // Webcam/camera take photo
+      takePhotoBtn.onclick = () => {
+        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+          toast('Camera/webcam not supported or permission denied');
+          return;
+        }
+        // Webcam modal
+        webcamModalRoot.innerHTML = `
+          <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1200;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center;">
+            <div style="background:#fff;border-radius:12px;padding:24px;max-width:340px;text-align:center;box-shadow:0 6px 32px rgba(2,6,23,0.25);position:relative;">
+              <div style="font-weight:700;font-size:16px;margin-bottom:8px;">Take Photo</div>
+              <video id="webcamVideo" autoplay playsinline width="240" height="180" style="border-radius:10px;border:1px solid #dadada;background:#ddd;"></video>
+              <br>
+              <button id="snapPhotoBtn" class="btn primary" style="margin-top:10px;">Take Photo</button>
+              <button id="closeWebcamBtn" class="btn small" style="margin-top:10px;margin-left:8px;">Cancel</button>
+            </div>
+          </div>
+        `;
+        const video = document.getElementById('webcamVideo');
+        const snapBtn = document.getElementById('snapPhotoBtn');
+        const closeBtn = document.getElementById('closeWebcamBtn');
+        let stream = null;
+        navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
+          stream = s;
+          video.srcObject = s;
+        }).catch(() => {
+          toast('Camera access denied');
+          webcamModalRoot.innerHTML = '';
+        });
+        snapBtn.onclick = function(){
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth || 240;
+          canvas.height = video.videoHeight || 180;
+          canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+          currentAvatar = canvas.toDataURL('image/png');
+          avatarPreview.src = currentAvatar;
+          if(stream){
+            stream.getTracks().forEach(t=>t.stop());
+          }
+          webcamModalRoot.innerHTML = '';
+        };
+        closeBtn.onclick = function(){
+          if(stream){
+            stream.getTracks().forEach(t=>t.stop());
+          }
+          webcamModalRoot.innerHTML = '';
+        };
+      };
+
+      // Remove photo and use default SVG
+      removePhotoBtn.onclick = () => {
+        if(confirm('Are you sure you want to remove your profile photo?')){
+          currentAvatar = defaultAvatar;
+          avatarPreview.src = defaultAvatar;
+          toast('Profile photo removed');
+        }
+      };
+
+      // Save profile
+      form.onsubmit = function(ev){
+        ev.preventDefault();
+        const fd = new FormData(form), prev = getUserProfile();
+        const np = {
+          name: (fd.get('name')||prev.name).trim(),
+          avatar: currentAvatar, // dataURL or SVG
+          bio: (fd.get('bio')||'').trim(),
+          joined: prev.joined,
+          communitiesJoined: prev.communitiesJoined || 0,
+          joinedCommunities: prev.joinedCommunities || []
+        };
+        setUserProfile(np); renderTopRightUser(); renderFeed(); renderProfile(false);
+        toast('Profile updated');
+      };
+      if(cancel) cancel.onclick = () => renderProfile(false);
+      return;
+    }
+
+    // Viewing another user's profile (read-only)
+    if(viewedProfileUser) {
+      const profile = resolveProfileData(viewedProfileUser.name, viewedProfileUser);
+      const userPosts = posts.filter(p => {
+        const an = (p.author && p.author.name) || p.author_name || '';
+        return an && profile.name && an.toLowerCase() === profile.name.toLowerCase();
+      });
+      cont.innerHTML = `
+        <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+          <img src="${escapeHtml(profile.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='38' fill='%23b3cde0'/%3E%3C/svg%3E")}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">
+          <div>
+            <div style="font-size:22px;font-weight:700;">${escapeHtml(profile.name)}</div>
+            <div class="muted">${escapeHtml(profile.bio || '')}</div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <strong>Posts by ${escapeHtml(profile.name)}</strong>
+          <div style="margin-top:8px">
+            ${userPosts.length === 0 ? `<div class="muted">This user hasn't posted yet.</div>` : `<div class="profile-gallery-grid" aria-live="polite">
+              ${userPosts.map(p => {
+                const thumb = p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml((p.text||'').slice(0,60))}">` : `<div class="pg-txt">${escapeHtml((p.text||'').slice(0,120))}</div>`;
+                return `<button class="profile-gallery-item" data-id="${p.id}" aria-label="Open post">${thumb}</button>`;
+              }).join('')}
+            </div>`}
+          </div>
+        </div>
+      `;
+
+      // wire gallery items
+      cont.querySelectorAll('.profile-gallery-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = Number(btn.dataset.id);
+          const post = posts.find(p => p.id === id);
+          if(!post) return;
+          if(post.image) {
+            openImageLightbox(post.image, post.text || '');
+          } else {
+            openModal({
+              title: `${escapeHtml(timeAgo(post.createdAt || Date.now()))}`,
+              html: `<div style="margin-top:8px">${escapeHtml(post.text || '')}</div>`,
+              confirmText: 'Close',
+              cancelText: ''
+            });
+          }
+        });
+      });
+
+      return;
+    }
+
+    // default fallback: show current user summary if somehow none matched
+    const u = currentUser;
+    cont.innerHTML = `<div><strong>${escapeHtml(u.name)}</strong><div class="muted">${escapeHtml(u.bio)}</div></div>`;
   }
 
   // tabs plumbing (unchanged mapping)
@@ -1782,19 +1946,24 @@
     updateSideBadges();
   }
 
-  // Profile avatar shortcut
+  // Profile avatar shortcut (modified so clicking profile opens profile tab and shows user's posts)
   function initProfileIconShortcut() {
     const profileIcon = document.getElementById('profile-icon');
     if (profileIcon) {
       profileIcon.style.cursor = "pointer";
       profileIcon.tabIndex = 0;
       profileIcon.addEventListener('click', () => {
-        openProfileGallery();
+        // view own profile
+        viewedProfileUser = null;
+        setActiveTab('profile');
+        renderProfile(false);
       });
       profileIcon.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          openProfileGallery();
+          viewedProfileUser = null;
+          setActiveTab('profile');
+          renderProfile(false);
         }
       });
     }
@@ -1803,12 +1972,14 @@
     if (usernameEl) {
       usernameEl.tabIndex = 0;
       usernameEl.addEventListener('click', () => {
+        viewedProfileUser = null;
         setActiveTab('profile');
         renderProfile(true);
       });
       usernameEl.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
+          viewedProfileUser = null;
           setActiveTab('profile');
           renderProfile(true);
         }
@@ -1981,7 +2152,8 @@
     setActiveTab,
     doLogout,
     renderTopStories,
-    renderNews
+    renderNews,
+    openProfileView // expose for testing
   };
 
   // initialization

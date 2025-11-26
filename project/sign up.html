@@ -71,38 +71,90 @@
   </div>
 
   <script>
-    // Toggle password visibility
-    const togglePassword = document.getElementById('togglePassword');
-    const passwordInput = document.getElementById('password');
-
+    // signup script — saves the display name the user enters into userProfile
+(function() {
+  // Toggle password visibility (re-usable)
+  const togglePassword = document.getElementById('togglePassword');
+  const passwordInput = document.getElementById('password');
+  if (togglePassword && passwordInput) {
     togglePassword.addEventListener('click', () => {
       const isPassword = passwordInput.type === 'password';
       passwordInput.type = isPassword ? 'text' : 'password';
       togglePassword.textContent = isPassword ? 'Hide' : 'Show';
     });
+  }
 
-    // Signup form submission
-    const signupForm = document.getElementById('signup-form');
-    signupForm.addEventListener('submit', e => {
+  function deriveDisplayNameFromForm(first, last, contact) {
+    first = (first || '').trim();
+    last = (last || '').trim();
+    if (first || last) return (first + ' ' + last).trim();
+    if (contact) {
+      const at = contact.indexOf('@');
+      if (at > 0) {
+        const local = contact.slice(0, at).replace(/[._\-]+/g, ' ');
+        return local.split(' ').map(w => w ? (w[0].toUpperCase() + w.slice(1)) : '').join(' ').trim() || 'User';
+      }
+      return contact;
+    }
+    return 'User';
+  }
+
+  function makeUserProfile(displayName, contact) {
+    return {
+      name: displayName,
+      avatar: 'https://i.pravatar.cc/80?u=' + encodeURIComponent(contact || displayName),
+      bio: '',
+      joined: new Date().toLocaleDateString(),
+      communitiesJoined: 0,
+      joinedCommunities: []
+    };
+  }
+
+  const signupForm = document.getElementById('signup-form');
+  if (signupForm) {
+    signupForm.addEventListener('submit', function(e) {
       e.preventDefault();
 
-      // Optional: simple validation
-      if (!document.getElementById('terms').checked) {
+      const firstName = (document.getElementById('firstName').value || '').trim();
+      const lastName = (document.getElementById('lastName').value || '').trim();
+      const contact = (document.getElementById('contact').value || '').trim();
+      const pwd = (document.getElementById('password').value || '').trim();
+      const termsChecked = !!document.getElementById('terms').checked;
+
+      if (!termsChecked) {
         alert('You must agree to the Terms & Conditions.');
         return;
       }
+      if (!contact || !pwd) {
+        alert('Please provide contact and password.');
+        return;
+      }
 
-      // Save login state (simulated)
-      localStorage.setItem('loggedIn', 'true');
+      // In a real app: POST to server and wait for success. Here we simulate success by storing locally.
+      const displayName = deriveDisplayNameFromForm(firstName, lastName, contact);
+      const profile = makeUserProfile(displayName, contact);
+
+      try {
+        localStorage.setItem('userProfile', JSON.stringify(profile)); // key feed.js expects
+        localStorage.setItem('loggedIn', 'true');
+        localStorage.setItem('userEmail', contact);
+      } catch (err) {
+        console.warn('Could not save profile to localStorage', err);
+      }
+
       window.location.href = 'feed.html';
     });
+  }
 
-    // Login link (simulate login)
-    document.getElementById('signup-link').addEventListener('click', e => {
+  // Ensure the "Log in" link just navigates (no auto-login)
+  const signupLink = document.getElementById('signup-link');
+  if (signupLink) {
+    signupLink.addEventListener('click', function(e) {
       e.preventDefault();
-      localStorage.setItem('loggedIn', 'true');
       window.location.href = 'log in.html';
     });
+  }
+})();
   </script>
 </body>
 </html>
