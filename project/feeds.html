@@ -94,22 +94,19 @@
 
     <section class="main" id="maincontent" aria-label="Main content">
       <div id="tab-feed" class="card create-post" role="region" aria-label="Create post">
-        <form id="post-form" style="position:relative;">
-          <div style="position:relative;">
-            <button type="button" id="add-image-btn" class="add-img" aria-label="Add image" aria-controls="post-image">＋</button>
-            <textarea id="post-text" placeholder="What's on your mind?" rows="3" aria-label="Post text"></textarea>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-          <input id="post-image" name="post-image" type="file" accept="image/*" style="display:none;" />
-          </div>
+        <form action="feeds.php" method="POST" enctype="multipart/form-data">
+  <textarea name="post_text" placeholder="What's on your mind?" required></textarea>
+  <input type="file" name="post_image" accept="image/*" />
+  <select name="post_category">
+    <option value="General">General</option>
+    <option value="News">News</option>
+    <option value="Profile">Profile</option>
+  </select>
+  <button type="submit">Post</button>
+</form>
 
-          <img id="preview" class="preview" alt="preview" />
+<div id="feed" class="feed-list"></div>
 
-          <div class="form-foot">
-            <button type="submit" class="btn primary">Post</button>
-          </div>
-        </form>
-      </div>
 
       <div id="feed" class="feed-list" aria-live="polite"></div>
 
@@ -124,11 +121,8 @@
           </div>
           <p id="profile-bio">This is your bio.</p>
           <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
-          <div id="profile-feed" class="profile-feed" aria-live="polite"></div>
-
-            
-
-          </div>
+          <div class="profile-gallery-grid"></div>
+        </div>
       </div>
 
       <div id="tab-write" class="card tab-panel hidden"><h4>Write a Story</h4><div id="write-content" class="muted"></div></div>
@@ -155,8 +149,8 @@
       </div>
     </aside>
 
-   </main>
-   <footer class="footer">© 2025 Student Echoes. All rights reserved.</footer>
+    <footer class="footer">© 2025 Student Echoes. All rights reserved.</footer>
+  </main>
 </div>
 
 <!-- Modal root (used by JS for comments/edit/lightbox) -->

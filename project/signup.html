@@ -30,44 +30,36 @@
             <a href="log in.html" id="signup-link">Log in</a>
           </p>
         </div>
+<form action="sign.php" method="POST" novalidate>
+  <div class="grid">
+    <div class="field">
+      <label for="firstName">First name</label>
+      <input id="firstName" name="firstName" type="text" required />
+    </div>
+    <div class="field">
+      <label for="lastName">Last name</label>
+      <input id="lastName" name="lastName" type="text" required />
+    </div>
+  </div>
 
-        <form class="form" id="signup-form" novalidate>
-          <div class="grid">
-            <div class="field">
-              <label for="firstName">First name</label>
-              <input id="firstName" name="firstName" type="text" placeholder="Eugene" required />
-            </div>
-            <div class="field">
-              <label for="lastName">Last name</label>
-              <input id="lastName" name="lastName" type="text" placeholder="Dela Cruz" required />
-            </div>
-          </div>
+  <div class="field">
+    <label for="contact">Email or Phone Number</label>
+    <input id="contact" name="contact" type="text" required />
+  </div>
 
-          <div class="field">
-            <label for="contact">Email or Phone Number</label>
-            <input id="contact" name="contact" type="text" placeholder="you@example.com or +639123456789" required />
-          </div>
+  <div class="field password-field">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required />
+  </div>
 
-          <div class="field password-field">
-            <label for="password">Password</label>
-            <div class="password-wrapper">
-              <input id="password" name="password" type="password" placeholder="••••••••" required />
-              <button type="button" id="togglePassword" class="toggle-password">Show</button>
-            </div>
-          </div>
-
-          <div class="consent">
-            <label class="checkbox">
-              <input type="checkbox" id="terms" required />
-              <span>I agree to the Terms & Conditions</span>
-            </label>
-          </div>
-
-          <button class="primary-btn" type="submit">Create account</button>
-        </form>
+  <button class="primary-btn" type="submit">Create account</button>
+</form>
+        <p class="terms">
+          By signing up, you agree to our
+          <a href="#">Terms & Conditions</a>
+        </p>
       </div>
     </section>
-  </div>
 
   <script>
     /* sign-up.js
