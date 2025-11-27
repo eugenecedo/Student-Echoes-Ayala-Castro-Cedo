@@ -99,11 +99,8 @@
             <button type="button" id="add-image-btn" class="add-img" aria-label="Add image" aria-controls="post-image">＋</button>
             <textarea id="post-text" placeholder="What's on your mind?" rows="3" aria-label="Post text"></textarea>
           </div>
-
           <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-            <input id="post-image" name="post-image" type="file" accept="image/*" style="display:none;" />
-            <select id="post-category" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;">
-            </select>
+          <input id="post-image" name="post-image" type="file" accept="image/*" style="display:none;" />
           </div>
 
           <img id="preview" class="preview" alt="preview" />
@@ -127,8 +124,11 @@
           </div>
           <p id="profile-bio">This is your bio.</p>
           <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
-          <div class="profile-gallery-grid"></div>
-        </div>
+          <div id="profile-feed" class="profile-feed" aria-live="polite"></div>
+
+            
+
+          </div>
       </div>
 
       <div id="tab-write" class="card tab-panel hidden"><h4>Write a Story</h4><div id="write-content" class="muted"></div></div>
@@ -155,8 +155,8 @@
       </div>
     </aside>
 
-    <footer class="footer">© 2025 Student Echoes. All rights reserved.</footer>
-  </main>
+   </main>
+   <footer class="footer">© 2025 Student Echoes. All rights reserved.</footer>
 </div>
 
 <!-- Modal root (used by JS for comments/edit/lightbox) -->
