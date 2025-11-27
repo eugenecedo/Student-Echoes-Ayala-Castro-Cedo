@@ -123,10 +123,6 @@
   const addImageBtn = document.getElementById('add-image-btn');
   const postImage = document.getElementById('post-image');
   const preview = document.getElementById('preview');
-  const postCategorySelect = document.getElementById('post-category');
-  const newCategoryBtn = document.getElementById('new-category-btn');
-  const categoriesContent = document.getElementById('categories-content');
-  const globalSearch = document.getElementById('global-search');
   const navList = document.getElementById('nav-list');
 
   // modal & toast roots
@@ -161,7 +157,6 @@
       localStorage.setItem(KEY.POSTS, JSON.stringify(posts));
       localStorage.setItem(KEY.NOTIFS, JSON.stringify(notifications));
       localStorage.setItem(KEY.ANON, JSON.stringify(anonymousPosts));
-      localStorage.setItem(KEY.COMMUNITIES, JSON.stringify(communities));
     } catch (e) {
       console.warn('saveState() failed', e);
     }
@@ -2251,77 +2246,6 @@
       renderNews();
     });
   }
-
-  // ---------------------------------------------------------------------------
-  // Communities render + join/create actions (already in demo state)
-  // ---------------------------------------------------------------------------
-  function renderCommunities(){
-    const el = document.getElementById('communities-list');
-    if(!el) return;
-    const u = getUserProfile();
-    const joined = u.joinedCommunities || [];
-    el.innerHTML = '';
-    communities.forEach(c => {
-      const div = document.createElement('div');
-      div.style.display = 'flex';
-      div.style.justifyContent = 'space-between';
-      div.style.alignItems = 'center';
-      div.style.marginBottom = '8px';
-      div.innerHTML = `<div><div style="font-weight:600">${escapeHtml(c.name)}</div><div class="muted" style="font-size:12px">${escapeHtml(c.description || '')}</div></div>
-        <div>
-          <button class="btn small join-comm-btn" data-id="${c.id}">${joined.includes(c.id) ? 'Joined' : 'Join'}</button>
-        </div>`;
-      el.appendChild(div);
-    });
-
-    el.querySelectorAll('.join-comm-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const id = Number(btn.dataset.id);
-        toggleJoinCommunity(id);
-      });
-    });
-
-    const createBtn = document.getElementById('create-community-btn');
-    if(createBtn) {
-      createBtn.onclick = () => {
-        openModal({ title: 'Create community', input: true, placeholder: 'Community name', confirmText: 'Create' }).then(name => {
-          if(!name || !name.trim()) return;
-          const trimmed = name.trim();
-          openModal({ title: 'Community description', input:true, placeholder: 'Short description', confirmText: 'Create' }).then(desc => {
-            const id = Date.now();
-            communities.push({ id, name: trimmed, members: 1, description: (desc||'').trim() });
-            const u = getUserProfile();
-            u.joinedCommunities = u.joinedCommunities || [];
-            u.joinedCommunities.push(id);
-            u.communitiesJoined = (u.communitiesJoined || 0) + 1;
-            setUserProfile(u);
-            saveState(); renderCommunities();
-            toast('Community created and joined');
-          });
-        });
-      };
-    }
-  }
-
-  function toggleJoinCommunity(id){
-    const u = getUserProfile();
-    u.joinedCommunities = u.joinedCommunities || [];
-    const idx = u.joinedCommunities.indexOf(id);
-    const comm = communities.find(c => c.id === id);
-    if(idx === -1){
-      u.joinedCommunities.push(id);
-      if(comm) comm.members = (comm.members||0)+1;
-      u.communitiesJoined = (u.communitiesJoined || 0) + 1;
-    } else {
-      u.joinedCommunities.splice(idx,1);
-      if(comm) comm.members = Math.max(0,(comm.members||0)-1);
-      u.communitiesJoined = Math.max(0,(u.communitiesJoined||0)-1);
-    }
-    setUserProfile(u);
-    saveState();
-    renderCommunities();
-  }
-
   // ---------------------------------------------------------------------------
   // Clear notifications action
   // ---------------------------------------------------------------------------
@@ -2343,7 +2267,6 @@
     getCategories: () => categories,
     getNotifications: () => notifications,
     getAnonymousPosts: () => anonymousPosts,
-    getCommunities: () => communities,
     saveState,
     setActiveTab,
     doLogout,
@@ -2362,7 +2285,6 @@
     renderPostCategoryOptions();
     renderFeed();
     renderNotifications();
-    renderCommunities();
     renderTopStories();
     renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
     initNavAccessibility();
