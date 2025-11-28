@@ -1,7 +1,13 @@
-// Full modified feed.js with Instagram-like profile grid integrated.
-// NOTE: This file is the original feed.js you provided with an injected
-// "Instagram-like" profile grid patch placed immediately after the original
-// renderProfile() function so it overrides the gallery rendering in-place.
+// Full modified feed.js with Instagram-like profile grid integrated,
+// photos constrained (not scrollable), and TikTok-style comment sheet UI.
+//
+// Changes made:
+// - Ensured images in tiles, feed, and lightbox do not cause internal scrolling
+//   and are contained with object-fit / max-width rules.
+// - Reworked openComments() and openAnonComments() to render a TikTok-like
+//   comments sheet: large scrollable list, per-comment actions, and a fixed
+//   input/footer at the bottom. Posting updates the list in-place.
+// - Kept the rest of the app behavior intact.
 (function(){
   // KEY: central names for localStorage keys used across the app
   const KEY = {
@@ -358,58 +364,106 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Comments modal for regular (non-anonymous) posts
+  // COMMENTS (REGULAR POSTS) — TIKTOK-LIKE COMMENTS SHEET
   // ---------------------------------------------------------------------------
-  /**
-   * openComments(postId)
-   * Show comments for a post inside a modal and allow adding a new comment.
-   */
+  // We'll override the original openComments to render a TikTok-style sheet:
+  // - modal-body contains header, a scrollable comment list, and a fixed footer input
+  // - add/like/reply interactions update the in-modal list without closing the modal
   function openComments(postId) {
     const post = posts.find(p => p.id === postId);
     if(!post) return;
 
-    function renderCommentsHtml(comments) {
-      if(!comments || comments.length === 0) return `<div class="muted">No comments yet.</div>`;
-      return comments.map(c => `
-        <div style="margin-bottom:12px;padding:8px;border-radius:8px;background:transparent;">
-          <div style="display:flex;gap:8px;align-items:flex-start">
-            <img src="${escapeHtml(c.author.avatar)}" style="width:36px;height:36px;border-radius:50%"/>
-            <div style="flex:1">
-              <div style="font-weight:600">${escapeHtml(c.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(c.createdAt))}</span></div>
-              <div style="margin-top:6px">${escapeHtml(c.text)}</div>
-              <div style="margin-top:8px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
-              ${c.replies && c.replies.length ? `<div style="margin-top:8px;margin-left:44px">${c.replies.map(r=>`
-                <div style="margin-bottom:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.01)">
-                  <div style="font-weight:600">${escapeHtml(r.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt))}</span></div>
-                  <div style="margin-top:6px">${escapeHtml(r.text)}</div>
-                </div>
-              `).join('')}</div>` : ''}
-            </div>
+    function renderCommentRow(c) {
+      const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
+      return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
+        <img src="${escapeHtml((c.author && c.author.avatar) || 'https://i.pravatar.cc/36')}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px">
+            <strong style="font-size:14px">${escapeHtml((c.author && c.author.name) || 'User')}</strong>
+            <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(c.createdAt))}</div>
           </div>
+          <div style="margin-top:6px;font-size:14px">${escapeHtml(c.text)}</div>
+          ${ repliesCount ? `<div style="margin-top:8px;font-size:13px;color:rgba(255,255,255,0.6)">${repliesCount} repl${repliesCount>1?'ies':'y'} — <button class="btn tiny view-replies" data-cid="${c.id}">View</button></div>` : '' }
         </div>
-      `).join('');
+        <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn small like-comment" data-cid="${c.id}" aria-label="Like comment">❤</button>
+          <button class="btn small reply-comment" data-cid="${c.id}" aria-label="Reply to comment">↩</button>
+        </div>
+      </div>`;
     }
 
+    const commentsHtml = (post.comments || []).map(c => renderCommentRow(c)).join('');
+
     const html = `
-      <div style="max-height:58vh;overflow:auto;padding-right:8px">
-        ${renderCommentsHtml(post.comments)}
-      </div>
-      <div style="margin-top:12px">
-        <strong>Add a comment</strong>
-        <div style="margin-top:8px">
-          <textarea id="__newCommentInput" placeholder="Write a comment..." style="width:100%;min-height:80px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
-          <div style="margin-top:8px"><button class="btn primary" id="__submitNewComment">Post comment</button></div>
+      <div class="comments-sheet" style="display:flex;flex-direction:column;height:70vh;">
+        <div class="cs-header" style="padding:12px 12px 8px;border-bottom:1px solid rgba(0,0,0,0.04);">
+          <strong>Comments (${(post.comments && post.comments.length) || 0})</strong>
+        </div>
+        <div class="cs-list" style="overflow:auto;padding:8px 4px;flex:1;">
+          ${commentsHtml || `<div class="muted">No comments yet. Be the first to comment!</div>`}
+        </div>
+        <div class="cs-footer" style="padding:8px;border-top:1px solid rgba(0,0,0,0.04);display:flex;gap:8px;align-items:center;background:linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0))">
+          <img src="${escapeHtml(getUserProfile().avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover"/>
+          <input id="__newCommentInput" placeholder="Add a comment..." style="flex:1;padding:10px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:inherit"/>
+          <button id="__submitNewComment" class="btn primary">Post</button>
         </div>
       </div>
     `;
 
-    openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
+    // Use openModal but keep the modal's confirm/close button for dismissing
+    openModal({ title: '', html, confirmText: 'Close', cancelText: '' });
 
     const modal = modalRoot.querySelector('.modal');
     if(!modal) return;
-
+    const csList = modal.querySelector('.cs-list');
     const submitBtn = modal.querySelector('#__submitNewComment');
     const newCommentInput = modal.querySelector('#__newCommentInput');
+
+    // helper to re-render comment list inside modal
+    function refreshCommentsInModal() {
+      const rows = (post.comments || []).map(c => renderCommentRow(c)).join('');
+      if(csList) csList.innerHTML = rows || `<div class="muted">No comments yet. Be the first to comment!</div>`;
+      // attach per-row handlers
+      if(csList) {
+        csList.querySelectorAll('.reply-comment').forEach(b => {
+          b.onclick = async (e) => {
+            e.stopPropagation();
+            const cid = Number(b.dataset.cid);
+            const comment = (post.comments || []).find(x => x.id === cid);
+            if(!comment) return;
+            const reply = await openModal({ title:`Reply to ${escapeHtml((comment.author&&comment.author.name)||'comment')}`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
+            if(reply && reply.trim()){
+              comment.replies = comment.replies || [];
+              comment.replies.push({ id: Date.now()+Math.floor(Math.random()*99), author: { name: getUserProfile().name, avatar: getUserProfile().avatar }, text: reply.trim(), createdAt: Date.now() });
+              saveState();
+              refreshCommentsInModal();
+              toast('Reply posted');
+            }
+          };
+        });
+        csList.querySelectorAll('.view-replies').forEach(b => {
+          b.onclick = (e) => {
+            e.stopPropagation();
+            const cid = Number(b.dataset.cid);
+            const c = (post.comments || []).find(x=>x.id===cid);
+            if(!c || !c.replies || c.replies.length===0) return;
+            // show replies in a small modal
+            const repliesHtml = c.replies.map(r => `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.02)"><div style="font-weight:600">${escapeHtml((r.author&&r.author.name)||'Anonymous')} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt||Date.now()))}</span></div><div style="margin-top:6px">${escapeHtml(r.text)}</div></div>`).join('');
+            openModal({ title: 'Replies', html: `<div style="max-height:50vh;overflow:auto;padding-right:8px">${repliesHtml}</div>`, confirmText:'Close', cancelText:'' });
+          };
+        });
+        csList.querySelectorAll('.like-comment').forEach(b => {
+          b.onclick = (e) => {
+            e.stopPropagation();
+            // simple demo: toggle a `liked` flag on comment object if desired — here we just show toast
+            toast('Liked comment (demo)');
+          };
+        });
+      }
+    }
+
+    refreshCommentsInModal();
+
     if(submitBtn && newCommentInput) {
       submitBtn.addEventListener('click', () => {
         const txt = (newCommentInput.value || '').trim();
@@ -419,42 +473,127 @@
         post.comments = post.comments || [];
         post.comments.push(c);
         notifications.unshift({ id: Date.now(), text:'You commented on a post.', createdAt: Date.now(), avatar: u.avatar });
-        saveState(); renderFeed(); renderNotifications();
-        const closeBtn = modal.querySelector('.modal-close');
-        if(closeBtn) closeBtn.click();
-        setTimeout(()=> openComments(postId), 120);
+        saveState();
+        newCommentInput.value = '';
+        refreshCommentsInModal();
+        renderFeed(); renderNotifications();
         toast('Comment added');
       });
     }
+  }
 
-    // Reply buttons: open a small modal to capture reply
-    modal.querySelectorAll('.reply-to-comment').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const cid = Number(btn.dataset.cid);
-        const pid = Number(btn.dataset.pid);
-        const postObj = posts.find(p=>p.id===pid);
-        if(!postObj) return;
-        const comment = (postObj.comments || []).find(c=>c.id===cid);
-        if(!comment) return;
-        const replyText = await openModal({ title: `Reply to ${escapeHtml(comment.author.name)}`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
-        if(replyText && replyText.trim()) {
-          const u = getUserProfile();
-          const reply = { id: Date.now() + Math.floor(Math.random()*99), author: { name: u.name, avatar: u.avatar }, text: replyText.trim(), createdAt: Date.now() };
-          comment.replies = comment.replies || [];
-          comment.replies.push(reply);
-          notifications.unshift({ id: Date.now(), text:`You replied to ${comment.author.name}`, createdAt: Date.now(), avatar: u.avatar });
-          saveState(); renderFeed(); renderNotifications();
-          const closeBtn = modal.querySelector('.modal-close');
-          if(closeBtn) closeBtn.click();
-          setTimeout(()=> openComments(pid), 120);
-          toast('Reply posted');
-        }
+  // ---------------------------------------------------------------------------
+  // ANONYMOUS COMMENTS — also converted to TikTok-like sheet
+  // ---------------------------------------------------------------------------
+  function openAnonComments(anonId) {
+    const post = anonymousPosts.find(p => p.id === anonId);
+    if(!post) return;
+
+    function renderCommentRow(c) {
+      const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
+      return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px">
+            <strong style="font-size:14px">Anonymous</strong>
+            <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(c.createdAt))}</div>
+          </div>
+          <div style="margin-top:6px;font-size:14px">${escapeHtml(c.text)}</div>
+          ${ repliesCount ? `<div style="margin-top:8px;font-size:13px;color:rgba(255,255,255,0.6)">${repliesCount} repl${repliesCount>1?'ies':'y'} — <button class="btn tiny view-replies" data-cid="${c.id}">View</button></div>` : '' }
+        </div>
+        <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn small like-comment" data-cid="${c.id}" aria-label="Like comment">❤</button>
+          <button class="btn small reply-comment" data-cid="${c.id}" aria-label="Reply to comment">↩</button>
+        </div>
+      </div>`;
+    }
+
+    const commentsHtml = (post.comments || []).map(c => renderCommentRow(c)).join('');
+
+    const html = `
+      <div class="comments-sheet" style="display:flex;flex-direction:column;height:70vh;">
+        <div class="cs-header" style="padding:12px 12px 8px;border-bottom:1px solid rgba(0,0,0,0.04);">
+          <strong>Comments (${(post.comments && post.comments.length) || 0})</strong>
+        </div>
+        <div class="cs-list" style="overflow:auto;padding:8px 4px;flex:1;">
+          ${commentsHtml || `<div class="muted">No comments yet. Be the first to comment!</div>`}
+        </div>
+        <div class="cs-footer" style="padding:8px;border-top:1px solid rgba(0,0,0,0.04);display:flex;gap:8px;align-items:center;background:linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0))">
+          <img src="${escapeHtml((ANON_AVATARS[0] && ANON_AVATARS[0].src) || '')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover"/>
+          <input id="__newAnonCommentInput" placeholder="Add a comment..." style="flex:1;padding:10px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:inherit"/>
+          <button id="__submitNewAnonComment" class="btn primary">Post</button>
+        </div>
+      </div>
+    `;
+
+    openModal({ title: '', html, confirmText: 'Close', cancelText: '' });
+
+    const modal = modalRoot.querySelector('.modal');
+    if(!modal) return;
+    const csList = modal.querySelector('.cs-list');
+    const submitBtn = modal.querySelector('#__submitNewAnonComment');
+    const newCommentInput = modal.querySelector('#__newAnonCommentInput');
+
+    function refreshCommentsInModal() {
+      const rows = (post.comments || []).map(c => renderCommentRow(c)).join('');
+      if(csList) csList.innerHTML = rows || `<div class="muted">No comments yet. Be the first to comment!</div>`;
+      if(csList) {
+        csList.querySelectorAll('.reply-comment').forEach(b => {
+          b.onclick = async (e) => {
+            e.stopPropagation();
+            const cid = Number(b.dataset.cid);
+            const comment = (post.comments || []).find(x => x.id === cid);
+            if(!comment) return;
+            const reply = await openModal({ title:`Reply (anonymous)`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
+            if(reply && reply.trim()){
+              comment.replies = comment.replies || [];
+              comment.replies.push({ id: Date.now()+Math.floor(Math.random()*99), text: reply.trim(), createdAt: Date.now() });
+              saveState();
+              refreshCommentsInModal();
+              toast('Reply posted');
+            }
+          };
+        });
+        csList.querySelectorAll('.view-replies').forEach(b => {
+          b.onclick = (e) => {
+            e.stopPropagation();
+            const cid = Number(b.dataset.cid);
+            const c = (post.comments || []).find(x=>x.id===cid);
+            if(!c || !c.replies || c.replies.length===0) return;
+            const repliesHtml = c.replies.map(r => `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.02)"><div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt||Date.now()))}</span></div><div style="margin-top:6px">${escapeHtml(r.text)}</div></div>`).join('');
+            openModal({ title: 'Replies', html: `<div style="max-height:50vh;overflow:auto;padding-right:8px">${repliesHtml}</div>`, confirmText:'Close', cancelText:'' });
+          };
+        });
+        csList.querySelectorAll('.like-comment').forEach(b => {
+          b.onclick = (e) => {
+            e.stopPropagation();
+            toast('Liked comment (demo)');
+          };
+        });
+      }
+    }
+
+    refreshCommentsInModal();
+
+    if(submitBtn && newCommentInput) {
+      submitBtn.addEventListener('click', () => {
+        const txt = (newCommentInput.value || '').trim();
+        if(!txt) { toast('Write a comment first'); return; }
+        const c = { id: Date.now() + Math.floor(Math.random()*99), text: txt, createdAt: Date.now(), replies: [] };
+        post.comments = post.comments || [];
+        post.comments.push(c);
+        saveState();
+        newCommentInput.value = '';
+        refreshCommentsInModal();
+        renderAnonymousRoom();
+        toast('Comment added');
       });
-    });
+    }
   }
 
   // ---------------------------------------------------------------------------
   // Anonymous Room — create, view, comment on anonymous posts
+  // (unchanged aside from comment UI updates handled above)
   // ---------------------------------------------------------------------------
   function getSavedAnonProfile() {
     try {
@@ -467,11 +606,6 @@
     try { localStorage.setItem(KEY.ANON_PROFILE, JSON.stringify(obj)); } catch(e){}
   }
 
-  /**
-   * renderAnonymousRoom()
-   * Build the anonymous room UI: avatar chooser, image preview, create form,
-   * and the list of anonymous posts. Also wires all handlers for anon actions.
-   */
   function renderAnonymousRoom(){
     const el = document.getElementById('anonymous-content');
     if(!el) return;
@@ -664,90 +798,6 @@
     }
 
     renderAnonList();
-  }
-
-  // Anonymous comments modal
-  function openAnonComments(anonId) {
-    const post = anonymousPosts.find(p => p.id === anonId);
-    if(!post) return;
-
-    function renderCommentsHtml(comments) {
-      if(!comments || comments.length === 0) return `<div class="muted">No comments yet.</div>`;
-      return comments.map(c => `
-        <div style="margin-bottom:12px;padding:8px;border-radius:8px;background:transparent;">
-          <div style="display:flex;gap:8px;align-items:flex-start">
-            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:36px;height:36px;border-radius:50%"/>
-            <div style="flex:1">
-              <div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(c.createdAt))}</span></div>
-              <div style="margin-top:6px">${escapeHtml(c.text)}</div>
-              <div style="margin-top:8px"><button class="btn small reply-to-anon-comment" data-cid="${c.id}" data-pid="${anonId}">Reply</button></div>
-              ${c.replies && c.replies.length ? `<div style="margin-top:8px;margin-left:44px">${c.replies.map(r=>`
-                <div style="margin-bottom:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.01)">
-                  <div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt))}</span></div>
-                  <div style="margin-top:6px">${escapeHtml(r.text)}</div>
-                </div>
-              `).join('')}</div>` : ''}
-            </div>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    const html = `
-      <div style="max-height:58vh;overflow:auto;padding-right:8px">
-        ${renderCommentsHtml(post.comments)}
-      </div>
-      <div style="margin-top:12px">
-        <strong>Add a comment (anonymous)</strong>
-        <div style="margin-top:8px">
-          <textarea id="__newAnonCommentInput" placeholder="Write a comment..." style="width:100%;min-height:80px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
-          <div style="margin-top:8px"><button class="btn primary" id="__submitNewAnonComment">Post comment</button></div>
-        </div>
-      </div>
-    `;
-    openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
-
-    const modal = modalRoot.querySelector('.modal');
-    if(!modal) return;
-
-    const submitBtn = modal.querySelector('#__submitNewAnonComment');
-    const newCommentInput = modal.querySelector('#__newAnonCommentInput');
-    if(submitBtn && newCommentInput) {
-      submitBtn.addEventListener('click', () => {
-        const txt = (newCommentInput.value || '').trim();
-        if(!txt) { toast('Write a comment first'); return; }
-        const c = { id: Date.now() + Math.floor(Math.random()*99), text: txt, createdAt: Date.now(), replies: [] };
-        post.comments = post.comments || [];
-        post.comments.push(c);
-        saveState(); renderAnonymousRoom();
-        const closeBtn = modal.querySelector('.modal-close');
-        if(closeBtn) closeBtn.click();
-        setTimeout(()=> openAnonComments(anonId), 120);
-        toast('Comment added');
-      });
-    }
-
-    modal.querySelectorAll('.reply-to-anon-comment').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const cid = Number(btn.dataset.cid);
-        const pid = Number(btn.dataset.pid);
-        const p = anonymousPosts.find(x => x.id === pid);
-        if(!p) return;
-        const comment = (p.comments || []).find(c => c.id === cid);
-        if(!comment) return;
-        const replyText = await openModal({ title: `Reply (anonymous)`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
-        if(replyText && replyText.trim()) {
-          const reply = { id: Date.now() + Math.floor(Math.random()*99), text: replyText.trim(), createdAt: Date.now() };
-          comment.replies = comment.replies || [];
-          comment.replies.push(reply);
-          saveState(); renderAnonymousRoom();
-          const closeBtn = modal.querySelector('.modal-close');
-          if(closeBtn) closeBtn.click();
-          setTimeout(()=> openAnonComments(pid), 120);
-          toast('Reply posted');
-        }
-      });
-    });
   }
 
   // Anonymous post menu actions (copy, report, delete)
@@ -1591,17 +1641,15 @@
   }
 
   // =====================================================================
-  // INSTAGRAM-LIKE PROFILE GRID PATCH
-  // This patch replaces the `.profile-gallery-grid` content (rendered by renderProfile)
-  // with an Instagram-like square grid showing overlay actions: like, comment, share.
-  // It must run inside the same IIFE after the original renderProfile is defined.
+  // INSTAGRAM-LIKE PROFILE GRID PATCH + IMAGE CONTAINMENT
   // =====================================================================
 
   (function applyProfileGridPatch(){
-    // small helper to inject CSS once
+    // small helper to inject CSS once (adds image containment rules and comments styles)
     function ensureInstaGridStyles() {
       if (document.getElementById('insta-grid-styles')) return;
       const css = `
+        /* Insta grid */
         .insta-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1628,6 +1676,9 @@
           height: 100%;
           object-fit: cover;
           display: block;
+          -webkit-user-drag: none;
+          user-select: none;
+          pointer-events: none;
         }
         .insta-tile .pg-txt {
           padding: 10px;
@@ -1675,6 +1726,23 @@
         .insta-tile .icon:focus { outline: 2px solid rgba(255,255,255,0.18); }
         .insta-tile .count { font-weight:600; margin-left:4px; }
         .insta-tile .liked { color: #ff6b81; }
+
+        /* Feed & lightbox images: make contained to avoid scrollbars and overflow */
+        .post-body img, .lightbox-img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          object-fit: cover;
+          border-radius: 6px;
+        }
+        .modal .modal-body {
+          max-height: 70vh;
+          overflow: auto;
+        }
+
+        /* TikTok-like comments styles (fallback core styling) */
+        .comments-sheet .cs-list .cs-row img { flex-shrink:0; }
+        .comments-sheet .btn.tiny { font-size:12px;padding:4px 8px;border-radius:6px; }
       `;
       const s = document.createElement('style');
       s.id = 'insta-grid-styles';
