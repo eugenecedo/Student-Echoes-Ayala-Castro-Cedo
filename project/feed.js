@@ -1,23 +1,8 @@
-/* feed.js
- *
- * Main client-side application for the demo Social Dashboard.
- * This file manages:
- * - application state (posts, categories, notifications, anonymous posts, etc.)
- * - rendering of UI panels (feed, profile, news, anonymous room, communities, etc.)
- * - modals, toasts, lightbox, and accessibility helpers
- * - event wiring for forms, buttons, keyboard shortcuts
- *
- * For students: each function is commented to explain its role. The code keeps
- * state in-memory and persists to localStorage so you can inspect and modify it.
- *
- * Important keys in localStorage:
- * - userProfile (object): the logged-in user's profile (name, avatar, bio, ...)
- * - amu_posts, amu_categories, amu_notifications, amu_anonymous_posts, amu_communities
- *
- * NOTE: This is a demo app — in production you would replace localStorage usage
- * with server APIs, authentication, and more robust persistence and security.
- */
-(() => {
+// Full modified feed.js with Instagram-like profile grid integrated.
+// NOTE: This file is the original feed.js you provided with an injected
+// "Instagram-like" profile grid patch placed immediately after the original
+// renderProfile() function so it overrides the gallery rendering in-place.
+(function(){
   // KEY: central names for localStorage keys used across the app
   const KEY = {
     CATEGORIES: 'amu_categories',
@@ -1604,6 +1589,204 @@
     const u = currentUser;
     cont.innerHTML = `<div><strong>${escapeHtml(u.name)}</strong><div class="muted">${escapeHtml(u.bio)}</div></div>`;
   }
+
+  // =====================================================================
+  // INSTAGRAM-LIKE PROFILE GRID PATCH
+  // This patch replaces the `.profile-gallery-grid` content (rendered by renderProfile)
+  // with an Instagram-like square grid showing overlay actions: like, comment, share.
+  // It must run inside the same IIFE after the original renderProfile is defined.
+  // =====================================================================
+
+  (function applyProfileGridPatch(){
+    // small helper to inject CSS once
+    function ensureInstaGridStyles() {
+      if (document.getElementById('insta-grid-styles')) return;
+      const css = `
+        .insta-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap: 8px;
+        }
+        .insta-tile {
+          position: relative;
+          width: 100%;
+          padding-top: 100%; /* square */
+          overflow: hidden;
+          background: #111;
+          border-radius: 6px;
+          cursor: pointer;
+        }
+        .insta-tile .tile-media {
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .insta-tile img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .insta-tile .pg-txt {
+          padding: 10px;
+          color: #fff;
+          font-size: 13px;
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .insta-tile .tile-overlay {
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px;
+          background: linear-gradient(180deg, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.45) 100%);
+          opacity: 0;
+          transition: opacity 160ms ease;
+        }
+        .insta-tile:focus .tile-overlay,
+        .insta-tile:hover .tile-overlay {
+          opacity: 1;
+        }
+        .insta-tile .overlay-left,
+        .insta-tile .overlay-right {
+          display:flex;
+          gap:8px;
+          align-items:center;
+        }
+        .insta-tile .icon {
+          background: rgba(0,0,0,0.45);
+          border: none;
+          color: #fff;
+          padding: 6px 8px;
+          border-radius: 6px;
+          display: inline-flex;
+          gap:6px;
+          align-items:center;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        .insta-tile .icon svg { width: 16px; height: 16px; }
+        .insta-tile .icon:focus { outline: 2px solid rgba(255,255,255,0.18); }
+        .insta-tile .count { font-weight:600; margin-left:4px; }
+        .insta-tile .liked { color: #ff6b81; }
+      `;
+      const s = document.createElement('style');
+      s.id = 'insta-grid-styles';
+      s.appendChild(document.createTextNode(css));
+      document.head.appendChild(s);
+    }
+
+    function smallHeartSvg(fill = 'none', stroke = 'currentColor') {
+      return `<svg viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.69l-1.06-1.08a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+    }
+    function smallCommentSvg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`; }
+    function smallShareSvg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`; }
+
+    // If renderProfile isn't defined in this scope for some reason, bail.
+    if (typeof renderProfile !== 'function') return;
+
+    // Capture original for reuse
+    const originalRenderProfile = renderProfile;
+
+    // Replace renderProfile with a wrapper that uses original and then replaces gallery
+    renderProfile = function(editMode=false){
+      // Call original to build the profile markup
+      originalRenderProfile(editMode);
+
+      const cont = document.getElementById('profile-content');
+      if(!cont) return;
+
+      ensureInstaGridStyles();
+
+      // Find all profile-gallery-grid elements and replace them
+      const grids = cont.querySelectorAll('.profile-gallery-grid');
+      if(!grids || grids.length === 0) return;
+
+      grids.forEach(grid => {
+        // Gather posts referenced by buttons inside the existing grid
+        const items = Array.from(grid.querySelectorAll('.profile-gallery-item')).map(btn => {
+          const id = Number(btn.dataset.id);
+          return posts.find(p => p.id === id);
+        }).filter(Boolean);
+
+        // Build insta-grid HTML
+        const instaHtml = `<div class="insta-grid" aria-live="polite">${items.map(p => {
+          const thumb = p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml((p.text||'').slice(0,60))}">` : `<div class="pg-txt">${escapeHtml((p.text||'').slice(0,120))}</div>`;
+          const likedClass = p.liked ? 'liked' : '';
+          const commentCount = (p.comments && p.comments.length) ? p.comments.length : 0;
+          return `<div class="insta-tile" data-id="${p.id}" tabindex="0" aria-label="Open post ${escapeHtml((p.text||'').slice(0,40))}">
+            <div class="tile-media">${thumb}</div>
+            <div class="tile-overlay" aria-hidden="true">
+              <div class="overlay-left">
+                <button class="icon action-like ${likedClass}" data-id="${p.id}" title="Like" aria-pressed="${p.liked ? 'true' : 'false'}">${smallHeartSvg(p.liked ? 'currentColor' : 'none')}<span class="count" aria-hidden="true">${p.likes||0}</span></button>
+                <button class="icon action-comment" data-id="${p.id}" title="Comment">${smallCommentSvg()}<span class="count" aria-hidden="true">${commentCount}</span></button>
+              </div>
+              <div class="overlay-right">
+                <button class="icon action-share" data-id="${p.id}" title="Share">${smallShareSvg()}</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}</div>`;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = instaHtml;
+        grid.replaceWith(wrapper.firstElementChild);
+
+        // Wire events
+        const instaGrid = cont.querySelector('.insta-grid');
+        if(!instaGrid) return;
+
+        instaGrid.querySelectorAll('.insta-tile').forEach(tile => {
+          const id = Number(tile.dataset.id);
+          tile.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return;
+            const post = posts.find(p=>p.id===id);
+            if(!post) return;
+            if(post.image) openImageLightbox(post.image, post.text || '');
+            else openModal({ title: `${escapeHtml(timeAgo(post.createdAt || Date.now()))}`, html: `<div style="margin-top:8px">${escapeHtml(post.text || '')}</div>`, confirmText: 'Close', cancelText: '' });
+          });
+          tile.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tile.click(); }
+          });
+        });
+
+        instaGrid.querySelectorAll('.action-like').forEach(b => {
+          b.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const id = Number(b.dataset.id);
+            toggleLike(id);
+            // re-render profile to reflect updated counts
+            setTimeout(()=> renderProfile(false), 60);
+          });
+        });
+
+        instaGrid.querySelectorAll('.action-comment').forEach(b => {
+          b.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const id = Number(b.dataset.id);
+            openComments(id);
+            setTimeout(()=> renderProfile(false), 160);
+          });
+        });
+
+        instaGrid.querySelectorAll('.action-share').forEach(b => {
+          b.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const id = Number(b.dataset.id);
+            sharePost(id);
+            setTimeout(()=> renderProfile(false), 120);
+          });
+        });
+
+      }); // end grids.forEach
+    }; // end renderProfile wrapper
+  })();
 
   // ---------------------------------------------------------------------------
   // Tabs, navigation and accessibility helpers
