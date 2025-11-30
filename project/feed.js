@@ -1,13 +1,10 @@
 // Full modified feed.js with Instagram-like profile grid integrated,
 // photos constrained (not scrollable), and TikTok-style comment sheet UI.
 //
-// Changes made:
-// - Ensured images in tiles, feed, and lightbox do not cause internal scrolling
-//   and are contained with object-fit / max-width rules.
-// - Reworked openComments() and openAnonComments() to render a TikTok-like
-//   comments sheet: large scrollable list, per-comment actions, and a fixed
-//   input/footer at the bottom. Posting updates the list in-place.
-// - Kept the rest of the app behavior intact.
+// Changes made (summary):
+// - friends list persisted and made mutable so Add Friend / Unfriend buttons work
+// - friends UI updated to show action buttons in left sidebar and on viewed profiles
+// - small mobile-related fixes: rely on CSS media queries instead of inline hides
 (function(){
   // KEY: central names for localStorage keys used across the app
   const KEY = {
@@ -20,18 +17,19 @@
     LAST_TAB: 'amu_last_tab',
     SETTINGS: 'amu_settings',
     COMMUNITIES: 'amu_communities',
-    ANON_PROFILE: 'amu_anon_profile'
+    ANON_PROFILE: 'amu_anon_profile',
+    FRIENDS: 'amu_friends' // persisted friends
   };
 
   // ---------------------------------------------------------------------------
   // Seed / default data: used when localStorage is empty — makes the demo usable
   // ---------------------------------------------------------------------------
   const seedFriends = [
-    { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true },
-    { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true },
-    { id:3, name:'Jennifer', avatar:'https://i.pravatar.cc/40?img=3', online:false },
-    { id:4, name:'Anne', avatar:'https://i.pravatar.cc/40?img=4', online:false },
-    { id:5, name:'Andrew', avatar:'https://i.pravatar.cc/40?img=5', online:true }
+    { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true, isFriend:true },
+    { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true, isFriend:true },
+    { id:3, name:'Jennifer', avatar:'https://i.pravatar.cc/40?img=3', online:false, isFriend:true },
+    { id:4, name:'Anne', avatar:'https://i.pravatar.cc/40?img=4', online:false, isFriend:true },
+    { id:5, name:'Andrew', avatar:'https://i.pravatar.cc/40?img=5', online:true, isFriend:true }
   ];
 
   const defaultCategories = [
@@ -81,7 +79,8 @@
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
   let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
-  const friends = seedFriends.slice();
+  // load friends from storage if present, otherwise use seedFriends
+  let friends = JSON.parse(localStorage.getItem(KEY.FRIENDS) || 'null') || seedFriends.slice();
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
   let communities = JSON.parse(localStorage.getItem(KEY.COMMUNITIES) || 'null') || [
     { id:1, name:'UI/UX Designers', members:54, description:'Designers sharing UI patterns' },
@@ -153,6 +152,7 @@
       localStorage.setItem(KEY.NOTIFS, JSON.stringify(notifications));
       localStorage.setItem(KEY.ANON, JSON.stringify(anonymousPosts));
       localStorage.setItem(KEY.COMMUNITIES, JSON.stringify(communities));
+      localStorage.setItem(KEY.FRIENDS, JSON.stringify(friends));
     } catch (e) {
       console.warn('saveState() failed', e);
     }
@@ -209,6 +209,33 @@
       div.classList.remove('show');
       setTimeout(()=> div.remove(), 220);
     }, timeout);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Friend helpers: add/unfriend, UI wiring
+  // ---------------------------------------------------------------------------
+  function isFriendByName(name){ if(!name) return false; return friends.some(f=>String(f.name).toLowerCase() === String(name).toLowerCase()); }
+
+  function toggleFriend(name, avatar){
+    if(!name) return;
+    const idx = friends.findIndex(f => String(f.name).toLowerCase() === String(name).toLowerCase());
+    if(idx !== -1){
+      // remove friend
+      const removed = friends.splice(idx,1)[0];
+      saveState();
+      renderFriends();
+      toast(`${removed.name} removed from friends`);
+      // if we are seeing this user's profile, update the profile button label
+      renderProfile(false);
+      return;
+    }
+    // add friend
+    const newFriend = { id: Date.now(), name: name, avatar: avatar || ('https://i.pravatar.cc/40?u=' + encodeURIComponent(name)), online: false, isFriend:true };
+    friends.push(newFriend);
+    saveState();
+    renderFriends();
+    toast(`${name} added to friends`);
+    renderProfile(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -869,7 +896,7 @@
   /**
    * renderFriends()
    * Render list of friends on the left sidebar. Clicking a friend opens that user's
-   * profile (stalk view).
+   * profile (stalk view). New: shows Add Friend / Unfriend buttons.
    */
   function renderFriends(){
     if(!friendsList) return;
@@ -879,12 +906,27 @@
       d.style.cursor = 'pointer';
       d.setAttribute('role','button');
       d.setAttribute('tabindex','0');
-      d.innerHTML = `<img src="${f.avatar}" alt="${escapeHtml(f.name)}"/><div style="flex:1"><div style="font-weight:600">${escapeHtml(f.name)}</div><div class="muted">${f.online?'Online':'Offline'}</div></div><div style="width:10px;height:10px;border-radius:50%;background:${f.online?'#34d399':'#94a3b8'}"></div>`;
+      d.innerHTML = `<img src="${escapeHtml(f.avatar)}" alt="${escapeHtml(f.name)}"/><div style="flex:1"><div style="font-weight:600">${escapeHtml(f.name)}</div><div class="muted">${f.online?'Online':'Offline'}</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <button class="btn small friend-action" data-name="${escapeHtml(f.name)}">${f.isFriend ? 'Unfriend' : 'Add Friend'}</button>
+      </div>`;
       // Clicking a friend opens their profile page (stalking)
-      d.addEventListener('click', () => {
+      d.addEventListener('click', (ev) => {
+        // if the click originated from the friend-action button, ignore here
+        const btn = ev.target.closest && ev.target.closest('.friend-action');
+        if(btn) return;
         openProfileView({ name: f.name, avatar: f.avatar });
       });
       d.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileView({ name: f.name, avatar: f.avatar }); } });
+      // friend action button
+      const actionBtn = d.querySelector('.friend-action');
+      if(actionBtn){
+        actionBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const name = actionBtn.dataset.name;
+          toggleFriend(name, f.avatar);
+        });
+      }
       friendsList.appendChild(d);
     });
   }
@@ -1537,7 +1579,7 @@
           toast('Camera access denied');
           webcamModalRoot.innerHTML = '';
         });
-        snapBtn.onclick = function(){
+              snapBtn.onclick = function(){
           const canvas = document.createElement('canvas');
           canvas.width = video.videoWidth || 240;
           canvas.height = video.videoHeight || 180;
@@ -1612,6 +1654,21 @@
           </div>
         </div>
       `;
+
+      // Add Friend / Unfriend button in viewed profile header
+      const header = cont.querySelector('div[style*="display:flex;gap:16px"]') || cont;
+      const alreadyFriend = isFriendByName(profile.name);
+      const actionDiv = document.createElement('div');
+      actionDiv.style.marginTop = '10px';
+      actionDiv.innerHTML = `<button id="profile-friend-btn" class="btn small">${alreadyFriend ? 'Unfriend' : 'Add Friend'}</button>`;
+      header.appendChild(actionDiv);
+      const pf = document.getElementById('profile-friend-btn');
+      if(pf){
+        pf.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleFriend(profile.name, profile.avatar);
+        });
+      }
 
       // wire gallery items to open posts
       cont.querySelectorAll('.profile-gallery-item').forEach(btn => {
