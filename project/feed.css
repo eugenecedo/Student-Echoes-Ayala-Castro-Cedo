@@ -100,6 +100,11 @@ textarea::placeholder {
   border: 0 !important;
 }
 
+/* Defaults for mobile elements (desktop hidden, mobile revealed by media query) */
+.hamburger { display: none; background: transparent; border: 0; width:36px; height:36px; align-items:center; justify-content:center; cursor:pointer; padding:6px; border-radius:6px; color:inherit; }
+.mobile-panels { display: none; }
+.mobile-mini-logo { display: none; }
+
 /* container */
 .container { max-width: var(--container-max-width); margin: 0 auto; }
 
@@ -357,7 +362,6 @@ textarea::placeholder {
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
-/* Profile posts simplified style */
 .profile-posts {
   display: flex;
   flex-direction: column;
@@ -397,6 +401,26 @@ body.theme-light .toast { background: #fff; color: var(--text-light); border:1px
   .feed-list { padding-left: 12px; }
   .img-wrap { aspect-ratio: 4 / 3; }
   .profile-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+  /* New: mobile horizontal panels just under the header */
+  .mobile-panels { display:flex; gap:8px; align-items:center; padding:8px 6px; overflow-x:auto; -webkit-overflow-scrolling:touch; width:100%; margin-left:auto; margin-right:auto; }
+  .mobile-panels button { white-space:nowrap; border-radius:999px; padding:8px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.02); color: inherit; font-weight:600; cursor:pointer; flex:0 0 auto; }
+  .mobile-panels button.active { background: linear-gradient(90deg, rgba(0,180,216,0.12), rgba(0,180,216,0.03)); color: var(--accent); border-color: rgba(0,180,216,0.06); }
+  .mobile-panels button:focus { outline: 2px solid rgba(0,180,216,0.12); outline-offset:2px; }
+  header .mobile-panels { display:flex; }
+
+  /* Hide left sidebar on small devices (we provide the mobile-panels instead) */
+  .left.sidebar { display:none; }
+
+  /* Hide heavy right news and top-stories on mobile to keep the UI clean */
+  .right .top-stories, #tab-news { display:none !important; }
+
+  /* Show the minimalist logo in the right column area on mobile (keeps branding) */
+  .mobile-mini-logo { display:flex !important; margin-bottom:12px; justify-content:center; }
+
+  /* Action icons simpler layout on mobile */
+  .post-head img { width:40px; height:40px; }
+  .post { border-radius:10px; }
 }
 
 /* fallback for narrow desktops */
