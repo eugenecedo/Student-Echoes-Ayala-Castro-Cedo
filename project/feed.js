@@ -2601,9 +2601,6 @@
     openProfileView // expose for testing
   };
 
-  // ---------------------------------------------------------------------------
-  // Initialization: wire everything up and show initial content
-  // ---------------------------------------------------------------------------
   function init(){
     initTheme();
     renderTopRightUser();
@@ -2618,8 +2615,42 @@
     restoreTabFromHashOrLast();
     initProfileIconShortcut();
     attachDelegatedLogout();
+    initMobileNav(); 
+    initMobileSearchToggle();
+    restoreTabFromHashOrLast();
     toast('Welcome back!');
   }
+// Mobile Navigation (Hamburger Menu)
+function initMobileNav() {
+  const body = document.body;
+  const hamburger = document.getElementById('hamburger');
+  if (hamburger) { 
+    hamburger.addEventListener('click', () => {
+      body.classList.toggle('menu-open'); 
+      const isExpanded = body.classList.contains('menu-open');
+      hamburger.setAttribute('aria-expanded', isExpanded);
+      body.style.overflow = isExpanded ? 'hidden' : '';
+    });
+  }
+}
 
+/// ---------------------------------------------------------------------------
+// Mobile Search Toggle
+// ---------------------------------------------------------------------------
+function initMobileSearchToggle() {
+    const body = document.body;
+    // Target the search icon container for the click event
+    const searchIconContainer = document.querySelector('#app .topbar .center-search');
+    
+    if (searchIconContainer) {
+        searchIconContainer.addEventListener('click', (event) => {
+            // Only activate the toggle when in mobile view
+            if (window.innerWidth <= 768) {
+                event.preventDefault(); 
+                body.classList.toggle('search-active');
+            }
+        });
+    }
+}
   init();
 })();
