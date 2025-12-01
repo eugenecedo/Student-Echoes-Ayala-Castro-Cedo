@@ -9,7 +9,7 @@
 <body>
 <div id="app" class="container">
   <header class="topbar" role="banner" aria-label="Top bar" style="position:relative;">
-    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false" type="button" style="display:none">
+    <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false" type="button">
       <span></span><span></span><span></span>
     </button>
 
@@ -31,9 +31,10 @@
     <nav id="mobile-panels" class="mobile-panels" aria-label="Quick navigation" role="navigation"></nav>
 
     <div class="top-right">
-  
+    
+
       <div class="user" title="Your profile" role="button" tabindex="0" aria-label="Open profile">
-        <img id="profile-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
+        <img id="profile-icon" src="data: xmlns='' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
         <span class="username">You</span>
       </div>
 
@@ -63,6 +64,18 @@
           <li class="active" data-tab="feed" role="tab" tabindex="0" aria-selected="true">Feed</li>
           <li data-tab="news" role="tab" tabindex="-1" aria-selected="false">News</li>
           <li data-tab="profile" role="tab" tabindex="-1" aria-selected="false">Profile</li>
+
+          <li data-tab="write" role="tab" tabindex="-1" aria-selected="false">
+            <button class="nav-write" aria-label="Write a Story" title="Write a Story (Cmd/Ctrl+K)" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" style="margin-right:8px">
+                <path d="M3 21v-3l11-11 3 3L6 21H3z"></path>
+                <path d="M14 7l3 3"></path>
+              </svg>
+              <span class="nav-write-label">Write Post</span>
+            </button>
+          </li>
+
+          <li data-tab="mystories" role="tab" tabindex="-1" aria-selected="false">My Stories</li>
           <li data-tab="trending" role="tab" tabindex="-1" aria-selected="false">Trending</li>
           <li data-tab="anonymous" role="tab" tabindex="-1" aria-selected="false">Anonymous Room</li>
         </ul>
@@ -156,5 +169,6 @@
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <script src="feed.js"></script>
+<script src="mobile.js"></script>
 </body>
 </html>

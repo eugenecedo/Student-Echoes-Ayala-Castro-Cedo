@@ -923,7 +923,20 @@
     setActiveTab('profile');
     renderProfile(false);
   }
-
+/// ---------------------------------------------------------------------------
+// Anonymous Post Button Functionality
+// ---------------------------------------------------------------------------
+function initAnonymousPostButton() {
+    const addButton = document.getElementById('add-anon-post');
+    if (addButton) {
+        addButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            // In a real application, this function would open a composer modal or navigate to a post creation page.
+            console.log('Add Anonymous Post button clicked!');
+            toast('Opening New Anonymous Post Composer...');
+        });
+    }
+}
   /**
    * openProfileGallery(author)
    * Show a modal gallery of a user's posts (used from the friends list and post avatars).
@@ -2556,6 +2569,7 @@
     initProfileIconShortcut();
     attachDelegatedLogout();
     initMobileNav(); 
+    initAnonymousPostButton();
     initMobileSearchToggle();
     restoreTabFromHashOrLast();
     toast('Welcome back!');
