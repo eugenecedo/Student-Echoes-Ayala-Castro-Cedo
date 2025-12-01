@@ -11,7 +11,7 @@
     CATEGORIES: 'amu_categories',
     POSTS: 'amu_posts',
     NOTIFS: 'amu_notifications',
-    PROFILE: 'userProfile', // feed.js reads/writes this to get logged-in user
+    PROFILE: '', // feed.js reads/writes this to get logged-in user
     THEME: 'theme',
     ANON: 'amu_anonymous_posts',
     LAST_TAB: 'amu_last_tab',
@@ -22,63 +22,11 @@
   };
 
   // ---------------------------------------------------------------------------
-  // Seed / default data: used when localStorage is empty — makes the demo usable
-  // ---------------------------------------------------------------------------
-  const seedFriends = [
-    { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true, isFriend:true },
-    { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true, isFriend:true },
-    { id:3, name:'Jennifer', avatar:'https://i.pravatar.cc/40?img=3', online:false, isFriend:true },
-    { id:4, name:'Anne', avatar:'https://i.pravatar.cc/40?img=4', online:false, isFriend:true },
-    { id:5, name:'Andrew', avatar:'https://i.pravatar.cc/40?img=5', online:true, isFriend:true }
-  ];
-
-  const defaultCategories = [
-    { id:1, name:'Photography' },
-    { id:2, name:'Technology' },
-    { id:3, name:'Lifestyle' },
-    { id:4, name:'Space' }
-  ];
-
-  // A couple of starter posts so the feed isn't empty on first load
-  const defaultPosts = [
-    {
-      id:101,
-      author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'},
-      createdAt: Date.now()-5*3600*1000,
-      text:'Just took a late walk through the hills. The light was incredible.',
-      image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=60&auto=format&fit=crop',
-      categoryId:1,
-      likes:89,
-      shares:1,
-      liked:false,
-      comments: [
-        { id: 1001, author:{name:'Emily', avatar:'https://i.pravatar.cc/36?img=1'}, text: 'So beautiful!', createdAt: Date.now()-4.5*3600*1000, replies:[
-            { id: 1101, author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'}, text: 'Thanks Emily!', createdAt: Date.now()-4.2*3600*1000 }
-          ]
-        },
-        { id: 1002, author:{name:'Fiona', avatar:'https://i.pravatar.cc/36?img=2'}, text: 'Where is that?', createdAt: Date.now()-4*3600*1000, replies:[] }
-      ]
-    },
-    {
-      id:102,
-      author:{name:'Casie', avatar:'https://i.pravatar.cc/48?img=45'},
-      createdAt: Date.now()-36*3600*1000,
-      text:'Foggy mornings are my favorite. Coffee + mist = mood.',
-      image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=60&auto=format&fit=crop',
-      categoryId:3,
-      likes:25,
-      shares:0,
-      liked:false,
-      comments: []
-    }
-  ];
-
-  // ---------------------------------------------------------------------------
   // Application state (in-memory), persisted to localStorage by saveState()
   // ---------------------------------------------------------------------------
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
-  let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
+  let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'' }];
   // load friends from storage if present, otherwise use seedFriends
   let friends = JSON.parse(localStorage.getItem(KEY.FRIENDS) || 'null') || seedFriends.slice();
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
@@ -230,7 +178,7 @@
       return;
     }
     // add friend
-    const newFriend = { id: Date.now(), name: name, avatar: avatar || ('https://i.pravatar.cc/40?u=' + encodeURIComponent(name)), online: false, isFriend:true };
+    const newFriend = { id: Date.now(), name: name, avatar: avatar || (encodeURIComponent(name)), online: false, isFriend:true };
     friends.push(newFriend);
     saveState();
     renderFriends();
@@ -403,7 +351,7 @@
     function renderCommentRow(c) {
       const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
       return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="${escapeHtml((c.author && c.author.avatar) || 'https://i.pravatar.cc/36')}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <img src="${escapeHtml((c.author && c.author.avatar))}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px">
             <strong style="font-size:14px">${escapeHtml((c.author && c.author.name) || 'User')}</strong>
@@ -519,7 +467,7 @@
     function renderCommentRow(c) {
       const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
       return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <img src="data: xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px">
             <strong style="font-size:14px">Anonymous</strong>
@@ -874,16 +822,16 @@
     const text = (p.text || '') + (p.image ? '\n' + p.image : '');
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(() => {
-        notifications.unshift({id:Date.now(), text:'Copied anonymous post to clipboard!', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+        notifications.unshift({id:Date.now(), text:'Copied anonymous post to clipboard!', createdAt: Date.now(), avatar:''});
         saveState(); renderNotifications();
         toast('Copied anonymous post to clipboard!');
       }).catch(()=> {
-        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:''});
         saveState(); renderNotifications();
         toast('Clipboard failed');
       });
     } else {
-      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:''});
       saveState(); renderNotifications();
       toast('Clipboard not supported');
     }
@@ -1014,7 +962,10 @@
         ${userPosts.length === 0 ? `<div class="muted">No posts yet.</div>` : `<div class="profile-gallery-grid">
           ${userPosts.map(p => {
             const thumb = p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml((p.text||'').slice(0,60))}">` : `<div class="pg-txt">${escapeHtml((p.text||'').slice(0,120))}</div>`;
-            return `<button class="profile-gallery-item" data-id="${p.id}" aria-label="Open post">${thumb}</button>`;
+      
+      
+      
+          return `<button class="profile-gallery-item" data-id="${p.id}" aria-label="Open post">${thumb}</button>`;
           }).join('')}
         </div>`}
       </div>
@@ -1095,7 +1046,7 @@
       const commentCount = (post.comments && post.comments.length) ? post.comments.length : 0;
       art.innerHTML = `
         <div class="post-head">
-          <img src="${escapeHtml((post.author && post.author.avatar) || post.author_avatar || 'https://i.pravatar.cc/48')}" alt="${escapeHtml((post.author && post.author.name) || post.author_name || 'User')}" />
+          <img src="${escapeHtml((post.author && post.author.avatar) || post.author_avatar || '')}" alt="${escapeHtml((post.author && post.author.name) || post.author_name || 'User')}" />
           <div style="flex:1">
             <div style="font-weight:600">${escapeHtml((post.author && post.author.name) || post.author_name || 'Unknown')}</div>
             <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(post.createdAt||Date.now()))} • <strong>${escapeHtml(getCategoryName(post.categoryId))}</strong></div>
@@ -1191,16 +1142,16 @@
     if(p.categoryId) text += `\nCategory: ${getCategoryName(p.categoryId)}`;
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(() => {
-        notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+        notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', createdAt: Date.now(), avatar:''});
         saveState(); renderNotifications();
         toast('Copied post to clipboard!');
       }).catch(()=> {
-        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:''});
         saveState(); renderNotifications();
         toast('Clipboard failed');
       });
     } else {
-      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
+      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:''});
       saveState(); renderNotifications();
       toast('Clipboard not supported');
     }
@@ -1392,7 +1343,7 @@
    * Retrieve the saved user profile from localStorage. If none exists, return a demo default.
    * Note: feed.js expects the object format: { name, avatar, bio, joined, communitiesJoined, joinedCommunities }
    */
-  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2, joinedCommunities:[] }; }
+  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'', avatar:'', bio:'', joined:'', communitiesJoined:2, joinedCommunities:[] }; }
 
   /**
    * setUserProfile(upd)
@@ -1404,7 +1355,7 @@
    * renderTopRightUser()
    * Update the header top-right user avatar and name.
    */
-  function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
+  function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
   /**
    * renderProfile(editMode=false)
@@ -1636,7 +1587,7 @@
       });
       cont.innerHTML = `
         <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-          <img src="${escapeHtml(profile.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='38' fill='%23b3cde0'/%3E%3C/svg%3E")}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">
+          <img src="${escapeHtml(profile.avatar || "data: xmlns='' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='38' fill='%23b3cde0'/%3E%3C/svg%3E")}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">
           <div>
             <div style="font-size:22px;font-weight:700;">${escapeHtml(profile.name)}</div>
             <div class="muted">${escapeHtml(profile.bio || '')}</div>
