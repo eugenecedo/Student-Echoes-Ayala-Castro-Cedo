@@ -24,7 +24,6 @@ body {
   color: var(--text-dark);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding: 18px;
   line-height:1.3;
 }
 
@@ -984,4 +983,85 @@ body.menu-open::before {
   bottom: 0 !important;
   background: rgba(0, 0, 0, 0.7) !important;
   z-index: 90 !important;
+}
+/* --- Anonymous Room Responsiveness and Styling --- */
+
+/* 1. Make the Room Header responsive using Flexbox */
+.anonymous-room-header {
+    display: flex;
+    align-items: center; 
+    justify-content: space-between; 
+    margin-bottom: 12px;
+}
+.anonymous-room-header h4 {
+    margin: 0;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* 2. Styling for the responsive icon-only button */
+.btn.icon-only {
+    width: 36px;
+    height: 36px;
+    padding: 0; 
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--accent); 
+    color: var(--bg); 
+    border: none;
+    flex-shrink: 0;
+}
+.btn.icon-only svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor; 
+}
+
+/* --- feed.css: FINAL EDGE-TO-EDGE MOBILE FIX (<= 768px) --- */
+@media (max-width: 768px) {
+    
+    /* 1. Reset main content layout to be a simple block (no grid/flex) */
+    main {
+        display: block !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        overflow-x: hidden; /* Prevents horizontal scrolling caused by child overflow */
+    }
+    
+    /* 2. Remove all horizontal padding/margins from main content containers */
+    .topbar, 
+    .center {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    
+    /* 3. Force the Anonymous Room card to be full width and remove all spacing */
+    #tab-anonymous {
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    /* 4. Ensure the Anonymous Room header text can shrink and doesn't push the button out */
+    .anonymous-room-header {
+        /* Allow content to shrink */
+        min-width: 0; 
+        /* Important: Ensure the title component itself can shrink */
+        flex-shrink: 1;
+    }
+
+    /* 5. Re-apply the 18px padding to the *content inside* the card (for text safety) */
+    #tab-anonymous .anonymous-room-header,
+    #tab-anonymous #anonymous-content {
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+        padding-top: 12px;
+        padding-bottom: 12px; 
+    }
 }
