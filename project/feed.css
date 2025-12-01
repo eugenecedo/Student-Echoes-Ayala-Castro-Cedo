@@ -198,19 +198,6 @@ textarea::placeholder {
   font-weight:700;
 }
 
-/* compact "Write" nav */
-.nav-write {
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.03);
-  padding:8px 10px;
-  border-radius:10px;
-  cursor:pointer;
-  color: inherit;
-  font-weight:600;
-}
 .kbd {
   display:inline-block;
   padding:2px 6px;
