@@ -11,7 +11,7 @@
     CATEGORIES: 'amu_categories',
     POSTS: 'amu_posts',
     NOTIFS: 'amu_notifications',
-    PROFILE: '', // feed.js reads/writes this to get logged-in user
+    PROFILE: 'userProfile', // feed.js reads/writes this to get logged-in user
     THEME: 'theme',
     ANON: 'amu_anonymous_posts',
     LAST_TAB: 'amu_last_tab',
@@ -20,7 +20,6 @@
     ANON_PROFILE: 'amu_anon_profile',
     FRIENDS: 'amu_friends' // persisted friends
   };
-
   // ---------------------------------------------------------------------------
   // Application state (in-memory), persisted to localStorage by saveState()
   // ---------------------------------------------------------------------------
@@ -95,11 +94,9 @@
    */
   function saveState(){
     try {
-      localStorage.setItem(KEY.CATEGORIES, JSON.stringify(categories));
       localStorage.setItem(KEY.POSTS, JSON.stringify(posts));
       localStorage.setItem(KEY.NOTIFS, JSON.stringify(notifications));
       localStorage.setItem(KEY.ANON, JSON.stringify(anonymousPosts));
-      localStorage.setItem(KEY.COMMUNITIES, JSON.stringify(communities));
       localStorage.setItem(KEY.FRIENDS, JSON.stringify(friends));
     } catch (e) {
       console.warn('saveState() failed', e);
@@ -178,7 +175,7 @@
       return;
     }
     // add friend
-    const newFriend = { id: Date.now(), name: name, avatar: avatar || (encodeURIComponent(name)), online: false, isFriend:true };
+    const newFriend = { id: Date.now(), name: name, avatar: avatar || ('' + encodeURIComponent(name)), online: false, isFriend:true };
     friends.push(newFriend);
     saveState();
     renderFriends();
@@ -351,7 +348,7 @@
     function renderCommentRow(c) {
       const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
       return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="${escapeHtml((c.author && c.author.avatar))}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <img src="${escapeHtml((c.author && c.author.avatar) || '')}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px">
             <strong style="font-size:14px">${escapeHtml((c.author && c.author.name) || 'User')}</strong>
@@ -467,7 +464,7 @@
     function renderCommentRow(c) {
       const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
       return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="data: xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <img src="g xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px">
             <strong style="font-size:14px">Anonymous</strong>
@@ -923,20 +920,7 @@
     setActiveTab('profile');
     renderProfile(false);
   }
-/// ---------------------------------------------------------------------------
-// Anonymous Post Button Functionality
-// ---------------------------------------------------------------------------
-function initAnonymousPostButton() {
-    const addButton = document.getElementById('add-anon-post');
-    if (addButton) {
-        addButton.addEventListener('click', (event) => {
-            event.preventDefault();
-            // In a real application, this function would open a composer modal or navigate to a post creation page.
-            console.log('Add Anonymous Post button clicked!');
-            toast('Opening New Anonymous Post Composer...');
-        });
-    }
-}
+
   /**
    * openProfileGallery(author)
    * Show a modal gallery of a user's posts (used from the friends list and post avatars).
@@ -975,10 +959,7 @@ function initAnonymousPostButton() {
         ${userPosts.length === 0 ? `<div class="muted">No posts yet.</div>` : `<div class="profile-gallery-grid">
           ${userPosts.map(p => {
             const thumb = p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml((p.text||'').slice(0,60))}">` : `<div class="pg-txt">${escapeHtml((p.text||'').slice(0,120))}</div>`;
-      
-      
-      
-          return `<button class="profile-gallery-item" data-id="${p.id}" aria-label="Open post">${thumb}</button>`;
+            return `<button class="profile-gallery-item" data-id="${p.id}" aria-label="Open post">${thumb}</button>`;
           }).join('')}
         </div>`}
       </div>
@@ -1368,7 +1349,7 @@ function initAnonymousPostButton() {
    * renderTopRightUser()
    * Update the header top-right user avatar and name.
    */
-  function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
+  function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
   /**
    * renderProfile(editMode=false)
@@ -2067,6 +2048,7 @@ function initAnonymousPostButton() {
     }
   }
 
+
   function renderTrending(){
     const el = document.getElementById('trending-content');
     if(!el) return;
@@ -2554,6 +2536,9 @@ function initAnonymousPostButton() {
     openProfileView // expose for testing
   };
 
+  // ---------------------------------------------------------------------------
+  // Initialization: wire everything up and show initial content
+  // ---------------------------------------------------------------------------
   function init(){
     initTheme();
     renderTopRightUser();
@@ -2568,43 +2553,8 @@ function initAnonymousPostButton() {
     restoreTabFromHashOrLast();
     initProfileIconShortcut();
     attachDelegatedLogout();
-    initMobileNav(); 
-    initAnonymousPostButton();
-    initMobileSearchToggle();
-    restoreTabFromHashOrLast();
     toast('Welcome back!');
   }
-// Mobile Navigation (Hamburger Menu)
-function initMobileNav() {
-  const body = document.body;
-  const hamburger = document.getElementById('hamburger');
-  if (hamburger) { 
-    hamburger.addEventListener('click', () => {
-      body.classList.toggle('menu-open'); 
-      const isExpanded = body.classList.contains('menu-open');
-      hamburger.setAttribute('aria-expanded', isExpanded);
-      body.style.overflow = isExpanded ? 'hidden' : '';
-    });
-  }
-}
 
-/// ---------------------------------------------------------------------------
-// Mobile Search Toggle
-// ---------------------------------------------------------------------------
-function initMobileSearchToggle() {
-    const body = document.body;
-    // Target the search icon container for the click event
-    const searchIconContainer = document.querySelector('#app .topbar .center-search');
-    
-    if (searchIconContainer) {
-        searchIconContainer.addEventListener('click', (event) => {
-            // Only activate the toggle when in mobile view
-            if (window.innerWidth <= 768) {
-                event.preventDefault(); 
-                body.classList.toggle('search-active');
-            }
-        });
-    }
-}
   init();
 })();

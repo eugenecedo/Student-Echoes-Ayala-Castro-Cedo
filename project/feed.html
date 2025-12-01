@@ -8,10 +8,11 @@
 </head>
 <body>
 <div id="app" class="container">
-  <header class="topbar" role="banner" aria-label="Top bar" style="position:relative;">
+<header class="topbar" role="banner" aria-label="Top bar" style="position:relative;">
+    
     <button id="hamburger" class="hamburger" aria-label="Open menu" aria-expanded="false" type="button">
-      <span></span><span></span><span></span>
-    </button>
+  <span></span><span></span><span></span>
+</button>
 
     <div class="brand">
       <div class="logo">Social</div>
@@ -27,14 +28,11 @@
       </div>
     </div>
 
-    <!-- Mobile-only quick panels (appears under the search on small screens) -->
-    <nav id="mobile-panels" class="mobile-panels" aria-label="Quick navigation" role="navigation"></nav>
-
     <div class="top-right">
-    
+      <button id="theme-toggle" class="btn small" aria-pressed="false" type="button" style="display:none">Light</button>
 
       <div class="user" title="Your profile" role="button" tabindex="0" aria-label="Open profile">
-        <img id="profile-icon" src="data: xmlns='' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
+        <img id="profile-icon" src=" xmlns='' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
         <span class="username">You</span>
       </div>
 
@@ -64,18 +62,6 @@
           <li class="active" data-tab="feed" role="tab" tabindex="0" aria-selected="true">Feed</li>
           <li data-tab="news" role="tab" tabindex="-1" aria-selected="false">News</li>
           <li data-tab="profile" role="tab" tabindex="-1" aria-selected="false">Profile</li>
-
-          <li data-tab="write" role="tab" tabindex="-1" aria-selected="false">
-            <button class="nav-write" aria-label="Write a Story" title="Write a Story (Cmd/Ctrl+K)" type="button">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" style="margin-right:8px">
-                <path d="M3 21v-3l11-11 3 3L6 21H3z"></path>
-                <path d="M14 7l3 3"></path>
-              </svg>
-              <span class="nav-write-label">Write Post</span>
-            </button>
-          </li>
-
-          <li data-tab="mystories" role="tab" tabindex="-1" aria-selected="false">My Stories</li>
           <li data-tab="trending" role="tab" tabindex="-1" aria-selected="false">Trending</li>
           <li data-tab="anonymous" role="tab" tabindex="-1" aria-selected="false">Anonymous Room</li>
         </ul>
@@ -128,26 +114,17 @@
           <p id="profile-bio">This is your bio.</p>
           <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
           <div id="profile-feed" class="profile-feed" aria-live="polite"></div>
-        </div>
-      </div>
-
       <div id="tab-trending" class="card tab-panel hidden"><h4>Trending</h4><div id="trending-content" class="muted"></div></div>
       <div id="tab-anonymous" class="card tab-panel hidden"><h4>Anonymous Room</h4><div id="anonymous-content" class="muted"></div></div>
     </section>
 
     <aside class="right" role="complementary" aria-label="Right sidebar">
-      <!-- Minimalist mobile logo (hidden on desktop, shown on mobile instead of heavy "top stories") -->
-      <div id="mobile-mini-logo" class="mobile-mini-logo" aria-hidden="true" style="align-items:center;justify-content:center;padding:12px;">
-        <!-- Minimalist circular "S" logo as inline SVG -->
-        <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.12"/>
-          <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-family="Inter, Arial, sans-serif" font-size="20" fill="currentColor" style="font-weight:700">S</text>
-        </svg>
-      </div>
-
       <div class="card communities">
-        <h4>Communities</h4>
-        <div id="communities-list"></div>
+       
+       
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          
+        </div>
       </div>
       <div class="card top-stories" id="top-stories" aria-label="Top stories">
         <h4>Top stories</h4>
@@ -169,6 +146,5 @@
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <script src="feed.js"></script>
-<script src="mobile.js"></script>
 </body>
 </html>
