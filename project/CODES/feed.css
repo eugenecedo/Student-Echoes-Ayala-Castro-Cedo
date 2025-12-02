@@ -24,7 +24,6 @@ body {
   color: var(--text-dark);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding: 18px;
   line-height:1.3;
 }
 
@@ -641,4 +640,428 @@ body.theme-light #post-category {
 body.theme-light #post-category option {
   background: var(--bg-light);
   color: var(--text-light);
+}
+/* ======================================================================
+   HAMBURGER BUTTON STYLES (Applies to all screens initially)
+   ====================================================================== */
+
+/* Hamburger Button Styling */
+.hamburger {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  z-index: 1001; 
+  position: relative;
+  /* Hide by default until the mobile media query is hit */
+  display: none; 
+}
+.hamburger span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  margin: 4px 0;
+  background: var(--text-dark);
+  transition: all 0.3s ease;
+}
+/* Mobile Menu Overlay & Left Sidebar Setup */
+.left {
+  /* Ensure the sidebar starts off-screen when needed */
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+}
+/* Transition for 'X' icon */
+body.menu-open .hamburger span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+body.menu-open .hamburger span:nth-child(2) { opacity: 0; }
+body.menu-open .hamburger span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+body.menu-open .left {
+  display: block;
+  position: fixed; 
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 280px; 
+  background: var(--panel); 
+  z-index: 1000;
+  padding-top: 80px; 
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.5);
+  transform: translateX(0); /* Slide into view */
+}
+body.menu-open::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+/* ======================================================================
+   FINAL MOBILE LAYOUT (Applies ONLY when screen is <= 768px wide)
+   ====================================================================== */
+@media (max-width: 768px) {
+    
+    /* 1. FORCE TOPBAR TO BE FLEXIBLE */
+    #app .topbar { 
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 8px !important; 
+        padding: 0 10px !important;
+    }
+
+    /* 2. ORDER FIX: [Hamburger (1)] | [Logo (2)] | [Search Icon (3)] | [Top Right (4)] */
+    #app .topbar > * { order: initial !important; }
+    
+    #app .topbar > .hamburger { order: 1 !important; display: block !important; } 
+    #app .topbar > .brand { order: 2 !important; flex-grow: 1 !important; } 
+    
+    /* CRITICAL CHANGE: Swap order 3 and 4 elements for the desired layout */
+    #app .topbar > .center-search { 
+        order: 4 !important; /* Move Search Icon to be next to Profile */
+        flex-shrink: 0 !important; 
+        padding: 0 8px !important; /* Keep a small gap */
+    } 
+    #app .topbar > .top-right { 
+        order: 5 !important; /* Move Profile/Settings to the end */
+        flex-shrink: 0 !important; 
+        padding: 0 10px 0 0 !important; /* Ensure spacing is tight on the left */
+    }
+
+    /* 3. SEARCH ICON VISIBILITY (Default State) - FINAL DEFENSE FIX */
+    
+    /* Target the outer container (.center-search) and force it to be visible */
+    #app .topbar > .center-search {
+        display: flex !important; 
+        flex-shrink: 0 !important;
+        min-width: 32px !important; 
+        min-height: 32px !important;
+        overflow: visible !important; 
+        padding: 0 8px !important; 
+    }
+  #app .topbar > .top-right .username {
+        display: none !important; 
+    }
+    /* Target the immediate container (.search) and force its dimensions */
+    #app .topbar > .center-search .search {
+        display: flex !important; 
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important; 
+        height: 100% !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        overflow: visible !important; 
+    }
+    
+    #app .topbar > .center-search .search input { 
+        display: none !important; /* HIDE INPUT BY DEFAULT */
+    }
+    
+    /* FORCE THE SVG ICON VISIBILITY, SIZE, AND COLOR */
+    #app .topbar > .center-search .search svg.icon {
+        display: block !important;
+        visibility: visible !important;
+        min-width: 24px !important; 
+        min-height: 24px !important;
+        width: 24px !important; 
+        height: 24px !important;
+        stroke: #e6eef6 !important; 
+        color: #e6eef6 !important; 
+        fill: none !important; 
+    }
+    
+    /* 4. Hide Sidebars for Mobile */
+    .grid-container { 
+        display: flex !important; 
+        flex-direction: column !important; 
+        gap: 16px !important; 
+    }
+    .left { display: none !important; transform: translateX(-100%) !important; }
+    .right { display: none !important; }
+    
+    /* ======================================================================
+       5. ACTIVE SEARCH STATE (Full-Width Centered Input)
+       ====================================================================== */
+
+    /* Hide ALL other topbar elements when search is active */
+    body.search-active .topbar .brand,
+    body.search-active .topbar .hamburger,
+    body.search-active .topbar .top-right {
+        display: none !important; 
+    }
+    
+    /* Make the entire topbar container stretch and align the search bar */
+    body.search-active .topbar {
+        justify-content: flex-start !important; /* Align content to the left edge of padding */
+        align-items: center !important;
+        padding: 8px 16px !important; 
+    }
+
+    /* Make the search container take up the full available space */
+    body.search-active .topbar .center-search {
+        order: 1 !important; /* CRITICAL: Force the search to be the first and only visible element */
+        width: 100% !important; 
+        max-width: 100% !important; 
+        margin: 0 !important;
+    }
+    
+    /* Style the search wrapper to look like the full bar */
+    body.search-active .topbar .center-search .search {
+        /* ... (rest of your .search styles here, keeping width: 100%) ... */
+        width: 100% !important;
+        height: 48px !important; 
+        border: 1px solid var(--border-color) !important;
+        background: var(--card) !important;
+        padding: 0 12px !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+    }
+    
+    /* Ensure the input itself is visible and stretches */
+    body.search-active .topbar .center-search .search input {
+        /* ... (rest of your input styles here, keeping flex-grow: 1) ... */
+        display: block !important; 
+        flex-grow: 1 !important; 
+        width: 100% !important; 
+        max-width: 100% !important; 
+        height: auto !important;
+        margin: 0 !important; 
+        padding: 0 8px !important; 
+        border: none !important;
+        background: transparent !important;
+        color: var(--text-dark) !important;
+    }
+
+    /* Display the SVG icon INSIDE the search bar (as a prefix) */
+    body.search-active .topbar .center-search .search svg.icon {
+        display: block !important;
+        visibility: visible !important;
+        width: 20px !important; 
+        height: 20px !important;
+        stroke: var(--text-secondary) !important; 
+        color: var(--text-secondary) !important; 
+        flex-shrink: 0 !important; 
+    }
+}
+/* ======================================================================
+   TABLET LAYOUT (Applies ONLY when screen is <= 1024px wide)
+   ====================================================================== */
+@media (max-width: 1024px) {
+  /* 2-Column Grid for tablet, hiding the left sidebar */
+  .grid-container {
+    display: flex; /* <-- REMOVE !important HERE */
+    flex-direction: column !important;
+    gap: 16px !important;
+
+    /* Hamburger is hidden by a more specific rule at this width */
+  .topbar .brand { order: 1; }
+  .topbar .center-search { order: 2; flex-grow: 1; max-width: 500px; }
+  .topbar .right-icons { order: 3; }
+  }
+  
+  /* Ensure the left sidebar is not visible in the grid flow */
+  .left {
+    display: none !important;
+  }
+}
+/* ======================================================================
+   FINAL DESKTOP ALIGNMENT (Grid-based Topbar - min-width: 1025px)
+   ====================================================================== */
+@media (min-width: 1025px) {
+    
+    /* 1. Restore the main content Grid display */
+    .grid-container {
+        display: grid !important; 
+    }
+    
+    /* 2. CONVERT TOPBAR TO GRID FOR COLUMN ALIGNMENT */
+    .topbar {
+        display: grid !important; 
+        /* Match the main grid columns: (Left Sidebar) (Center Feed) (Right Sidebar) */
+        grid-template-columns: 220px 1fr 300px !important; 
+        gap: 24px !important; /* Match grid-container gap */
+        
+        /* Ensure topbar spans the full content width and is centered */
+        max-width: var(--container-max-width) !important;
+        margin: 0 auto !important; 
+        align-items: center !important; 
+        
+        /* Reset old flex properties */
+        padding: 0 0 !important;
+    }
+    
+    /* 3. ALIGN ELEMENTS TO GRID COLUMNS */
+    
+    /* Logo/Brand (Left Column) */
+    .topbar .brand { 
+        grid-column: 1 / span 1 !important; /* Assign to first column */
+        order: initial !important; 
+        justify-self: start !important; /* Align left */
+    }
+    
+   /* Search Bar Container (Center Column) */
+    .topbar .center-search { 
+        grid-column: 2 / span 1 !important;
+        order: initial !important; 
+        width: 100% !important; 
+        max-width: none !important;
+        
+        /* --- NEW: ADD SPACE BELOW THE SEARCH COMPONENT --- */
+        margin-bottom: 24px !important; /* Adjust this value (e.g., 24px) for desired space */
+    }
+    
+    /* Target the search input's immediate parent wrapper */
+    .topbar .center-search .search {
+        width: 100% !important;
+        display: flex !important; 
+        /* Ensure the wrapper doesn't have extra bottom margin/padding that could double up */
+        margin-bottom: 0 !important; 
+    }
+    
+    /* Target the input element itself (Ensures it fills 100% width) */
+    .topbar .center-search .search input {
+        width: 100% !important;
+        flex-grow: 1 !important;
+        display: block !important;
+    }
+    
+    /* Right Icons (Right Column) */
+    .topbar .right-icons { 
+        grid-column: 3 / span 1 !important; /* Assign to third column */
+        order: initial !important; 
+        justify-self: end !important; /* Align right */
+    }
+    
+    /* 4. Hide the mobile elements and ensure Left Sidebar is visible */
+    .hamburger {
+        display: none !important;
+    }
+    .left {
+        display: block !important;
+        position: relative !important;
+        transform: none !important;
+    }
+    .center-search .search input {
+        display: block !important;
+    }
+    
+    /* Reset body overflow/menu state */
+    body.menu-open { overflow: auto !important; }
+    body.menu-open::before { content: none !important; }
+}
+/* --- Mobile Menu Display Rules --- */
+
+/* When the menu is open, show the left sidebar */
+body.menu-open .left {
+  display: block !important;
+  position: fixed !important; /* Fix it to the viewport */
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  width: 280px !important; /* Set a fixed width for the menu panel */
+  background: var(--panel) !important; /* Use a background */
+  z-index: 100 !important;
+  transform: translateX(0) !important; /* Slides the menu into view */
+  box-shadow: 4px 0 12px rgba(0,0,0,0.4) !important;
+  transition: transform 0.3s ease-out;
+}
+
+/* Optional: Add an overlay/dimmer behind the menu */
+body.menu-open::before {
+  content: '' !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  z-index: 90 !important;
+}
+/* --- Anonymous Room Responsiveness and Styling --- */
+
+/* 1. Make the Room Header responsive using Flexbox */
+.anonymous-room-header {
+    display: flex;
+    align-items: center; 
+    justify-content: space-between; 
+    margin-bottom: 12px;
+}
+.anonymous-room-header h4 {
+    margin: 0;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* 2. Styling for the responsive icon-only button */
+.btn.icon-only {
+    width: 36px;
+    height: 36px;
+    padding: 0; 
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--accent); 
+    color: var(--bg); 
+    border: none;
+    flex-shrink: 0;
+}
+.btn.icon-only svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor; 
+}
+
+/* --- feed.css: FINAL EDGE-TO-EDGE MOBILE FIX (<= 768px) --- */
+@media (max-width: 768px) {
+    
+    /* 1. Reset main content layout to be a simple block (no grid/flex) */
+    main {
+        display: block !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        overflow-x: hidden; /* Prevents horizontal scrolling caused by child overflow */
+    }
+    
+    /* 2. Remove all horizontal padding/margins from main content containers */
+    .topbar, 
+    .center {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    
+    /* 3. Force the Anonymous Room card to be full width and remove all spacing */
+    #tab-anonymous {
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    /* 4. Ensure the Anonymous Room header text can shrink and doesn't push the button out */
+    .anonymous-room-header {
+        /* Allow content to shrink */
+        min-width: 0; 
+        /* Important: Ensure the title component itself can shrink */
+        flex-shrink: 1;
+    }
+
+    /* 5. Re-apply the 18px padding to the *content inside* the card (for text safety) */
+    #tab-anonymous .anonymous-room-header,
+    #tab-anonymous #anonymous-content {
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+        padding-top: 12px;
+        padding-bottom: 12px; 
+    }
 }

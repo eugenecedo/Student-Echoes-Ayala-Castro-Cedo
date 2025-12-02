@@ -975,7 +975,20 @@
     setActiveTab('profile');
     renderProfile(false);
   }
-
+/// ---------------------------------------------------------------------------
+// Anonymous Post Button Functionality
+// ---------------------------------------------------------------------------
+function initAnonymousPostButton() {
+    const addButton = document.getElementById('add-anon-post');
+    if (addButton) {
+        addButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            // In a real application, this function would open a composer modal or navigate to a post creation page.
+            console.log('Add Anonymous Post button clicked!');
+            toast('Opening New Anonymous Post Composer...');
+        });
+    }
+}
   /**
    * openProfileGallery(author)
    * Show a modal gallery of a user's posts (used from the friends list and post avatars).
@@ -983,7 +996,7 @@
    */
   function openProfileGallery(author) {
     const current = getUserProfile();
-    const viewed = author && author.name ? author : '';
+    const viewed = author && author.name ? author : current;
     const viewedName = viewed.name;
     const avatar = viewed.avatar || (function(){
       const p = posts.find(pp => (pp.author && pp.author.name === viewedName) || (pp.author_name && pp.author_name === viewedName));
@@ -1392,7 +1405,7 @@
    * Retrieve the saved user profile from localStorage. If none exists, return a demo default.
    * Note: feed.js expects the object format: { name, avatar, bio, joined, communitiesJoined, joinedCommunities }
    */
-  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'', avatar:'', bio:'', joined:'', communitiesJoined:2, joinedCommunities:[] }; }
+  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2, joinedCommunities:[] }; }
 
   /**
    * setUserProfile(upd)
@@ -1404,7 +1417,7 @@
    * renderTopRightUser()
    * Update the header top-right user avatar and name.
    */
-  function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('name'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
+  function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
   /**
    * renderProfile(editMode=false)
@@ -2658,9 +2671,6 @@
     openProfileView // expose for testing
   };
 
-  // ---------------------------------------------------------------------------
-  // Initialization: wire everything up and show initial content
-  // ---------------------------------------------------------------------------
   function init(){
     initTheme();
     renderTopRightUser();
@@ -2675,8 +2685,43 @@
     restoreTabFromHashOrLast();
     initProfileIconShortcut();
     attachDelegatedLogout();
+    initMobileNav(); 
+    initAnonymousPostButton();
+    initMobileSearchToggle();
+    restoreTabFromHashOrLast();
     toast('Welcome back!');
   }
+// Mobile Navigation (Hamburger Menu)
+function initMobileNav() {
+  const body = document.body;
+  const hamburger = document.getElementById('hamburger');
+  if (hamburger) { 
+    hamburger.addEventListener('click', () => {
+      body.classList.toggle('menu-open'); 
+      const isExpanded = body.classList.contains('menu-open');
+      hamburger.setAttribute('aria-expanded', isExpanded);
+      body.style.overflow = isExpanded ? 'hidden' : '';
+    });
+  }
+}
 
+/// ---------------------------------------------------------------------------
+// Mobile Search Toggle
+// ---------------------------------------------------------------------------
+function initMobileSearchToggle() {
+    const body = document.body;
+    // Target the search icon container for the click event
+    const searchIconContainer = document.querySelector('#app .topbar .center-search');
+    
+    if (searchIconContainer) {
+        searchIconContainer.addEventListener('click', (event) => {
+            // Only activate the toggle when in mobile view
+            if (window.innerWidth <= 768) {
+                event.preventDefault(); 
+                body.classList.toggle('search-active');
+            }
+        });
+    }
+}
   init();
 })();
