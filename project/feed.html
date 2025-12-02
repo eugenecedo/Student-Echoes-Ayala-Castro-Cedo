@@ -32,7 +32,7 @@
       <button id="theme-toggle" class="btn small" aria-pressed="false" type="button" style="display:none">Light</button>
 
       <div class="user" title="Your profile" role="button" tabindex="0" aria-label="Open profile">
-        <img id="profile-icon" src=" xmlns='' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
+        <img id="profile-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
         <span class="username">You</span>
       </div>
 
@@ -114,9 +114,27 @@
           <p id="profile-bio">This is your bio.</p>
           <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
           <div id="profile-feed" class="profile-feed" aria-live="polite"></div>
-      <div id="tab-trending" class="card tab-panel hidden"><h4>Trending</h4><div id="trending-content" class="muted"></div></div>
-      <div id="tab-anonymous" class="card tab-panel hidden"><h4>Anonymous Room</h4><div id="anonymous-content" class="muted"></div></div>
-    </section>
+
+            
+
+          </div>
+      </div>
+      <div id="tab-anonymous" class="card tab-panel hidden">
+      <div id="anonymous-room-header"><h4>Anonymous Room</h4>
+    
+        <div id="anonymous-composer-wrapper" class="hidden">
+          <form class="card post-composer" id="anonymous-post-composer">
+            <textarea id="anonymous-post-text" placeholder="Share anonymously..." aria-label="Share anonymously"></textarea>
+            
+            <img id="anonymous-preview" class="preview" alt="preview" />
+            <div class="form-foot">
+              <button id="anonymous-post-btn" class="btn primary disabled" type="submit" disabled>Post Anonymously</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="anonymous-content" class="muted"></div>
+      </div>
 
     <aside class="right" role="complementary" aria-label="Right sidebar">
       <div class="card communities">
@@ -128,8 +146,6 @@
       </div>
       <div class="card top-stories" id="top-stories" aria-label="Top stories">
         <h4>Top stories</h4>
-        <div id="top-stories-list" class="top-stories-list muted" aria-live="polite">Loading top stories…</div>
-        <div class="more-news" style="display:flex;justify-content:center;margin-top:12px;">
           <button id="more-news-btn" class="btn small" type="button" aria-label="More news">More news ▸</button>
         </div>
       </div>

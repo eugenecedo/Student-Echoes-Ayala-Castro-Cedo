@@ -20,12 +20,65 @@
     ANON_PROFILE: 'amu_anon_profile',
     FRIENDS: 'amu_friends' // persisted friends
   };
+
+  // ---------------------------------------------------------------------------
+  // Seed / default data: used when localStorage is empty — makes the demo usable
+  // ---------------------------------------------------------------------------
+  const seedFriends = [
+    { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true, isFriend:true },
+    { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true, isFriend:true },
+    { id:3, name:'Jennifer', avatar:'https://i.pravatar.cc/40?img=3', online:false, isFriend:true },
+    { id:4, name:'Anne', avatar:'https://i.pravatar.cc/40?img=4', online:false, isFriend:true },
+    { id:5, name:'Andrew', avatar:'https://i.pravatar.cc/40?img=5', online:true, isFriend:true }
+  ];
+
+  const defaultCategories = [
+    { id:1, name:'Photography' },
+    { id:2, name:'Technology' },
+    { id:3, name:'Lifestyle' },
+    { id:4, name:'Space' }
+  ];
+
+  // A couple of starter posts so the feed isn't empty on first load
+  const defaultPosts = [
+    {
+      id:101,
+      author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'},
+      createdAt: Date.now()-5*3600*1000,
+      text:'Just took a late walk through the hills. The light was incredible.',
+      image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=60&auto=format&fit=crop',
+      categoryId:1,
+      likes:89,
+      shares:1,
+      liked:false,
+      comments: [
+        { id: 1001, author:{name:'Emily', avatar:'https://i.pravatar.cc/36?img=1'}, text: 'So beautiful!', createdAt: Date.now()-4.5*3600*1000, replies:[
+            { id: 1101, author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'}, text: 'Thanks Emily!', createdAt: Date.now()-4.2*3600*1000 }
+          ]
+        },
+        { id: 1002, author:{name:'Fiona', avatar:'https://i.pravatar.cc/36?img=2'}, text: 'Where is that?', createdAt: Date.now()-4*3600*1000, replies:[] }
+      ]
+    },
+    {
+      id:102,
+      author:{name:'Casie', avatar:'https://i.pravatar.cc/48?img=45'},
+      createdAt: Date.now()-36*3600*1000,
+      text:'Foggy mornings are my favorite. Coffee + mist = mood.',
+      image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=60&auto=format&fit=crop',
+      categoryId:3,
+      likes:25,
+      shares:0,
+      liked:false,
+      comments: []
+    }
+  ];
+
   // ---------------------------------------------------------------------------
   // Application state (in-memory), persisted to localStorage by saveState()
   // ---------------------------------------------------------------------------
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
-  let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'' }];
+  let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
   // load friends from storage if present, otherwise use seedFriends
   let friends = JSON.parse(localStorage.getItem(KEY.FRIENDS) || 'null') || seedFriends.slice();
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
@@ -94,9 +147,11 @@
    */
   function saveState(){
     try {
+      localStorage.setItem(KEY.CATEGORIES, JSON.stringify(categories));
       localStorage.setItem(KEY.POSTS, JSON.stringify(posts));
       localStorage.setItem(KEY.NOTIFS, JSON.stringify(notifications));
       localStorage.setItem(KEY.ANON, JSON.stringify(anonymousPosts));
+      localStorage.setItem(KEY.COMMUNITIES, JSON.stringify(communities));
       localStorage.setItem(KEY.FRIENDS, JSON.stringify(friends));
     } catch (e) {
       console.warn('saveState() failed', e);
@@ -175,7 +230,7 @@
       return;
     }
     // add friend
-    const newFriend = { id: Date.now(), name: name, avatar: avatar || ('' + encodeURIComponent(name)), online: false, isFriend:true };
+    const newFriend = { id: Date.now(), name: name, avatar: avatar || ('https://i.pravatar.cc/40?u=' + encodeURIComponent(name)), online: false, isFriend:true };
     friends.push(newFriend);
     saveState();
     renderFriends();
@@ -348,7 +403,7 @@
     function renderCommentRow(c) {
       const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
       return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="${escapeHtml((c.author && c.author.avatar) || '')}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <img src="${escapeHtml((c.author && c.author.avatar) || 'https://i.pravatar.cc/36')}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px">
             <strong style="font-size:14px">${escapeHtml((c.author && c.author.name) || 'User')}</strong>
@@ -464,7 +519,7 @@
     function renderCommentRow(c) {
       const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
       return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="g xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px">
             <strong style="font-size:14px">Anonymous</strong>
@@ -819,16 +874,16 @@
     const text = (p.text || '') + (p.image ? '\n' + p.image : '');
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(() => {
-        notifications.unshift({id:Date.now(), text:'Copied anonymous post to clipboard!', createdAt: Date.now(), avatar:''});
+        notifications.unshift({id:Date.now(), text:'Copied anonymous post to clipboard!', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
         saveState(); renderNotifications();
         toast('Copied anonymous post to clipboard!');
       }).catch(()=> {
-        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:''});
+        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
         saveState(); renderNotifications();
         toast('Clipboard failed');
       });
     } else {
-      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:''});
+      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
       saveState(); renderNotifications();
       toast('Clipboard not supported');
     }
@@ -920,7 +975,20 @@
     setActiveTab('profile');
     renderProfile(false);
   }
-
+/// ---------------------------------------------------------------------------
+// Anonymous Post Button Functionality
+// ---------------------------------------------------------------------------
+function initAnonymousPostButton() {
+    const addButton = document.getElementById('add-anon-post');
+    if (addButton) {
+        addButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            // In a real application, this function would open a composer modal or navigate to a post creation page.
+            console.log('Add Anonymous Post button clicked!');
+            toast('Opening New Anonymous Post Composer...');
+        });
+    }
+}
   /**
    * openProfileGallery(author)
    * Show a modal gallery of a user's posts (used from the friends list and post avatars).
@@ -1040,7 +1108,7 @@
       const commentCount = (post.comments && post.comments.length) ? post.comments.length : 0;
       art.innerHTML = `
         <div class="post-head">
-          <img src="${escapeHtml((post.author && post.author.avatar) || post.author_avatar || '')}" alt="${escapeHtml((post.author && post.author.name) || post.author_name || 'User')}" />
+          <img src="${escapeHtml((post.author && post.author.avatar) || post.author_avatar || 'https://i.pravatar.cc/48')}" alt="${escapeHtml((post.author && post.author.name) || post.author_name || 'User')}" />
           <div style="flex:1">
             <div style="font-weight:600">${escapeHtml((post.author && post.author.name) || post.author_name || 'Unknown')}</div>
             <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(post.createdAt||Date.now()))} • <strong>${escapeHtml(getCategoryName(post.categoryId))}</strong></div>
@@ -1136,16 +1204,16 @@
     if(p.categoryId) text += `\nCategory: ${getCategoryName(p.categoryId)}`;
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(() => {
-        notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', createdAt: Date.now(), avatar:''});
+        notifications.unshift({id:Date.now(), text:'Copied post to clipboard!', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
         saveState(); renderNotifications();
         toast('Copied post to clipboard!');
       }).catch(()=> {
-        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:''});
+        notifications.unshift({id:Date.now(), text:'Clipboard failed.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
         saveState(); renderNotifications();
         toast('Clipboard failed');
       });
     } else {
-      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:''});
+      notifications.unshift({id:Date.now(), text:'Clipboard not supported.', createdAt: Date.now(), avatar:'https://i.pravatar.cc/36?img=65'});
       saveState(); renderNotifications();
       toast('Clipboard not supported');
     }
@@ -1337,7 +1405,7 @@
    * Retrieve the saved user profile from localStorage. If none exists, return a demo default.
    * Note: feed.js expects the object format: { name, avatar, bio, joined, communitiesJoined, joinedCommunities }
    */
-  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'', avatar:'', bio:'', joined:'', communitiesJoined:2, joinedCommunities:[] }; }
+  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2, joinedCommunities:[] }; }
 
   /**
    * setUserProfile(upd)
@@ -1581,7 +1649,7 @@
       });
       cont.innerHTML = `
         <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-          <img src="${escapeHtml(profile.avatar || "data: xmlns='' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='38' fill='%23b3cde0'/%3E%3C/svg%3E")}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">
+          <img src="${escapeHtml(profile.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='38' fill='%23b3cde0'/%3E%3C/svg%3E")}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">
           <div>
             <div style="font-size:22px;font-weight:700;">${escapeHtml(profile.name)}</div>
             <div class="muted">${escapeHtml(profile.bio || '')}</div>
@@ -2048,6 +2116,73 @@
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Write story, My stories, Trending renderers (smaller helpers)
+  // ---------------------------------------------------------------------------
+  function renderWrite(){
+    const el = document.getElementById('write-content');
+    if(!el) return;
+    el.innerHTML = `
+      <form id="writeStoryForm" style="display:flex;flex-direction:column;gap:8px;">
+        <input name="title" placeholder="Story title" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"/>
+        <textarea name="body" rows="8" placeholder="Write your story..." style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select name="category" id="write-category-select" style="padding:6px;border-radius:6px;">
+            <option value="">— None —</option>
+            ${categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
+          </select>
+          <button class="btn primary" type="submit">Publish Story</button>
+        </div>
+      </form>
+    `;
+    const form = document.getElementById('writeStoryForm');
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const title = (fd.get('title')||'').trim();
+      const body = (fd.get('body')||'').trim();
+      const categoryId = fd.get('category') ? Number(fd.get('category')) : null;
+      if(!title && !body){ toast('Write something first'); return; }
+      const u = getUserProfile();
+      const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: (title ? `# ${title}\n\n${body}` : body), image: null, categoryId, likes:0, comments:[], shares:0, liked:false };
+      posts.unshift(p);
+      notifications.unshift({ id:Date.now(), text:'You published a story.', createdAt: Date.now(), avatar:u.avatar });
+      saveState(); renderFeed(); renderNotifications();
+      toast('Story published');
+      setActiveTab('mystories');
+    };
+  }
+
+  function renderMyStories(){
+    const el = document.getElementById('mystories-content');
+    if(!el) return;
+    const u = getUserProfile();
+    const mine = posts.filter(p => p.author.name === u.name);
+    if(mine.length===0){ el.innerHTML = `<div class="muted">You haven't published any stories yet.</div>`; return; }
+    el.innerHTML = '';
+    mine.forEach(p => {
+      const row = document.createElement('div'); row.style.marginBottom='12px';
+      row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:700">${escapeHtml((p.text||'').split('\n')[0].replace(/^#\s*/,''))}</div><div class="muted" style="font-size:12px">${escapeHtml(timeAgo(p.createdAt))}</div></div><div><button class="btn small edit-story" data-id="${p.id}">Edit</button><button class="btn small delete-story" data-id="${p.id}" style="margin-left:8px">Delete</button></div></div><div style="margin-top:6px">${escapeHtml((p.text||'').split('\n').slice(1).join('\n').slice(0,350))}</div>`;
+      el.appendChild(row);
+    });
+    el.querySelectorAll('.edit-story').forEach(b => b.onclick = async () => {
+      const id = Number(b.dataset.id);
+      const post = posts.find(x=>x.id===id);
+      if(!post) return;
+      const newText = await openModal({ title:'Edit story', input:true, placeholder:'Edit story (markdown ok)', confirmText:'Save' , html: escapeHtml(post.text||'')});
+      if(newText === null) return;
+      posts = posts.map(pp => pp.id===id ? {...pp, text: newText} : pp);
+      saveState(); renderMyStories(); renderFeed();
+      toast('Story updated');
+    });
+    el.querySelectorAll('.delete-story').forEach(b => b.onclick = () => {
+      const id = Number(b.dataset.id);
+      if(!confirm('Delete this story?')) return;
+      posts = posts.filter(x=>x.id!==id);
+      saveState(); renderMyStories(); renderFeed();
+      toast('Story deleted');
+    });
+  }
 
   function renderTrending(){
     const el = document.getElementById('trending-content');
@@ -2536,9 +2671,6 @@
     openProfileView // expose for testing
   };
 
-  // ---------------------------------------------------------------------------
-  // Initialization: wire everything up and show initial content
-  // ---------------------------------------------------------------------------
   function init(){
     initTheme();
     renderTopRightUser();
@@ -2553,8 +2685,43 @@
     restoreTabFromHashOrLast();
     initProfileIconShortcut();
     attachDelegatedLogout();
+    initMobileNav(); 
+    initAnonymousPostButton();
+    initMobileSearchToggle();
+    restoreTabFromHashOrLast();
     toast('Welcome back!');
   }
+// Mobile Navigation (Hamburger Menu)
+function initMobileNav() {
+  const body = document.body;
+  const hamburger = document.getElementById('hamburger');
+  if (hamburger) { 
+    hamburger.addEventListener('click', () => {
+      body.classList.toggle('menu-open'); 
+      const isExpanded = body.classList.contains('menu-open');
+      hamburger.setAttribute('aria-expanded', isExpanded);
+      body.style.overflow = isExpanded ? 'hidden' : '';
+    });
+  }
+}
 
+/// ---------------------------------------------------------------------------
+// Mobile Search Toggle
+// ---------------------------------------------------------------------------
+function initMobileSearchToggle() {
+    const body = document.body;
+    // Target the search icon container for the click event
+    const searchIconContainer = document.querySelector('#app .topbar .center-search');
+    
+    if (searchIconContainer) {
+        searchIconContainer.addEventListener('click', (event) => {
+            // Only activate the toggle when in mobile view
+            if (window.innerWidth <= 768) {
+                event.preventDefault(); 
+                body.classList.toggle('search-active');
+            }
+        });
+    }
+}
   init();
 })();
