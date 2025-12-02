@@ -2353,7 +2353,7 @@ function initAnonymousPostButton() {
   // Login / logout helpers
   // ---------------------------------------------------------------------------
   const LOGIN_PATH_CANDIDATES = [
-    'login.html',
+    'log in.php',
     'log in.html',
     '/login',
     '/signin',
