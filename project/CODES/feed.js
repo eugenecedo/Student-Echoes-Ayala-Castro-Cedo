@@ -1,85 +1,21 @@
-// Full modified feed.js with Instagram-like profile grid integrated,
-// photos constrained (not scrollable), and TikTok-style comment sheet UI.
-//
-// Changes made (summary):
-// - friends list persisted and made mutable so Add Friend / Unfriend buttons work
-// - friends UI updated to show action buttons in left sidebar and on viewed profiles
-// - small mobile-related fixes: rely on CSS media queries instead of inline hides
 (function(){
-  // KEY: central names for localStorage keys used across the app
   const KEY = {
     CATEGORIES: 'amu_categories',
     POSTS: 'amu_posts',
     NOTIFS: 'amu_notifications',
-    PROFILE: 'userProfile', // feed.js reads/writes this to get logged-in user
+    PROFILE: 'userProfile', 
     THEME: 'theme',
     ANON: 'amu_anonymous_posts',
     LAST_TAB: 'amu_last_tab',
     SETTINGS: 'amu_settings',
     COMMUNITIES: 'amu_communities',
     ANON_PROFILE: 'amu_anon_profile',
-    FRIENDS: 'amu_friends' // persisted friends
+    FRIENDS: 'amu_friends' 
   };
 
-  // ---------------------------------------------------------------------------
-  // Seed / default data: used when localStorage is empty — makes the demo usable
-  // ---------------------------------------------------------------------------
-  const seedFriends = [
-    { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true, isFriend:true },
-    { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true, isFriend:true },
-    { id:3, name:'Jennifer', avatar:'https://i.pravatar.cc/40?img=3', online:false, isFriend:true },
-    { id:4, name:'Anne', avatar:'https://i.pravatar.cc/40?img=4', online:false, isFriend:true },
-    { id:5, name:'Andrew', avatar:'https://i.pravatar.cc/40?img=5', online:true, isFriend:true }
-  ];
-
-  const defaultCategories = [
-    { id:1, name:'Photography' },
-    { id:2, name:'Technology' },
-    { id:3, name:'Lifestyle' },
-    { id:4, name:'Space' }
-  ];
-
-  // A couple of starter posts so the feed isn't empty on first load
-  const defaultPosts = [
-    {
-      id:101,
-      author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'},
-      createdAt: Date.now()-5*3600*1000,
-      text:'Just took a late walk through the hills. The light was incredible.',
-      image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=60&auto=format&fit=crop',
-      categoryId:1,
-      likes:89,
-      shares:1,
-      liked:false,
-      comments: [
-        { id: 1001, author:{name:'Emily', avatar:'https://i.pravatar.cc/36?img=1'}, text: 'So beautiful!', createdAt: Date.now()-4.5*3600*1000, replies:[
-            { id: 1101, author:{name:'Amandine', avatar:'https://i.pravatar.cc/48?img=12'}, text: 'Thanks Emily!', createdAt: Date.now()-4.2*3600*1000 }
-          ]
-        },
-        { id: 1002, author:{name:'Fiona', avatar:'https://i.pravatar.cc/36?img=2'}, text: 'Where is that?', createdAt: Date.now()-4*3600*1000, replies:[] }
-      ]
-    },
-    {
-      id:102,
-      author:{name:'Casie', avatar:'https://i.pravatar.cc/48?img=45'},
-      createdAt: Date.now()-36*3600*1000,
-      text:'Foggy mornings are my favorite. Coffee + mist = mood.',
-      image:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=60&auto=format&fit=crop',
-      categoryId:3,
-      likes:25,
-      shares:0,
-      liked:false,
-      comments: []
-    }
-  ];
-
-  // ---------------------------------------------------------------------------
-  // Application state (in-memory), persisted to localStorage by saveState()
-  // ---------------------------------------------------------------------------
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
   let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
-  // load friends from storage if present, otherwise use seedFriends
   let friends = JSON.parse(localStorage.getItem(KEY.FRIENDS) || 'null') || seedFriends.slice();
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
   let communities = JSON.parse(localStorage.getItem(KEY.COMMUNITIES) || 'null') || [
@@ -87,11 +23,7 @@
     { id:2, name:'Frontend Developers', members:16, description:'Frontend tips & discussion' }
   ];
   let activeCategoryId = null;
-
-  // NEW: when another user is being "viewed" (stalked), viewedProfileUser holds that user's minimal profile
   let viewedProfileUser = null;
-
-  // Cute anonymous avatars (replaces ABCD letters)
   const ANON_AVATARS = [
     { id: 'anon-1', name: 'Kitty', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#fff7f7'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='#ff6b81'>🐱</text></svg>`) },
     { id: 'anon-2', name: 'Puppy', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#f7fff6'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='#3fb24a'>🐶</text></svg>`) },
@@ -99,9 +31,7 @@
     { id: 'anon-4', name: 'Bunny', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#eef9ff'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='26' fill='#2b9bd6'>🐰</text></svg>`) }
   ];
 
-  // ---------------------------------------------------------------------------
-  // DOM references cached once for performance
-  // ---------------------------------------------------------------------------
+  
   const friendsList = document.getElementById('friends-list');
   const feedEl = document.getElementById('feed');
   const notifList = document.getElementById('notif-list');
@@ -138,13 +68,7 @@
   // keep anonymous preview data in memory while user composes an anon post
   let anonPreviewData = null;
 
-  // ---------------------------------------------------------------------------
-  // Utility helpers
-  // ---------------------------------------------------------------------------
-  /**
-   * saveState()
-   * Persist the in-memory arrays to localStorage so the demo state survives reloads.
-   */
+  
   function saveState(){
     try {
       localStorage.setItem(KEY.CATEGORIES, JSON.stringify(categories));
@@ -158,22 +82,12 @@
     }
   }
 
-  /**
-   * escapeHtml(s)
-   * Simple utility to escape text before inserting into HTML to avoid XSS in this demo.
-   */
   function escapeHtml(s){ if(!s && s!==0) return ''; return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-  /**
-   * timeAgo(ts)
-   * Convert a timestamp in ms to a short human-friendly relative string.
-   */
+  
   function timeAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<10) return 'just now'; if(s<60) return s+'s'; const m=Math.floor(s/60); if(m<60) return m+'m'; const h=Math.floor(m/60); if(h<24) return h+'h'; const d=Math.floor(h/24); if(d<7) return d+'d'; return new Date(ts).toLocaleDateString(); }
 
-  /**
-   * debounce(fn, wait)
-   * Returns a debounced version of fn — useful for input events like search.
-   */
+
   function debounce(fn, wait=220){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
   // ---------------------------------------------------------------------------
@@ -270,16 +184,6 @@
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Modal: accessible dialog helper that returns a Promise for result
-  // ---------------------------------------------------------------------------
-  /**
-   * openModal(options)
-   * options: { title, html, input (bool), placeholder, confirmText, cancelText, width }
-   *
-   * When input=true a textarea is added and the promise resolves with the textarea value
-   * Otherwise it resolves with true when confirm is clicked, null when canceled.
-   */
   function openModal({ title = '', html = '', input = false, placeholder = '', confirmText = 'OK', cancelText = 'Cancel', width = 720 } = {}) {
     return new Promise((resolve) => {
       const prevFocus = document.activeElement;
@@ -382,20 +286,10 @@
       document.addEventListener('keydown', trapFocus);
     });
   }
-
-  // ---------------------------------------------------------------------------
-  // Lightbox helper: open an image in a modal
-  // ---------------------------------------------------------------------------
   function openImageLightbox(src, alt='') {
     openModal({ title: '', html: `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" class="lightbox-img" />`, confirmText: 'Close', cancelText: '' , width: 980});
   }
 
-  // ---------------------------------------------------------------------------
-  // COMMENTS (REGULAR POSTS) — TIKTOK-LIKE COMMENTS SHEET
-  // ---------------------------------------------------------------------------
-  // We'll override the original openComments to render a TikTok-style sheet:
-  // - modal-body contains header, a scrollable comment list, and a fixed footer input
-  // - add/like/reply interactions update the in-modal list without closing the modal
   function openComments(postId) {
     const post = posts.find(p => p.id === postId);
     if(!post) return;
@@ -436,8 +330,6 @@
         </div>
       </div>
     `;
-
-    // Use openModal but keep the modal's confirm/close button for dismissing
     openModal({ title: '', html, confirmText: 'Close', cancelText: '' });
 
     const modal = modalRoot.querySelector('.modal');
@@ -445,8 +337,6 @@
     const csList = modal.querySelector('.cs-list');
     const submitBtn = modal.querySelector('#__submitNewComment');
     const newCommentInput = modal.querySelector('#__newCommentInput');
-
-    // helper to re-render comment list inside modal
     function refreshCommentsInModal() {
       const rows = (post.comments || []).map(c => renderCommentRow(c)).join('');
       if(csList) csList.innerHTML = rows || `<div class="muted">No comments yet. Be the first to comment!</div>`;
@@ -482,7 +372,7 @@
         csList.querySelectorAll('.like-comment').forEach(b => {
           b.onclick = (e) => {
             e.stopPropagation();
-            // simple demo: toggle a `liked` flag on comment object if desired — here we just show toast
+           
             toast('Liked comment (demo)');
           };
         });
@@ -1234,6 +1124,7 @@ function initAnonymousPostButton() {
     const commonActionsHtml = `
       <div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn small" id="pm-save">Save post</button>
+        <button class="btn small" id="pm-delete">Delete</button>
         <button class="btn small" id="pm-copy">Copy link</button>
         <button class="btn small" id="pm-report" style="background:rgba(255,75,75,0.06)">Report</button>
       </div>
