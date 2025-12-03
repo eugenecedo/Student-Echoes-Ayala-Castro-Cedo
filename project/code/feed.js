@@ -134,25 +134,6 @@
   const helpBtn = document.getElementById('helpBtn');
   const modeBtn = document.getElementById('modeBtn');
   const logoutBtn = document.getElementById('logoutBtn');
-  const anonymousAddBtn = document.getElementById("anonymous-add-btn");
-const anonymousFileInput = document.getElementById("anonymous-post-image");
-const anonymousPreview = document.getElementById("anonymous-preview");
-
-anonymousAddBtn.addEventListener("click", () => {
-  anonymousFileInput.click();
-});
-
-anonymousFileInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      anonymousPreview.src = e.target.result;
-      anonymousPreview.style.display = "block";
-    };
-    reader.readAsDataURL(file);
-  }
-});
 
   // keep anonymous preview data in memory while user composes an anon post
   let anonPreviewData = null;
