@@ -2691,20 +2691,75 @@ function initMobileNav() {
   }
 }
 
-/// ---------------------------------------------------------------------------
-// Mobile Search Toggle
+// ---------------------------------------------------------------------------
+// Mobile Search Toggle - Enhanced with beautiful animation
 // ---------------------------------------------------------------------------
 function initMobileSearchToggle() {
     const body = document.body;
-    // Target the search icon container for the click event
     const searchIconContainer = document.querySelector('#app .topbar .center-search');
+    const searchInput = document.getElementById('global-search');
     
-    if (searchIconContainer) {
+    if (searchIconContainer && searchInput) {
+        // Toggle search when clicking search icon
         searchIconContainer.addEventListener('click', (event) => {
-            // Only activate the toggle when in mobile view
             if (window.innerWidth <= 768) {
-                event.preventDefault(); 
-                body.classList.toggle('search-active');
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const wasActive = body.classList.contains('search-active');
+                
+                if (!wasActive) {
+                    // Activate search
+                    body.classList.add('search-active');
+                    setTimeout(() => {
+                        searchInput.focus();
+                        searchInput.select();
+                    }, 50);
+                    
+                    // Add escape key listener
+                    const escapeListener = (e) => {
+                        if (e.key === 'Escape') {
+                            body.classList.remove('search-active');
+                            document.removeEventListener('keydown', escapeListener);
+                        }
+                    };
+                    document.addEventListener('keydown', escapeListener);
+                }
+            }
+        });
+        
+        // Click on the search icon SVG also works
+        const searchIcon = searchIconContainer.querySelector('.search svg.icon');
+        if (searchIcon) {
+            searchIcon.addEventListener('click', (event) => {
+                if (window.innerWidth <= 768) {
+                    event.stopPropagation();
+                }
+            });
+        }
+        
+        // Click outside to close (but not on cancel text)
+        document.addEventListener('click', (event) => {
+            if (window.innerWidth <= 768 && 
+                body.classList.contains('search-active')) {
+                
+                const searchElement = searchIconContainer.querySelector('.search');
+                const cancelText = searchElement?.nextSibling;
+                
+                // Don't close if clicking on search area or cancel button
+                if (!searchIconContainer.contains(event.target) && 
+                    !(cancelText && cancelText.contains(event.target))) {
+                    body.classList.remove('search-active');
+                }
+            }
+        });
+        
+        // Also handle the cancel text click
+        document.addEventListener('click', (event) => {
+            if (window.innerWidth <= 768 && 
+                body.classList.contains('search-active') &&
+                event.target.textContent === 'Cancel') {
+                body.classList.remove('search-active');
             }
         });
     }
