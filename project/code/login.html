@@ -55,12 +55,6 @@
           <button type="submit">Sign in</button>
 
           <div style="height:10px"></div>
-
-          <div class="small" style="margin-bottom:8px">Or sign in with</div>
-          <div class="third-party">
-            <button type="button">Google</button>
-            <button type="button">GitHub</button>
-          </div>
         </form>
 
         <!-- REGISTER FORM -->
@@ -106,15 +100,13 @@
   <script>
   // Check login state
   const user = localStorage.getItem("loggedInUser");
-  if (!user) {
-    // If not logged in, send back to login.html
-    window.location.href = "login.html";
-  } else {
-    // Optionally show username
-    document.addEventListener("DOMContentLoaded", () => {
-      document.querySelector(".username").textContent = user;
-    });
+
+  // If user IS logged in, send them to the feed
+  if (user) {
+    window.location.href = "feed.html";
   }
+  
+  // If not logged in, do nothing (stay on this page to let them log in)
 </script>
 
   <script>
