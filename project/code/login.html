@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login / Register</title>
+
+  <link rel="stylesheet" href="login.css">
+
+</head>
+<body>
+
+  <div class="container">
+    <div class="left">
+      <div class="hero card">
+        <h1>Welcome back 👋</h1>
+        <p>Sign in to access your account. If you don't have one yet, switch to Register.</p>
+      </div>
+
+      <div style="height:16px"></div>
+
+      <div class="card">
+        <h3>Why join?</h3>
+        <ul>
+          <li>Save your preferences</li>
+          <li>Access exclusive features</li>
+          <li>Quick synchronization across devices</li>
+        </ul>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" id="auth-card">
+
+        <div class="tabs">
+          <div class="tab active" id="tab-login" onclick="showForm('login-form')">Login</div>
+          <div class="tab" id="tab-register" onclick="showForm('register-form')">Register</div>
+        </div>
+
+        <div id="messages"></div>
+
+        <!-- LOGIN FORM -->
+        <form id="login-form">
+          <label>Email or Username</label>
+          <input type="text" id="login-email" placeholder="you@example.com">
+
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••">
+
+          <div class="helper">
+            <label><input type="checkbox" id="remember"> <span class="small">Remember me</span></label>
+            <button type="button" class="forgot" onclick="openForgot()">Forgot?</button>
+          </div>
+
+          <button type="submit">Sign in</button>
+
+          <div style="height:10px"></div>
+
+          <div class="small" style="margin-bottom:8px">Or sign in with</div>
+          <div class="third-party">
+            <button type="button">Google</button>
+            <button type="button">GitHub</button>
+          </div>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form id="register-form" style="display:none">
+          <label>Full name</label>
+          <input type="text" id="reg-name" placeholder="Your name">
+
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="you@example.com">
+
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="Create a password">
+
+          <label>Confirm password</label>
+          <input type="password" id="reg-password2" placeholder="Confirm password">
+
+          <button type="submit">Create account</button>
+        </form>
+
+      </div>
+
+      <div style="height:12px"></div>
+      <div class="card small">
+        <p>By continuing, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot Modal -->
+  <div id="forgot-modal" style="display:none">
+    <div class="modal-box">
+      <h3>Reset password</h3>
+      <p class="small">Enter your email and we'll send reset instructions.</p>
+
+      <input type="email" id="forgot-email" placeholder="you@example.com">
+
+      <div class="modal-buttons">
+        <button onclick="closeForgot()" class="cancel">Cancel</button>
+        <button onclick="sendForgot()">Send</button>
+      </div>
+    </div>
+  </div>
+  <script>
+  // Check login state
+  const user = localStorage.getItem("loggedInUser");
+  if (!user) {
+    // If not logged in, send back to login.html
+    window.location.href = "login.html";
+  } else {
+    // Optionally show username
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelector(".username").textContent = user;
+    });
+  }
+</script>
+
+  <script>
+  // Attach listener to login form
+  document.getElementById("login-form").addEventListener("submit", function(e) {
+    e.preventDefault(); // stop normal form submission
+
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+
+    // Example: simple check (replace with your own logic)
+    if (email === "test@example.com" && password === "1234") {
+      // Save "logged in" state in localStorage
+      localStorage.setItem("loggedInUser", email);
+
+      // Redirect to feed.html
+      window.location.href = "feed.html";
+    } else {
+      alert("Invalid login!");
+    }
+  });
+</script>
+
+
+  <!-- External JavaScript -->
+  <script src="login.js"></script>
+  <script>
+  // Attach logout functionality
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    localStorage.removeItem("loggedInUser"); // clear fake session
+    window.location.href = "login.html";     // redirect back to login
+  });
+</script>
+</body>
+</html>
