@@ -4,48 +4,32 @@ require_once '../config.php';
 
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
+if (!isset($_SESSION['email']) || !isset($_POST['post_id'])) {
+    echo json_encode(['success' => false, 'message' => 'Invalid request']);
     exit();
 }
 
-$post_id = $_POST['post_id'] ?? $_GET['post_id'] ?? 0;
-$user_id = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'] ?? 0;
+$post_id = intval($_POST['post_id']);
+$action = $_POST['action'] ?? 'like';
 
-// Check if already liked
-$check_sql = "SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?";
-$stmt = $conn->prepare($check_sql);
-$stmt->bind_param("ii", $post_id, $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result->num_rows > 0) {
-    // Unlike
-    $delete_sql = "DELETE FROM post_likes WHERE post_id = ? AND user_id = ?";
-    $stmt = $conn->prepare($delete_sql);
-    $stmt->bind_param("ii", $post_id, $user_id);
-    $stmt->execute();
+if ($action === 'like') {
+    // Check if already liked
+    $check = $conn->prepare("SELECT id FROM post_likes WHERE user_id = ? AND post_id = ?");
+    $check->bind_param("ii", $user_id, $post_id);
+    $check->execute();
     
-    // Update likes count
-    $update_sql = "UPDATE posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ?";
-    $stmt = $conn->prepare($update_sql);
-    $stmt->bind_param("i", $post_id);
-    $stmt->execute();
-    
-    echo json_encode(['success' => true, 'liked' => false]);
+    if ($check->get_result()->num_rows === 0) {
+        $stmt = $conn->prepare("INSERT INTO post_likes (user_id, post_id) VALUES (?, ?)");
+        $stmt->bind_param("ii", $user_id, $post_id);
+        $stmt->execute();
+    }
 } else {
-    // Like
-    $insert_sql = "INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)";
-    $stmt = $conn->prepare($insert_sql);
-    $stmt->bind_param("ii", $post_id, $user_id);
+    // Unlike
+    $stmt = $conn->prepare("DELETE FROM post_likes WHERE user_id = ? AND post_id = ?");
+    $stmt->bind_param("ii", $user_id, $post_id);
     $stmt->execute();
-    
-    // Update likes count
-    $update_sql = "UPDATE posts SET likes_count = likes_count + 1 WHERE id = ?";
-    $stmt = $conn->prepare($update_sql);
-    $stmt->bind_param("i", $post_id);
-    $stmt->execute();
-    
-    echo json_encode(['success' => true, 'liked' => true]);
 }
+
+echo json_encode(['success' => true]);
 ?>

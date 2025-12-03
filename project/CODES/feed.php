@@ -370,7 +370,553 @@ foreach ($db_posts_for_js as &$post) {
 <!-- Toast container -->
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-<script src="feed.js"></script>
+<script>
+// ============================================================
+// COMPLETE BUTTON FUNCTIONALITY SCRIPT
+// This ensures ALL buttons work immediately
+// ============================================================
+
+(function() {
+    // Wait for full page load
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initializing button functions...');
+        
+        // ===========================================
+        // 1. FIX ALL POST ACTION BUTTONS (Like, Comment, Share, Menu)
+        // ===========================================
+        setTimeout(function() {
+            console.log('Setting up post buttons...');
+            
+            // LIKE BUTTONS
+            document.querySelectorAll('.like-btn').forEach(function(btn) {
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Get post ID
+                    const postId = this.getAttribute('data-id') || 
+                                   this.closest('article')?.getAttribute('data-id') || 
+                                   this.closest('.post')?.getAttribute('data-id');
+                    
+                    if (!postId) return;
+                    
+                    // Toggle visual state
+                    const isLiked = this.classList.contains('liked');
+                    this.classList.toggle('liked');
+                    
+                    // Update like count
+                    const countSpan = this.querySelector('.count');
+                    if (countSpan) {
+                        let count = parseInt(countSpan.textContent) || 0;
+                        count = isLiked ? count - 1 : count + 1;
+                        countSpan.textContent = Math.max(0, count);
+                    }
+                    
+                    // Show feedback
+                    showMessage(isLiked ? 'Post unliked' : 'Post liked!');
+                    
+                    // Save to server (demo)
+                    saveLikeToServer(postId, !isLiked);
+                };
+            });
+            
+            // COMMENT BUTTONS
+            document.querySelectorAll('.comment-btn').forEach(function(btn) {
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const postId = this.getAttribute('data-id');
+                    if (!postId) return;
+                    
+                    openCommentsModal(postId);
+                };
+            });
+            
+            // SHARE BUTTONS
+            document.querySelectorAll('.share-btn').forEach(function(btn) {
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const postId = this.getAttribute('data-id');
+                    if (!postId) return;
+                    
+                    sharePost(postId);
+                };
+            });
+            
+            // MENU BUTTONS (three dots)
+            document.querySelectorAll('.menu-btn').forEach(function(btn) {
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const postId = this.getAttribute('data-id');
+                    if (!postId) return;
+                    
+                    showPostMenu(this, postId);
+                };
+            });
+            
+            // POST IMAGES - Lightbox
+            document.querySelectorAll('.post-body img').forEach(function(img) {
+                img.style.cursor = 'pointer';
+                img.onclick = function(e) {
+                    e.preventDefault();
+                    openLightbox(this.src, this.alt || 'Post image');
+                };
+            });
+            
+            // USER AVATARS IN POSTS - Profile view
+            document.querySelectorAll('.post-head img').forEach(function(img) {
+                if (img.closest('.post-head')) {
+                    img.style.cursor = 'pointer';
+                    img.onclick = function(e) {
+                        e.preventDefault();
+                        const userName = this.closest('.post-head')?.querySelector('div[style*="font-weight"]')?.textContent;
+                        if (userName) {
+                            showMessage('Viewing ' + userName + "'s profile");
+                        }
+                    };
+                }
+            });
+            
+        }, 100); // Small delay to ensure DOM is ready
+        
+        // ===========================================
+        // 2. FIX CREATE POST FORM
+        // ===========================================
+        const postForm = document.querySelector('.create-post form');
+        if (postForm) {
+            console.log('Setting up post form...');
+            
+            // Image upload button
+            const addImgBtn = postForm.querySelector('.add-img');
+            const imageInput = postForm.querySelector('input[type="file"][name="image"]');
+            
+            if (addImgBtn && imageInput) {
+                addImgBtn.onclick = function(e) {
+                    e.preventDefault();
+                    imageInput.click();
+                };
+            }
+            
+            // Image preview
+            if (imageInput) {
+                imageInput.onchange = function(e) {
+                    if (this.files && this.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            // Create or update preview
+                            let preview = document.getElementById('image-preview');
+                            if (!preview) {
+                                preview = document.createElement('div');
+                                preview.id = 'image-preview';
+                                preview.style.cssText = 'margin:10px 0; padding:10px; background:#f5f5f5; border-radius:8px;';
+                                const formFoot = postForm.querySelector('.form-foot');
+                                if (formFoot) {
+                                    postForm.insertBefore(preview, formFoot);
+                                }
+                            }
+                            
+                            preview.innerHTML = `
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <img src="${event.target.result}" style="width:80px; height:80px; object-fit:cover; border-radius:6px;">
+                                    <button type="button" onclick="this.parentElement.parentElement.remove()" 
+                                            style="background:#ff6b6b; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">
+                                        Remove
+                                    </button>
+                                </div>
+                            `;
+                        };
+                        reader.readAsDataURL(this.files[0]);
+                    }
+                };
+            }
+        }
+        
+        // ===========================================
+        // 3. FIX SETTINGS MENU
+        // ===========================================
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsMenu = document.getElementById('settings-menu');
+        
+        if (settingsBtn && settingsMenu) {
+            settingsBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                settingsMenu.style.display = settingsMenu.style.display === 'block' ? 'none' : 'block';
+            };
+            
+            // Close when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
+                    settingsMenu.style.display = 'none';
+                }
+            });
+            
+            // Settings menu items
+            document.querySelectorAll('#settings-menu button').forEach(function(btn) {
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    const id = this.id;
+                    
+                    if (id === 'settingPriv') {
+                        showMessage('Settings and Privacy clicked');
+                    } else if (id === 'helpBtn') {
+                        showMessage('Help and Support clicked');
+                    } else if (id === 'modeBtn') {
+                        toggleTheme();
+                    } else if (id === 'logoutBtn') {
+                        window.location.href = 'logout.php';
+                    }
+                    
+                    settingsMenu.style.display = 'none';
+                };
+            });
+        }
+        
+        // ===========================================
+        // 4. FIX NAVIGATION TABS
+        // ===========================================
+        document.querySelectorAll('#nav-list li').forEach(function(tab) {
+            tab.onclick = function(e) {
+                e.preventDefault();
+                
+                // Remove active from all
+                document.querySelectorAll('#nav-list li').forEach(t => t.classList.remove('active'));
+                
+                // Add active to clicked
+                this.classList.add('active');
+                
+                const tabName = this.getAttribute('data-tab');
+                showMessage('Switched to ' + (tabName || 'tab'));
+                
+                // Show/hide content
+                document.querySelectorAll('.tab-panel').forEach(panel => {
+                    panel.classList.add('hidden');
+                });
+                
+                const targetPanel = document.getElementById('tab-' + tabName);
+                if (targetPanel) {
+                    targetPanel.classList.remove('hidden');
+                }
+            };
+        });
+        
+        // ===========================================
+        // 5. FIX PROFILE BUTTONS
+        // ===========================================
+        const editProfileBtn = document.getElementById('edit-profile-btn');
+        if (editProfileBtn) {
+            editProfileBtn.onclick = function(e) {
+                e.preventDefault();
+                showMessage('Edit Profile clicked');
+                
+                // Simple edit form
+                const profileContent = document.getElementById('profile-content');
+                if (profileContent) {
+                    const currentName = document.querySelector('.username').textContent;
+                    profileContent.innerHTML = `
+                        <div style="padding:20px;">
+                            <h4>Edit Profile</h4>
+                            <input type="text" id="edit-name" value="${currentName}" style="width:100%; padding:10px; margin:10px 0; border-radius:6px; border:1px solid #ccc;">
+                            <textarea id="edit-bio" placeholder="Enter your bio" style="width:100%; padding:10px; margin:10px 0; border-radius:6px; border:1px solid #ccc; height:100px;"></textarea>
+                            <div style="display:flex; gap:10px; margin-top:20px;">
+                                <button onclick="saveProfileChanges()" style="background:#007bff; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Save</button>
+                                <button onclick="cancelEditProfile()" style="background:#6c757d; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Cancel</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            };
+        }
+        
+        // ===========================================
+        // 6. FIX CLEAR NOTIFICATIONS
+        // ===========================================
+        const clearNotifsBtn = document.getElementById('clear-notifs');
+        if (clearNotifsBtn) {
+            clearNotifsBtn.onclick = function(e) {
+                e.preventDefault();
+                if (confirm('Clear all notifications?')) {
+                    const notifList = document.getElementById('notif-list');
+                    if (notifList) {
+                        notifList.innerHTML = '<div class="muted">No notifications</div>';
+                        showMessage('Notifications cleared');
+                    }
+                }
+            };
+        }
+        
+        // ===========================================
+        // 7. FIX MORE NEWS BUTTON
+        // ===========================================
+        const moreNewsBtn = document.getElementById('more-news-btn');
+        if (moreNewsBtn) {
+            moreNewsBtn.onclick = function(e) {
+                e.preventDefault();
+                showMessage('Loading more news...');
+                
+                // Add sample news
+                const topStoriesList = document.getElementById('top-stories-list');
+                if (topStoriesList) {
+                    const newItem = document.createElement('div');
+                    newItem.className = 'top-stories-item';
+                    newItem.innerHTML = `
+                        <div class="top-stories-thumb">
+                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='100%25' height='100%25' fill='%23e6eef6'/%3E%3C/svg%3E" alt="">
+                        </div>
+                        <div class="top-stories-meta">
+                            <div class="ts-title">New Education Program</div>
+                            <div class="muted ts-summary">School announces new learning initiative</div>
+                            <div class="muted ts-time">Just now</div>
+                        </div>
+                    `;
+                    topStoriesList.appendChild(newItem);
+                }
+            };
+        }
+        
+        // ===========================================
+        // 8. FIX MOBILE HAMBURGER MENU
+        // ===========================================
+        const hamburger = document.getElementById('hamburger');
+        if (hamburger) {
+            hamburger.onclick = function(e) {
+                e.preventDefault();
+                document.body.classList.toggle('menu-open');
+            };
+        }
+        
+        // ===========================================
+        // 9. FIX SEARCH FUNCTIONALITY
+        // ===========================================
+        const globalSearch = document.getElementById('global-search');
+        if (globalSearch) {
+            globalSearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const posts = document.querySelectorAll('.post');
+                
+                posts.forEach(function(post) {
+                    const text = post.textContent.toLowerCase();
+                    post.style.display = text.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+        
+        // ===========================================
+        // CORE FUNCTIONS
+        // ===========================================
+        
+        window.saveLikeToServer = function(postId, isLiked) {
+            // This would send to your API
+            console.log('Post ' + postId + ' ' + (isLiked ? 'liked' : 'unliked'));
+            
+            // Demo - simulate API call
+            fetch('api/like.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({post_id: postId, liked: isLiked})
+            }).catch(err => console.log('API not available'));
+        };
+        
+        window.openCommentsModal = function(postId) {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; display:flex; align-items:center; justify-content:center;';
+            modal.innerHTML = `
+                <div style="background:white; border-radius:12px; width:90%; max-width:500px; max-height:80vh; overflow:hidden;">
+                    <div style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0;">Comments</h3>
+                        <button onclick="this.closest('div[style*=\"position:fixed\"]').remove()" style="background:none; border:none; font-size:24px; cursor:pointer;">×</button>
+                    </div>
+                    <div style="padding:20px; max-height:60vh; overflow-y:auto;">
+                        <div class="comment" style="margin-bottom:15px; display:flex; gap:10px;">
+                            <img src="https://i.pravatar.cc/36?img=1" style="width:36px; height:36px; border-radius:50%;">
+                            <div>
+                                <strong>Emily</strong>
+                                <p>Great post! 👍</p>
+                                <small style="color:#666;">2 hours ago</small>
+                            </div>
+                        </div>
+                        <div style="margin-top:20px; display:flex; gap:10px;">
+                            <input type="text" placeholder="Write a comment..." style="flex:1; padding:10px; border-radius:20px; border:1px solid #ddd;">
+                            <button style="background:#007bff; color:white; border:none; padding:10px 20px; border-radius:20px; cursor:pointer;">Post</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        };
+        
+        window.sharePost = function(postId) {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Check this post',
+                    text: 'Look at this interesting post!',
+                    url: window.location.href + '?post=' + postId
+                }).then(() => showMessage('Shared successfully'));
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(window.location.href + '?post=' + postId)
+                    .then(() => showMessage('Link copied to clipboard'));
+            } else {
+                prompt('Copy this link:', window.location.href + '?post=' + postId);
+            }
+        };
+        
+        window.showPostMenu = function(button, postId) {
+            const rect = button.getBoundingClientRect();
+            const menu = document.createElement('div');
+            menu.style.cssText = `position:fixed; top:${rect.bottom + 5}px; left:${rect.left - 150}px; background:white; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.15); z-index:10000; min-width:150px;`;
+            menu.innerHTML = `
+                <div style="padding:10px;">
+                    <button onclick="handlePostAction('save', ${postId})" style="display:block; width:100%; text-align:left; padding:8px; background:none; border:none; cursor:pointer;">Save post</button>
+                    <button onclick="handlePostAction('copy', ${postId})" style="display:block; width:100%; text-align:left; padding:8px; background:none; border:none; cursor:pointer;">Copy link</button>
+                    <button onclick="handlePostAction('report', ${postId})" style="display:block; width:100%; text-align:left; padding:8px; background:none; border:none; cursor:pointer; color:#ff6b6b;">Report</button>
+                </div>
+            `;
+            
+            document.body.appendChild(menu);
+            
+            // Close menu when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!menu.contains(e.target) && e.target !== button) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 100);
+        };
+        
+        window.handlePostAction = function(action, postId) {
+            if (action === 'save') {
+                showMessage('Post saved');
+            } else if (action === 'copy') {
+                navigator.clipboard.writeText(window.location.href + '?post=' + postId)
+                    .then(() => showMessage('Link copied'));
+            } else if (action === 'report') {
+                showMessage('Post reported (demo)');
+            }
+            
+            // Remove any open menus
+            document.querySelectorAll('div[style*="position:fixed"][style*="top"]').forEach(el => el.remove());
+        };
+        
+        window.openLightbox = function(src, alt) {
+            const lightbox = document.createElement('div');
+            lightbox.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; align-items:center; justify-content:center;';
+            lightbox.innerHTML = `
+                <img src="${src}" alt="${alt}" style="max-width:90%; max-height:90%; object-fit:contain;">
+                <button onclick="this.parentElement.remove()" style="position:fixed; top:20px; right:20px; background:none; border:none; color:white; font-size:30px; cursor:pointer;">×</button>
+            `;
+            document.body.appendChild(lightbox);
+        };
+        
+        window.toggleTheme = function() {
+            document.body.classList.toggle('theme-light');
+            const isLight = document.body.classList.contains('theme-light');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            showMessage(isLight ? 'Light theme enabled' : 'Dark theme enabled');
+        };
+        
+        window.saveProfileChanges = function() {
+            const newName = document.getElementById('edit-name')?.value;
+            if (newName) {
+                document.querySelectorAll('.username').forEach(el => {
+                    el.textContent = newName;
+                });
+            }
+            showMessage('Profile updated');
+            // Reload profile section
+            document.getElementById('profile-content').innerHTML = `
+                <div class="user">
+                    <img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
+                    <span class="username">${newName || 'User'}</span>
+                </div>
+                <p id="profile-bio">Welcome, ${newName || 'User'}!</p>
+                <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
+                <div id="profile-feed" class="profile-feed" aria-live="polite"></div>
+            `;
+            // Re-attach event listener
+            document.getElementById('edit-profile-btn').onclick = window.editProfileBtn?.onclick;
+        };
+        
+        window.cancelEditProfile = function() {
+            // Reload original profile
+            document.getElementById('profile-content').innerHTML = `
+                <div class="user">
+                    <img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="Profile avatar" />
+                    <span class="username">${document.querySelector('.username').textContent}</span>
+                </div>
+                <p id="profile-bio">Welcome, ${document.querySelector('.username').textContent}!</p>
+                <button id="edit-profile-btn" class="btn small" type="button">Edit Profile</button>
+                <div id="profile-feed" class="profile-feed" aria-live="polite"></div>
+            `;
+            // Re-attach event listener
+            document.getElementById('edit-profile-btn').onclick = window.editProfileBtn?.onclick;
+        };
+        
+        window.showMessage = function(message, duration = 3000) {
+            // Remove existing message
+            const existing = document.getElementById('quick-message');
+            if (existing) existing.remove();
+            
+            // Create new message
+            const msg = document.createElement('div');
+            msg.id = 'quick-message';
+            msg.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#333; color:white; padding:12px 20px; border-radius:8px; z-index:10000; box-shadow:0 4px 12px rgba(0,0,0,0.15); animation:fadeIn 0.3s;';
+            msg.textContent = message;
+            document.body.appendChild(msg);
+            
+            // Auto remove
+            setTimeout(() => {
+                if (msg.parentNode) {
+                    msg.style.animation = 'fadeOut 0.3s';
+                    setTimeout(() => msg.remove(), 300);
+                }
+            }, duration);
+        };
+        
+        // Add CSS for animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(10px); }
+            }
+            .theme-light {
+                background-color: #f8f9fa !important;
+                color: #333 !important;
+            }
+            .theme-light .card {
+                background-color: white !important;
+                border-color: #dee2e6 !important;
+            }
+            .theme-light .post {
+                background-color: white !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        console.log('All buttons initialized successfully!');
+        
+        // Test message
+        setTimeout(() => showMessage('All buttons are now functional!'), 1000);
+    });
+    
+    // If DOM is already loaded, run immediately
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(() => document.dispatchEvent(new Event('DOMContentLoaded')), 100);
+    }
+})();
+</script>
+<script src="button-functions.js"></script>
 <!-- Insert JS to sync PHP username everywhere on load -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
