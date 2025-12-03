@@ -1,15 +1,12 @@
 <?php
-// START PHP SESSION AND DATABASE CONNECTION
 session_start();
 require_once 'config.php';
 
-// Ensure user is logged in (modify if your flow differs)
 if (!isset($_SESSION['email'])) {
     header('Location: log in.php');
     exit();
 }
 
-// Fetch user info
 $email = $_SESSION['email'];
 $user_sql = "SELECT * FROM echoes WHERE email = ?";
 $stmt = $conn->prepare($user_sql);
@@ -20,35 +17,45 @@ $user = $user_result->fetch_assoc();
 $username = $user['name'] ?? "You";
 $user_id = $user['id'] ?? 0;
 
-// Handle new post submission
 if ($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['content'])) {
     $content = trim($_POST['content']);
-    $image_url = null;
+   // Handle image upload
+$image_url = ''; // Default to empty string instead of null
 
-    // Handle image upload
-    if (isset($_FILES['image']) && $_FILES['image']['size'] > 0) {
-        $img = $_FILES['image'];
-        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-        $ext = strtolower(pathinfo($img['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, $allowed)) {
-            if (!file_exists("uploads")) { mkdir("uploads"); }
-            $filename = "uploads/" . uniqid() . "." . $ext;
-            move_uploaded_file($img['tmp_name'], $filename);
+if (isset($_FILES['image']) && $_FILES['image']['error'] === 0 && $_FILES['image']['size'] > 0) {
+    $img = $_FILES['image'];
+    $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+    $ext = strtolower(pathinfo($img['name'], PATHINFO_EXTENSION));
+    
+    if (in_array($ext, $allowed)) {
+        if (!file_exists("uploads")) { 
+            mkdir("uploads", 0777, true); 
+        }
+        $filename = "uploads/" . uniqid() . "." . $ext;
+        if (move_uploaded_file($img['tmp_name'], $filename)) {
             $image_url = $filename;
         }
     }
-
-    $post_sql = "INSERT INTO posts (user_id, content, image) VALUES (?, ?, ?)";
-    $stmt = $conn->prepare($post_sql);
-    $stmt->bind_param("iss", $user_id, $content, $image_url);
-    $stmt->execute();
-    header("Location: feed.php");
-    exit();
 }
 
-// Fetch posts (latest first)
+$post_sql = "INSERT INTO posts (user_id, content, image) VALUES (?, ?, ?)";
+$stmt = $conn->prepare($post_sql);
+$stmt->bind_param("iss", $user_id, $content, $image_url);
+
+if ($stmt->execute()) {
+    header("Location: feed.php");
+    exit();
+    } else {
+        // Log error but don't show to user
+        error_log("Post insert failed: " . $stmt->error);
+    }
+}
+
+// Fetch posts
 $posts = [];
-$post_sql = "SELECT posts.*, echoes.name FROM posts JOIN echoes ON posts.user_id = echoes.id ORDER BY posts.created_at DESC";
+$post_sql = "SELECT posts.*, echoes.name FROM posts 
+             JOIN echoes ON posts.user_id = echoes.id 
+             ORDER BY posts.created_at DESC";
 $post_result = $conn->query($post_sql);
 while ($row = $post_result->fetch_assoc()) {
     $posts[] = $row;
@@ -63,12 +70,43 @@ while ($row = $post_result->fetch_assoc()) {
   <title>Students Echoes</title>
   <link rel="stylesheet" href="feed.css" />
   <!-- Pass PHP username/email into JS -->
-  <script>
-    window.loggedInUser = {
+  <!-- Pass PHP username/email into JS and set up localStorage profile -->
+<script>
+  window.loggedInUser = {
+    name: <?php echo json_encode($username); ?>,
+    email: <?php echo json_encode($email); ?>,
+    id: <?php echo json_encode($user_id); ?>
+  };
+
+  // Set user profile in localStorage to match PHP logged-in user
+  document.addEventListener('DOMContentLoaded', function() {
+    const userProfile = {
       name: <?php echo json_encode($username); ?>,
-      email: <?php echo json_encode($email); ?>
+      email: <?php echo json_encode($email); ?>,
+      avatar: 'https://i.pravatar.cc/80?u=' + encodeURIComponent(<?php echo json_encode($email); ?>),
+      bio: 'Student at Echoes',
+      joined: '<?php echo date("M Y"); ?>',
+      communitiesJoined: 0,
+      joinedCommunities: []
     };
-  </script>
+
+    // Clear old demo posts if this is a real user
+if (window.loggedInUser && window.loggedInUser.name !== 'Marjohn') {
+  // Optional: Clear localStorage posts to avoid mixing with PHP posts
+  // localStorage.removeItem('amu_posts');
+}
+
+    
+    // Store in localStorage
+    localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    
+    // Update any visible username displays
+    const nameEls = document.querySelectorAll('.username');
+    nameEls.forEach(function(el) {
+      el.textContent = <?php echo json_encode($username); ?>;
+    });
+  });
+</script>
 </head>
 <body>
 <div id="app" class="container">
@@ -147,21 +185,18 @@ while ($row = $post_result->fetch_assoc()) {
 
     <section class="main" id="maincontent" aria-label="Main content">
       <div id="tab-feed" class="card create-post" role="region" aria-label="Create post">
-        <!-- FORM POST: PHP handles this -->
-        <form id="post-form" method="post" enctype="multipart/form-data" style="position:relative;">
-          <div style="position:relative;">
-            <button type="button" id="add-image-btn" class="add-img" aria-label="Add image" aria-controls="post-image" onclick="document.getElementById('post-image').click();">＋</button>
-            <textarea id="post-text" name="content" placeholder="What's on your mind?" rows="3" aria-label="Post text"></textarea>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-          <input id="post-image" name="image" type="file" accept="image/*" style="display:none;" />
-          </div>
-          <img id="preview" class="preview" alt="preview" />
-          <div class="form-foot">
-            <button type="submit" class="btn primary">Post</button>
-          </div>
-        </form>
-      </div>
+  <!-- PHP POST FORM -->
+  <form method="post" enctype="multipart/form-data" style="position:relative;">
+    <div style="position:relative;">
+      <button type="button" class="add-img" aria-label="Add image" onclick="document.getElementById('image-input').click();">＋</button>
+      <textarea name="content" placeholder="What's on your mind?" rows="3" required></textarea>
+    </div>
+    <input id="image-input" name="image" type="file" accept="image/*" style="display:none;" />
+    <div class="form-foot">
+      <button type="submit" class="btn primary">Post</button>
+    </div>
+  </form>
+</div>
       <!-- PHP POSTS FEED -->
       <div id="feed" class="feed-list" aria-live="polite">
         <?php if (empty($posts)): ?>

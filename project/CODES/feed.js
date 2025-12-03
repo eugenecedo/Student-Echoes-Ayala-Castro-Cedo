@@ -1405,8 +1405,50 @@ function initAnonymousPostButton() {
    * Retrieve the saved user profile from localStorage. If none exists, return a demo default.
    * Note: feed.js expects the object format: { name, avatar, bio, joined, communitiesJoined, joinedCommunities }
    */
-  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2, joinedCommunities:[] }; }
-
+ function getUserProfile() { 
+  // First, check if we have a PHP logged-in user via window.loggedInUser
+  if (window.loggedInUser && window.loggedInUser.name) {
+    // Create a profile object from PHP user
+    const phpProfile = {
+      name: window.loggedInUser.name,
+      email: window.loggedInUser.email || '',
+      avatar: 'https://i.pravatar.cc/80?u=' + encodeURIComponent(window.loggedInUser.email || window.loggedInUser.name),
+      bio: 'Student at Echoes',
+      joined: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      communitiesJoined: 0,
+      joinedCommunities: []
+    };
+    
+    // Get existing localStorage profile if any
+    const raw = localStorage.getItem(KEY.PROFILE);
+    if (raw) {
+      try {
+        const existing = JSON.parse(raw);
+        // Merge, keeping PHP name/email but preserving avatar/bio if user customized
+        return {
+          ...existing,
+          name: window.loggedInUser.name,  // Always use PHP username
+          email: window.loggedInUser.email || existing.email
+        };
+      } catch(e) {
+        return phpProfile;
+      }
+    }
+    return phpProfile;
+  }
+  
+  // Fallback to localStorage or default
+  const raw = localStorage.getItem(KEY.PROFILE);
+  if (raw) try { return JSON.parse(raw); } catch(e){}
+  return { 
+    name:'Marjohn', 
+    avatar:'https://i.pravatar.cc/80?img=7', 
+    bio:'Frontend dev. Loves design & coffee.', 
+    joined:'Feb 2024', 
+    communitiesJoined:2, 
+    joinedCommunities:[] 
+  };
+}
   /**
    * setUserProfile(upd)
    * Persist a profile object to localStorage and refresh small UI areas that depend on it.
