@@ -1,21 +1,85 @@
+// Full modified feed.js with Instagram-like profile grid integrated,
+// photos constrained (not scrollable), and TikTok-style comment sheet UI.
+//
+// Changes made (summary):
+// - friends list persisted and made mutable so Add Friend / Unfriend buttons work
+// - friends UI updated to show action buttons in left sidebar and on viewed profiles
+// - small mobile-related fixes: rely on CSS media queries instead of inline hides
 (function(){
+  // KEY: central names for localStorage keys used across the app
   const KEY = {
     CATEGORIES: 'amu_categories',
     POSTS: 'amu_posts',
     NOTIFS: 'amu_notifications',
-    PROFILE: 'userProfile', 
+    PROFILE: 'userProfile', // feed.js reads/writes this to get logged-in user
     THEME: 'theme',
     ANON: 'amu_anonymous_posts',
     LAST_TAB: 'amu_last_tab',
     SETTINGS: 'amu_settings',
     COMMUNITIES: 'amu_communities',
     ANON_PROFILE: 'amu_anon_profile',
-    FRIENDS: 'amu_friends' 
+    FRIENDS: 'amu_friends' // persisted friends
   };
 
+  // ---------------------------------------------------------------------------
+  // Seed / default data: used when localStorage is empty — makes the demo usable
+  // ---------------------------------------------------------------------------
+  const seedFriends = [
+    { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true, isFriend:true },
+    { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true, isFriend:true },
+    { id:3, name:'Jennifer', avatar:'https://i.pravatar.cc/40?img=3', online:false, isFriend:true },
+    { id:4, name:'Anne', avatar:'https://i.pravatar.cc/40?img=4', online:false, isFriend:true },
+    { id:5, name:'Andrew', avatar:'https://i.pravatar.cc/40?img=5', online:true, isFriend:true }
+  ];
+
+  const defaultCategories = [
+    { id:1, name:'Photography' },
+    { id:2, name:'Technology' },
+    { id:3, name:'Lifestyle' },
+    { id:4, name:'Space' }
+  ];
+
+  // Use database posts from window.databasePosts if available
+  let databasePosts = window.databasePosts || [];
+  
+  // Application state (in-memory), persisted to localStorage by saveState()
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
-  let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
+  // Merge database posts with local posts, remove duplicates
+  let localPosts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || [];
+  let posts = [...databasePosts];
+  
+  // Add local posts that don't exist in database (by ID)
+  localPosts.forEach(localPost => {
+    if (!posts.some(dbPost => dbPost.id === localPost.id)) {
+      posts.push(localPost);
+    }
+  });
+  
+  // If no posts at all, use some defaults
+  if (posts.length === 0) {
+    posts = [
+      {
+        id: 101,
+        author: {name: 'Amandine', avatar: 'https://i.pravatar.cc/48?img=12'},
+        createdAt: Date.now() - 5 * 3600 * 1000,
+        text: 'Just took a late walk through the hills. The light was incredible.',
+        image: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=60&auto=format&fit=crop',
+        categoryId: 1,
+        likes: 89,
+        shares: 1,
+        liked: false,
+        comments: [
+          { id: 1001, author: {name: 'Emily', avatar: 'https://i.pravatar.cc/36?img=1'}, text: 'So beautiful!', createdAt: Date.now() - 4.5 * 3600 * 1000, replies: [
+              { id: 1101, author: {name: 'Amandine', avatar: 'https://i.pravatar.cc/48?img=12'}, text: 'Thanks Emily!', createdAt: Date.now() - 4.2 * 3600 * 1000 }
+            ]
+          }
+        ]
+      }
+    ];
+  }
+  
   let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
+  // load friends from storage if present, otherwise use seedFriends
   let friends = JSON.parse(localStorage.getItem(KEY.FRIENDS) || 'null') || seedFriends.slice();
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
   let communities = JSON.parse(localStorage.getItem(KEY.COMMUNITIES) || 'null') || [
@@ -23,7 +87,91 @@
     { id:2, name:'Frontend Developers', members:16, description:'Frontend tips & discussion' }
   ];
   let activeCategoryId = null;
+
+  // NEW: when another user is being "viewed" (stalked), viewedProfileUser holds that user's minimal profile
   let viewedProfileUser = null;
+  
+  // Database API functions
+  const dbAPI = {
+    async likePost(postId) {
+      try {
+        const response = await fetch('api/like_post.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `post_id=${postId}`
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Error liking post:', error);
+        return { success: false };
+      }
+    },
+    
+    async addComment(postId, commentText) {
+      try {
+        const response = await fetch('api/add_comment.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `post_id=${postId}&comment=${encodeURIComponent(commentText)}`
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Error adding comment:', error);
+        return { success: false };
+      }
+    },
+    
+    async getComments(postId) {
+      try {
+        const response = await fetch(`api/get_comments.php?post_id=${postId}`);
+        return await response.json();
+      } catch (error) {
+        console.error('Error getting comments:', error);
+        return { success: false, comments: [] };
+      }
+    }
+  };
+  
+  // Override toggleLike to use database
+  function toggleLike(id){
+    // Update UI immediately for better UX
+    posts = posts.map(p => p.id===id ? {...p, liked: !p.liked, likes: (!p.liked ? (p.likes||0)+1 : Math.max(0,(p.likes||0)-1)) } : p);
+    renderFeed();
+    updateSideBadges();
+    
+    // Sync with database
+    dbAPI.likePost(id).then(result => {
+      if (!result.success) {
+        // Revert if failed
+        posts = posts.map(p => p.id===id ? {...p, liked: !p.liked, likes: (!p.liked ? Math.max(0,(p.likes||0)-1) : (p.likes||0)+1) } : p);
+        renderFeed();
+        toast('Failed to update like');
+      }
+    });
+  }
+  // ---------------------------------------------------------------------------
+  // Application state (in-memory), persisted to localStorage by saveState()
+  // ---------------------------------------------------------------------------
+  let Categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
+  let Posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || (window.dbPosts ? convertDBPosts(window.dbPosts) : defaultPosts);
+  let Notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
+  // load friends from storage if present, otherwise use seedFriends
+  let Friends = JSON.parse(localStorage.getItem(KEY.FRIENDS) || 'null') || seedFriends.slice();
+  let AnonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
+  let Communities = JSON.parse(localStorage.getItem(KEY.COMMUNITIES) || 'null') || [
+    { id:1, name:'UI/UX Designers', members:54, description:'Designers sharing UI patterns' },
+    { id:2, name:'Frontend Developers', members:16, description:'Frontend tips & discussion' }
+  ];
+  let ActiveCategoryId = null;
+
+  // NEW: when another user is being "viewed" (stalked), viewedProfileUser holds that user's minimal profile
+  let ViewedProfileUser = null;
+
+  // Cute anonymous avatars (replaces ABCD letters)
   const ANON_AVATARS = [
     { id: 'anon-1', name: 'Kitty', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#fff7f7'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='#ff6b81'>🐱</text></svg>`) },
     { id: 'anon-2', name: 'Puppy', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#f7fff6'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='#3fb24a'>🐶</text></svg>`) },
@@ -31,7 +179,9 @@
     { id: 'anon-4', name: 'Bunny', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#eef9ff'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='26' fill='#2b9bd6'>🐰</text></svg>`) }
   ];
 
-  
+  // ---------------------------------------------------------------------------
+  // DOM references cached once for performance
+  // ---------------------------------------------------------------------------
   const friendsList = document.getElementById('friends-list');
   const feedEl = document.getElementById('feed');
   const notifList = document.getElementById('notif-list');
@@ -68,7 +218,13 @@
   // keep anonymous preview data in memory while user composes an anon post
   let anonPreviewData = null;
 
-  
+  // ---------------------------------------------------------------------------
+  // Utility helpers
+  // ---------------------------------------------------------------------------
+  /**
+   * saveState()
+   * Persist the in-memory arrays to localStorage so the demo state survives reloads.
+   */
   function saveState(){
     try {
       localStorage.setItem(KEY.CATEGORIES, JSON.stringify(categories));
@@ -82,12 +238,22 @@
     }
   }
 
+  /**
+   * escapeHtml(s)
+   * Simple utility to escape text before inserting into HTML to avoid XSS in this demo.
+   */
   function escapeHtml(s){ if(!s && s!==0) return ''; return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-  
+  /**
+   * timeAgo(ts)
+   * Convert a timestamp in ms to a short human-friendly relative string.
+   */
   function timeAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<10) return 'just now'; if(s<60) return s+'s'; const m=Math.floor(s/60); if(m<60) return m+'m'; const h=Math.floor(m/60); if(h<24) return h+'h'; const d=Math.floor(h/24); if(d<7) return d+'d'; return new Date(ts).toLocaleDateString(); }
 
-
+  /**
+   * debounce(fn, wait)
+   * Returns a debounced version of fn — useful for input events like search.
+   */
   function debounce(fn, wait=220){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
   // ---------------------------------------------------------------------------
@@ -184,6 +350,16 @@
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Modal: accessible dialog helper that returns a Promise for result
+  // ---------------------------------------------------------------------------
+  /**
+   * openModal(options)
+   * options: { title, html, input (bool), placeholder, confirmText, cancelText, width }
+   *
+   * When input=true a textarea is added and the promise resolves with the textarea value
+   * Otherwise it resolves with true when confirm is clicked, null when canceled.
+   */
   function openModal({ title = '', html = '', input = false, placeholder = '', confirmText = 'OK', cancelText = 'Cancel', width = 720 } = {}) {
     return new Promise((resolve) => {
       const prevFocus = document.activeElement;
@@ -286,10 +462,20 @@
       document.addEventListener('keydown', trapFocus);
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Lightbox helper: open an image in a modal
+  // ---------------------------------------------------------------------------
   function openImageLightbox(src, alt='') {
     openModal({ title: '', html: `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" class="lightbox-img" />`, confirmText: 'Close', cancelText: '' , width: 980});
   }
 
+  // ---------------------------------------------------------------------------
+  // COMMENTS (REGULAR POSTS) — TIKTOK-LIKE COMMENTS SHEET
+  // ---------------------------------------------------------------------------
+  // We'll override the original openComments to render a TikTok-style sheet:
+  // - modal-body contains header, a scrollable comment list, and a fixed footer input
+  // - add/like/reply interactions update the in-modal list without closing the modal
   function openComments(postId) {
     const post = posts.find(p => p.id === postId);
     if(!post) return;
@@ -330,6 +516,8 @@
         </div>
       </div>
     `;
+
+    // Use openModal but keep the modal's confirm/close button for dismissing
     openModal({ title: '', html, confirmText: 'Close', cancelText: '' });
 
     const modal = modalRoot.querySelector('.modal');
@@ -337,6 +525,8 @@
     const csList = modal.querySelector('.cs-list');
     const submitBtn = modal.querySelector('#__submitNewComment');
     const newCommentInput = modal.querySelector('#__newCommentInput');
+
+    // helper to re-render comment list inside modal
     function refreshCommentsInModal() {
       const rows = (post.comments || []).map(c => renderCommentRow(c)).join('');
       if(csList) csList.innerHTML = rows || `<div class="muted">No comments yet. Be the first to comment!</div>`;
@@ -372,7 +562,7 @@
         csList.querySelectorAll('.like-comment').forEach(b => {
           b.onclick = (e) => {
             e.stopPropagation();
-           
+            // simple demo: toggle a `liked` flag on comment object if desired — here we just show toast
             toast('Liked comment (demo)');
           };
         });
@@ -402,17 +592,26 @@
   // ---------------------------------------------------------------------------
   // ANONYMOUS COMMENTS — also converted to TikTok-like sheet
   // ---------------------------------------------------------------------------
-  function openAnonComments(anonId) {
-    const post = anonymousPosts.find(p => p.id === anonId);
+    // ---------------------------------------------------------------------------
+  // COMMENTS (REGULAR POSTS) — TIKTOK-LIKE COMMENTS SHEET
+  // ---------------------------------------------------------------------------
+  async function openComments(postId) {
+    const post = posts.find(p => p.id === postId);
     if(!post) return;
+    
+    // Load comments from database
+    const dbComments = await dbAPI.getComments(postId);
+    if (dbComments.success) {
+      post.comments = dbComments.comments;
+    }
 
     function renderCommentRow(c) {
       const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
       return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
+        <img src="${escapeHtml((c.author && c.author.avatar) || 'https://i.pravatar.cc/36')}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px">
-            <strong style="font-size:14px">Anonymous</strong>
+            <strong style="font-size:14px">${escapeHtml((c.author && c.author.name) || 'User')}</strong>
             <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(c.createdAt))}</div>
           </div>
           <div style="margin-top:6px;font-size:14px">${escapeHtml(c.text)}</div>
@@ -436,24 +635,33 @@
           ${commentsHtml || `<div class="muted">No comments yet. Be the first to comment!</div>`}
         </div>
         <div class="cs-footer" style="padding:8px;border-top:1px solid rgba(0,0,0,0.04);display:flex;gap:8px;align-items:center;background:linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0))">
-          <img src="${escapeHtml((ANON_AVATARS[0] && ANON_AVATARS[0].src) || '')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover"/>
-          <input id="__newAnonCommentInput" placeholder="Add a comment..." style="flex:1;padding:10px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:inherit"/>
-          <button id="__submitNewAnonComment" class="btn primary">Post</button>
+          <img src="${escapeHtml(getUserProfile().avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover"/>
+          <input id="__newCommentInput" placeholder="Add a comment..." style="flex:1;padding:10px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:inherit"/>
+          <button id="__submitNewComment" class="btn primary">Post</button>
         </div>
       </div>
     `;
 
+    // Use openModal but keep the modal's confirm/close button for dismissing
     openModal({ title: '', html, confirmText: 'Close', cancelText: '' });
 
     const modal = modalRoot.querySelector('.modal');
     if(!modal) return;
     const csList = modal.querySelector('.cs-list');
-    const submitBtn = modal.querySelector('#__submitNewAnonComment');
-    const newCommentInput = modal.querySelector('#__newAnonCommentInput');
+    const submitBtn = modal.querySelector('#__submitNewComment');
+    const newCommentInput = modal.querySelector('#__newCommentInput');
 
-    function refreshCommentsInModal() {
+    // helper to re-render comment list inside modal
+    async function refreshCommentsInModal() {
+      // Reload from database
+      const dbComments = await dbAPI.getComments(postId);
+      if (dbComments.success) {
+        post.comments = dbComments.comments;
+      }
+      
       const rows = (post.comments || []).map(c => renderCommentRow(c)).join('');
       if(csList) csList.innerHTML = rows || `<div class="muted">No comments yet. Be the first to comment!</div>`;
+      // attach per-row handlers
       if(csList) {
         csList.querySelectorAll('.reply-comment').forEach(b => {
           b.onclick = async (e) => {
@@ -461,10 +669,10 @@
             const cid = Number(b.dataset.cid);
             const comment = (post.comments || []).find(x => x.id === cid);
             if(!comment) return;
-            const reply = await openModal({ title:`Reply (anonymous)`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
+            const reply = await openModal({ title:`Reply to ${escapeHtml((comment.author&&comment.author.name)||'comment')}`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
             if(reply && reply.trim()){
               comment.replies = comment.replies || [];
-              comment.replies.push({ id: Date.now()+Math.floor(Math.random()*99), text: reply.trim(), createdAt: Date.now() });
+              comment.replies.push({ id: Date.now()+Math.floor(Math.random()*99), author: { name: getUserProfile().name, avatar: getUserProfile().avatar }, text: reply.trim(), createdAt: Date.now() });
               saveState();
               refreshCommentsInModal();
               toast('Reply posted');
@@ -477,13 +685,15 @@
             const cid = Number(b.dataset.cid);
             const c = (post.comments || []).find(x=>x.id===cid);
             if(!c || !c.replies || c.replies.length===0) return;
-            const repliesHtml = c.replies.map(r => `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.02)"><div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt||Date.now()))}</span></div><div style="margin-top:6px">${escapeHtml(r.text)}</div></div>`).join('');
+            // show replies in a small modal
+            const repliesHtml = c.replies.map(r => `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.02)"><div style="font-weight:600">${escapeHtml((r.author&&r.author.name)||'Anonymous')} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt||Date.now()))}</span></div><div style="margin-top:6px">${escapeHtml(r.text)}</div></div>`).join('');
             openModal({ title: 'Replies', html: `<div style="max-height:50vh;overflow:auto;padding-right:8px">${repliesHtml}</div>`, confirmText:'Close', cancelText:'' });
           };
         });
         csList.querySelectorAll('.like-comment').forEach(b => {
           b.onclick = (e) => {
             e.stopPropagation();
+            // simple demo: toggle a `liked` flag on comment object if desired — here we just show toast
             toast('Liked comment (demo)');
           };
         });
@@ -493,21 +703,29 @@
     refreshCommentsInModal();
 
     if(submitBtn && newCommentInput) {
-      submitBtn.addEventListener('click', () => {
+      submitBtn.addEventListener('click', async () => {
         const txt = (newCommentInput.value || '').trim();
         if(!txt) { toast('Write a comment first'); return; }
-        const c = { id: Date.now() + Math.floor(Math.random()*99), text: txt, createdAt: Date.now(), replies: [] };
-        post.comments = post.comments || [];
-        post.comments.push(c);
-        saveState();
-        newCommentInput.value = '';
-        refreshCommentsInModal();
-        renderAnonymousRoom();
-        toast('Comment added');
+        
+        // Add to database
+        const result = await dbAPI.addComment(postId, txt);
+        if(result.success) {
+          // Add to local state
+          post.comments = post.comments || [];
+          post.comments.push(result.comment);
+          
+          notifications.unshift({ id: Date.now(), text:'You commented on a post.', createdAt: Date.now(), avatar: getUserProfile().avatar });
+          saveState();
+          newCommentInput.value = '';
+          refreshCommentsInModal();
+          renderFeed(); renderNotifications();
+          toast('Comment added');
+        } else {
+          toast('Failed to add comment');
+        }
       });
     }
   }
-
   // ---------------------------------------------------------------------------
   // Anonymous Room — create, view, comment on anonymous posts
   // (unchanged aside from comment UI updates handled above)
@@ -642,53 +860,70 @@
       feedContainer.innerHTML = anonymousPosts.slice().reverse().map(p => {
         const commentCount = (p.comments && p.comments.length) ? p.comments.length : 0;
         const avatarSrc = p.avatarSrc || (ANON_AVATARS.find(a=>a.id===p.avatarId) || ANON_AVATARS[0]).src;
-        return `<article class="post card" data-aid="${p.id}">
-          <div class="post-head">
-            <img src="${escapeHtml(avatarSrc)}" alt="Anonymous avatar" />
-            <div style="flex:1">
-              <div style="font-weight:600">Anonymous</div>
-              <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(p.createdAt || Date.now()))} • <strong>Anonymous Room</strong></div>
-            </div>
-            <div style="font-size:18px;opacity:.6"><button class="icon-btn menu-btn anon-menu-btn" data-id="${p.id}" title="Post menu" aria-label="Open post actions">${svgMenu()}</button></div>
-          </div>
-          <div class="post-body">
-            <div>${escapeHtml(p.text || '')}</div>
-            ${p.image ? `<img src="${escapeHtml(p.image)}" alt="anonymous image" loading="lazy">` : ''}
-          </div>
-          <div class="post-foot">
-            <div class="actions-row" role="toolbar" aria-label="Anonymous post actions">
-              <button class="action-inline anon-like-btn ${p.liked ? 'liked' : ''}" data-id="${p.id}" aria-pressed="${p.liked ? 'true' : 'false'}" aria-label="Like anonymous post">${svgLike(p.liked ? 'currentColor' : 'none')}<span class="sr-only">Like</span><span class="count" aria-hidden="true">${p.likes||0}</span></button>
-              <button class="action-inline anon-comment-btn" data-id="${p.id}" aria-label="Comment on anonymous post">${svgComment()}<span class="sr-only">Comment</span><span class="count" aria-hidden="true">${commentCount}</span></button>
-              <button class="action-inline anon-share-btn" data-id="${p.id}" aria-label="Share anonymous post">${svgShare()}<span class="sr-only">Share</span><span class="count" aria-hidden="true">${p.shares}</span></button>
-            </div>
-          </div>
-        </article>`;
+        return `<article class="post card" data-id="101">
+  <div class="post-head">
+    <img src="avatar_url" alt="author name" />
+    <div style="flex:1">
+      <div style="font-weight:600">author name</div>
+      <div class="muted" style="font-size:12px">time ago • category</div>
+    </div>
+    <div style="font-size:18px;opacity:.6"><button class="icon-btn menu-btn" data-id="101" title="Post menu" aria-label="Open post actions">...</button></div>
+  </div>
+  <div class="post-body">
+    <div>post text</div>
+    <img src="image_url" alt="post image">
+  </div>
+  <div class="post-foot">
+    <div class="actions-row" role="toolbar" aria-label="Post actions">
+      <button class="action-inline like-btn liked" data-id="101" aria-pressed="true" aria-label="Like post">like icon</button>
+      <button class="action-inline comment-btn" data-id="101" aria-label="Comment on post">comment icon</button>
+      <button class="action-inline share-btn" data-id="101" aria-label="Share post">share icon</button>
+    </div>
+  </div>
+</article>`;
       }).join('');
       // attach handlers
-      feedContainer.querySelectorAll('.post-body img').forEach(img => {
-        img.addEventListener('click', (e) => openImageLightbox(e.currentTarget.getAttribute('src'), 'Anonymous image'));
-      });
+      function attachEventHandlersToFeed() {
+  // Like buttons
+  document.querySelectorAll('.like-btn').forEach(btn => {
+    btn.onclick = function() {
+      const id = Number(btn.dataset.id);
+      toggleLike(id);
+    };
+  });
 
-      feedContainer.querySelectorAll('.anon-like-btn').forEach(b => b.onclick = () => {
-        const id = Number(b.dataset.id);
-        toggleAnonLike(id);
-      });
+  // Comment buttons
+  document.querySelectorAll('.comment-btn').forEach(btn => {
+    btn.onclick = function() {
+      const id = Number(btn.dataset.id);
+      openComments(id);
+    };
+  });
 
-      feedContainer.querySelectorAll('.anon-share-btn').forEach(b => b.onclick = () => {
-        const id = Number(b.dataset.id);
-        shareAnonPost(id);
-      });
+  // Share buttons
+  document.querySelectorAll('.share-btn').forEach(btn => {
+    btn.onclick = function() {
+      const id = Number(btn.dataset.id);
+      sharePost(id);
+    };
+  });
 
-      feedContainer.querySelectorAll('.anon-comment-btn').forEach(b => b.onclick = () => {
-        const id = Number(b.dataset.id);
-        openAnonComments(id);
-      });
+  // Menu buttons
+  document.querySelectorAll('.menu-btn').forEach(btn => {
+    btn.onclick = function(e) {
+      const id = Number(btn.dataset.id);
+      openPostMenu(e.currentTarget, id);
+    };
+  });
 
-      feedContainer.querySelectorAll('.anon-menu-btn').forEach(b => {
-        b.addEventListener('click', (e) => openAnonPostMenu(Number(b.dataset.id)));
-      });
-    }
-
+  // Post images (for lightbox)
+  document.querySelectorAll('.post-body img').forEach(img => {
+    img.onclick = (e) => {
+      const src = e.currentTarget.getAttribute('src');
+      openImageLightbox(src, e.currentTarget.getAttribute('alt') || '');
+    };
+  });
+}
     // Submit anonymous post: collects text + selected avatar + optional image preview
     const form = document.getElementById('anon-create-form');
     if(form) {
@@ -1204,20 +1439,50 @@ function initAnonymousPostButton() {
     r.readAsDataURL(f);
   };
 
-  function createPost(e){
-    if(e && e.preventDefault) e.preventDefault();
-    const text = (postText && postText.value || '').trim();
-    const file = (postImage && postImage.files && postImage.files[0]);
-    const cat = postCategorySelect && postCategorySelect.value ? Number(postCategorySelect.value) : null;
-    if(!text && !file && (!preview || !preview.src)) { toast('Add text or image'); return; }
-    if(file){
-      const fr = new FileReader();
-      fr.onload = (ev) => { actuallyCreatePost(text, ev.target.result, cat); };
-      fr.readAsDataURL(file);
-    } else {
-      actuallyCreatePost(text, (preview && preview.src) || null, cat);
-    }
+ function createPost(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const text = (postText && postText.value || '').trim();
+  const file = (postImage && postImage.files && postImage.files[0]);
+  if (!text && !file && (!preview || !preview.src)) { toast('Add text or image'); return; }
+
+  const formData = new FormData();
+  formData.append('content', text);
+  if (file) {
+    formData.append('image', file);
   }
+
+  fetch('feed.php', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+  .then(response => response.text())
+  .then(html => {
+    // Append the new post to the feed
+    const feedEl = document.getElementById('feed');
+    if (feedEl) {
+      // If there's a "no posts" message, remove it
+      if (feedEl.querySelector('.card[style*="text-align:center"]')) {
+        feedEl.innerHTML = '';
+      }
+      feedEl.insertAdjacentHTML('afterbegin', html);
+      // Attach event handlers to the new post
+      attachEventHandlersToNewPost(html);
+    }
+    // Reset the form
+    postText.value = '';
+    postImage.value = '';
+    preview.src = '';
+    preview.style.display = 'none';
+    toast('Post created');
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    toast('Failed to create post');
+  });
+}
 
   /**
    * actuallyCreatePost(text, image, categoryId)
@@ -2603,12 +2868,12 @@ function initAnonymousPostButton() {
     openProfileView // expose for testing
   };
 
-  function init(){
+      function init(){
     initTheme();
     renderTopRightUser();
     renderFriends();
     renderPostCategoryOptions();
-    renderFeed();
+    renderFeed(); // This should now show database posts
     renderNotifications();
     renderCommunities();
     renderTopStories();
@@ -2620,7 +2885,6 @@ function initAnonymousPostButton() {
     initMobileNav(); 
     initAnonymousPostButton();
     initMobileSearchToggle();
-    restoreTabFromHashOrLast();
     toast('Welcome back!');
   }
 // Mobile Navigation (Hamburger Menu)
@@ -2637,9 +2901,6 @@ function initMobileNav() {
   }
 }
 
-/// ---------------------------------------------------------------------------
-// Mobile Search Toggle
-// ---------------------------------------------------------------------------
 function initMobileSearchToggle() {
     const body = document.body;
     // Target the search icon container for the click event
@@ -2655,5 +2916,5 @@ function initMobileSearchToggle() {
         });
     }
 }
-  init();
+  init()};
 })();

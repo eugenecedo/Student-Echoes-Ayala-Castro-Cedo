@@ -3,7 +3,7 @@ session_start();
 require_once 'config.php';
 
 if (!isset($_SESSION['email'])) {
-    header('Location: log in.php');
+    header('Location: login.php');
     exit();
 }
 
@@ -17,96 +17,125 @@ $user = $user_result->fetch_assoc();
 $username = $user['name'] ?? "You";
 $user_id = $user['id'] ?? 0;
 
+// Handle new post submission
 if ($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['content'])) {
     $content = trim($_POST['content']);
-   // Handle image upload
-$image_url = ''; // Default to empty string instead of null
+    $image_url = null;
 
-if (isset($_FILES['image']) && $_FILES['image']['error'] === 0 && $_FILES['image']['size'] > 0) {
-    $img = $_FILES['image'];
-    $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-    $ext = strtolower(pathinfo($img['name'], PATHINFO_EXTENSION));
-    
-    if (in_array($ext, $allowed)) {
-        if (!file_exists("uploads")) { 
-            mkdir("uploads", 0777, true); 
-        }
-        $filename = "uploads/" . uniqid() . "." . $ext;
-        if (move_uploaded_file($img['tmp_name'], $filename)) {
+    if (isset($_FILES['image']) && $_FILES['image']['size'] > 0) {
+        $img = $_FILES['image'];
+        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+        $ext = strtolower(pathinfo($img['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed)) {
+            if (!file_exists("uploads")) { mkdir("uploads"); }
+            $filename = "uploads/" . uniqid() . "." . $ext;
+            move_uploaded_file($img['tmp_name'], $filename);
             $image_url = $filename;
         }
     }
-}
 
-$post_sql = "INSERT INTO posts (user_id, content, image) VALUES (?, ?, ?)";
-$stmt = $conn->prepare($post_sql);
-$stmt->bind_param("iss", $user_id, $content, $image_url);
-
-if ($stmt->execute()) {
+    $post_sql = "INSERT INTO posts (user_id, content, image) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($post_sql);
+    $stmt->bind_param("iss", $user_id, $content, $image_url);
+    $stmt->execute();
     header("Location: feed.php");
     exit();
-    } else {
-        // Log error but don't show to user
-        error_log("Post insert failed: " . $stmt->error);
-    }
 }
 
-// Fetch posts
+// Fetch posts with user info and like status
 $posts = [];
-$post_sql = "SELECT posts.*, echoes.name FROM posts 
-             JOIN echoes ON posts.user_id = echoes.id 
-             ORDER BY posts.created_at DESC";
-$post_result = $conn->query($post_sql);
+$post_sql = "
+    SELECT posts.*, echoes.name, echoes.email,
+           (SELECT COUNT(*) FROM post_likes WHERE post_id = posts.id) as likes_count,
+           (SELECT COUNT(*) FROM post_comments WHERE post_id = posts.id) as comments_count,
+           EXISTS(SELECT 1 FROM post_likes WHERE post_id = posts.id AND user_id = ?) as user_liked
+    FROM posts 
+    JOIN echoes ON posts.user_id = echoes.id 
+    ORDER BY posts.created_at DESC
+";
+$stmt = $conn->prepare($post_sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$post_result = $stmt->get_result();
+
+// Store posts for JavaScript
+$db_posts_for_js = [];
 while ($row = $post_result->fetch_assoc()) {
     $posts[] = $row;
+    
+    // Format for JavaScript feed.js
+    $db_posts_for_js[] = [
+        'id' => (int)$row['id'],
+        'author' => [
+            'name' => $row['name'],
+            'avatar' => 'https://i.pravatar.cc/48?u=' . urlencode($row['email'])
+        ],
+        'createdAt' => strtotime($row['created_at']) * 1000,
+        'text' => $row['content'],
+        'image' => $row['image'],
+        'categoryId' => 1, // Default category
+        'likes' => (int)$row['likes_count'],
+        'shares' => 0,
+        'liked' => (bool)$row['user_liked'],
+        'comments' => [] // Will be loaded separately
+    ];
 }
-?>
 
-<!doctype html>
+// Fetch comments for each post
+foreach ($db_posts_for_js as &$post) {
+    $comment_sql = "SELECT pc.*, e.name, e.email 
+                    FROM post_comments pc 
+                    JOIN echoes e ON pc.user_id = e.id 
+                    WHERE pc.post_id = ? 
+                    ORDER BY pc.created_at ASC";
+    $stmt = $conn->prepare($comment_sql);
+    $stmt->bind_param("i", $post['id']);
+    $stmt->execute();
+    $comment_result = $stmt->get_result();
+    
+    $comments = [];
+    while ($comment = $comment_result->fetch_assoc()) {
+        $comments[] = [
+            'id' => (int)$comment['id'],
+            'author' => [
+                'name' => $comment['name'],
+                'avatar' => 'https://i.pravatar.cc/36?u=' . urlencode($comment['email'])
+            ],
+            'text' => $comment['comment'],
+            'createdAt' => strtotime($comment['created_at']) * 1000,
+            'replies' => []
+        ];
+    }
+    $post['comments'] = $comments;
+}
+?><!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Students Echoes</title>
   <link rel="stylesheet" href="feed.css" />
-  <!-- Pass PHP username/email into JS -->
-  <!-- Pass PHP username/email into JS and set up localStorage profile -->
-<script>
-  window.loggedInUser = {
-    name: <?php echo json_encode($username); ?>,
-    email: <?php echo json_encode($email); ?>,
-    id: <?php echo json_encode($user_id); ?>
-  };
-
-  // Set user profile in localStorage to match PHP logged-in user
-  document.addEventListener('DOMContentLoaded', function() {
-    const userProfile = {
+  <script>
+    // Pass user info and database posts to JavaScript
+    window.loggedInUser = {
+      id: <?php echo json_encode($user_id); ?>,
       name: <?php echo json_encode($username); ?>,
       email: <?php echo json_encode($email); ?>,
-      avatar: 'https://i.pravatar.cc/80?u=' + encodeURIComponent(<?php echo json_encode($email); ?>),
-      bio: 'Student at Echoes',
-      joined: '<?php echo date("M Y"); ?>',
-      communitiesJoined: 0,
-      joinedCommunities: []
+      avatar: 'https://i.pravatar.cc/80?u=' + encodeURIComponent(<?php echo json_encode($email); ?>)
     };
-
-    // Clear old demo posts if this is a real user
-if (window.loggedInUser && window.loggedInUser.name !== 'Marjohn') {
-  // Optional: Clear localStorage posts to avoid mixing with PHP posts
-  // localStorage.removeItem('amu_posts');
-}
-
     
-    // Store in localStorage
-    localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    // Pass database posts to JavaScript
+    window.databasePosts = <?php echo json_encode($db_posts_for_js); ?>;
     
-    // Update any visible username displays
-    const nameEls = document.querySelectorAll('.username');
-    nameEls.forEach(function(el) {
-      el.textContent = <?php echo json_encode($username); ?>;
-    });
-  });
-</script>
+    // Database API endpoints (will be used by feed.js)
+    window.dbAPI = {
+      baseUrl: window.location.origin + window.location.pathname.replace('feed.php', ''),
+      likePost: 'api/like_post.php',
+      unlikePost: 'api/unlike_post.php',
+      addComment: 'api/add_comment.php',
+      getComments: 'api/get_comments.php'
+    };
+  </script>
 </head>
 <body>
 <div id="app" class="container">
@@ -198,26 +227,150 @@ if (window.loggedInUser && window.loggedInUser.name !== 'Marjohn') {
   </form>
 </div>
       <!-- PHP POSTS FEED -->
-      <div id="feed" class="feed-list" aria-live="polite">
-        <?php if (empty($posts)): ?>
-          <div class="card" style="text-align:center;">No posts yet.</div>
-        <?php else: ?>
-          <?php foreach ($posts as $post): ?>
-            <div class="card post">
-              <div class="post-header">
-                <span class="post-user"><?= htmlspecialchars($post['name']) ?></span>
-                <span class="post-date" style="float:right;font-size:smaller;">
-                  <?= htmlspecialchars(date("M d, Y H:i", strtotime($post['created_at']))) ?>
-                </span>
-              </div>
-              <div class="post-content"><?= nl2br(htmlspecialchars($post['content'])) ?></div>
-              <?php if (!empty($post['image'])): ?>
-                <div class="post-image"><img src="<?= htmlspecialchars($post['image']) ?>" style="max-width:100%;height:auto;" /></div>
-              <?php endif; ?>
-            </div>
-          <?php endforeach; ?>
-        <?php endif; ?>
-      </div>
+     <div id="feed" class="feed-list" aria-live="polite">
+  <?php if (empty($posts)): ?>
+    <div class="card" style="text-align:center;">No posts yet.</div>
+  <?php else: ?>
+    <?php foreach ($posts as $post): 
+      // Compute time ago
+      $created_at = strtotime($post['created_at']);
+      $time_ago = time() - $created_at;
+      if ($time_ago < 60) {
+        $time_ago_str = $time_ago . 's';
+      } elseif ($time_ago < 3600) {
+        $time_ago_str = floor($time_ago / 60) . 'm';
+      } elseif ($time_ago < 86400) {
+        $time_ago_str = floor($time_ago / 3600) . 'h';
+      } elseif ($time_ago < 604800) {
+        $time_ago_str = floor($time_ago / 86400) . 'd';
+      } else {
+        $time_ago_str = date('M d, Y', $created_at);
+      }
+
+      // Default category (we don't have categories in the database yet)
+      $category = 'Uncategorized';
+
+      // Default likes, shares, liked
+      $likes = 0;
+      $shares = 0;
+      $liked = false;
+
+      // Check if the post has an image
+      $image_html = '';
+      if (!empty($post['image'])) {
+        $image_html = '<img src="' . htmlspecialchars($post['image']) . '" alt="post image" loading="lazy">';
+      }
+    ?>
+      <article class="post card" data-id="<?php echo $post['id']; ?>">
+        <div class="post-head">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="<?php echo htmlspecialchars($post['name']); ?>" />
+          <div style="flex:1">
+            <div style="font-weight:600"><?php echo htmlspecialchars($post['name']); ?></div>
+            <div class="muted" style="font-size:12px"><?php echo $time_ago_str; ?> • <strong><?php echo $category; ?></strong></div>
+          </div>
+          <div style="font-size:18px;opacity:.6">
+            <button class="icon-btn menu-btn" data-id="<?php echo $post['id']; ?>" title="Post menu" aria-label="Open post actions">
+              <!-- SVG for menu -->
+              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
+                <circle cx="6" cy="12" r="2"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+                <circle cx="18" cy="12" r="2"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="post-body">
+          <div><?php echo nl2br(htmlspecialchars($post['content'])); ?></div>
+          <?php echo $image_html; ?>
+        </div>
+        <div class="post-foot">
+          <div class="actions-row" role="toolbar" aria-label="Post actions">
+            <button class="action-inline like-btn <?php echo $liked ? 'liked' : ''; ?>" data-id="<?php echo $post['id']; ?>" aria-pressed="<?php echo $liked ? 'true' : 'false'; ?>" aria-label="Like post">
+              <!-- Like SVG -->
+              <svg viewBox="0 0 24 24" fill="<?php echo $liked ? 'currentColor' : 'none'; ?>" stroke="currentColor" aria-hidden="true">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.69l-1.06-1.08a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+              <span class="sr-only">Like</span>
+              <span class="count" aria-hidden="true"><?php echo $likes; ?></span>
+            </button>
+
+            <button class="action-inline comment-btn" data-id="<?php echo $post['id']; ?>" aria-label="Comment on post">
+              <!-- Comment SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span class="sr-only">Comment</span>
+              <span class="count" aria-hidden="true">0</span> <!-- We don't have comments in the database yet -->
+            </button>
+
+            <button class="action-inline share-btn" data-id="<?php echo $post['id']; ?>" aria-label="Share post">
+              <!-- Share SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              </svg>
+              <span class="sr-only">Share</span>
+              <span class="count" aria-hidden="true"><?php echo $shares; ?></span>
+            </button>
+          </div>
+        </div>
+      </article>
+    <?php endforeach; ?>
+  <?php endif; ?>
+</div>
+      <article class="post card" data-id="<?php echo $post['id']; ?>">
+        <div class="post-head">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="<?php echo htmlspecialchars($post['name']); ?>" />
+          <div style="flex:1">
+            <div style="font-weight:600"><?php echo htmlspecialchars($post['name']); ?></div>
+            <div class="muted" style="font-size:12px"><?php echo $time_ago_str; ?> • <strong><?php echo $category; ?></strong></div>
+          </div>
+          <div style="font-size:18px;opacity:.6">
+            <button class="icon-btn menu-btn" data-id="<?php echo $post['id']; ?>" title="Post menu" aria-label="Open post actions">
+              <!-- SVG for menu -->
+              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
+                <circle cx="6" cy="12" r="2"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+                <circle cx="18" cy="12" r="2"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="post-body">
+          <div><?php echo nl2br(htmlspecialchars($post['content'])); ?></div>
+          <?php echo $image_html; ?>
+        </div>
+        <div class="post-foot">
+          <div class="actions-row" role="toolbar" aria-label="Post actions">
+            <button class="action-inline like-btn <?php echo $liked ? 'liked' : ''; ?>" data-id="<?php echo $post['id']; ?>" aria-pressed="<?php echo $liked ? 'true' : 'false'; ?>" aria-label="Like post">
+              <!-- Like SVG -->
+              <svg viewBox="0 0 24 24" fill="<?php echo $liked ? 'currentColor' : 'none'; ?>" stroke="currentColor" aria-hidden="true">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.69l-1.06-1.08a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+              <span class="sr-only">Like</span>
+              <span class="count" aria-hidden="true"><?php echo $likes; ?></span>
+            </button>
+
+            <button class="action-inline comment-btn" data-id="<?php echo $post['id']; ?>" aria-label="Comment on post">
+              <!-- Comment SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span class="sr-only">Comment</span>
+              <span class="count" aria-hidden="true">0</span> <!-- We don't have comments in the database yet -->
+            </button>
+
+            <button class="action-inline share-btn" data-id="<?php echo $post['id']; ?>" aria-label="Share post">
+              <!-- Share SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              </svg>
+              <span class="sr-only">Share</span>
+              <span class="count" aria-hidden="true"><?php echo $shares; ?></span>
+            </button>
+          </div>
+        </div>
+      </article>
+</div>
 
       <div id="tab-news" class="card tab-panel hidden"><h4>Latest News</h4><div id="news-content" class="muted">Loading news…</div></div>
 
