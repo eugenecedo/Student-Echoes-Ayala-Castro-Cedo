@@ -2677,6 +2677,22 @@
     restoreTabFromHashOrLast();
     toast('Welcome back!');
   }
+     // Function to handle logout from any button/link
+function attachDelegatedLogout() {
+  // We use event delegation to find all elements with the 'data-action="logout"' attribute
+  document.addEventListener('click', (e) => {
+    // Check if the clicked element has the logout data attribute
+    if (e.target.closest('[data-action="logout"]')) {
+      e.preventDefault(); // Stop any default link behavior
+
+      // 1. Remove the saved login state
+      localStorage.removeItem("loggedInUser");
+      
+      // 2. Redirect the user back to the login page
+      window.location.href = "login.html";
+    }
+  });
+}
 // Mobile Navigation (Hamburger Menu)
 function initMobileNav() {
   const body = document.body;
@@ -2698,6 +2714,7 @@ function initMobileSearchToggle() {
     const body = document.body;
     // Target the search icon container for the click event
     const searchIconContainer = document.querySelector('#app .topbar .center-search');
+ 
     
     if (searchIconContainer) {
         searchIconContainer.addEventListener('click', (event) => {
