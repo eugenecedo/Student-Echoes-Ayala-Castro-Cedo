@@ -317,60 +317,6 @@ foreach ($db_posts_for_js as &$post) {
     <?php endforeach; ?>
   <?php endif; ?>
 </div>
-      <article class="post card" data-id="<?php echo $post['id']; ?>">
-        <div class="post-head">
-          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E" alt="<?php echo htmlspecialchars($post['name']); ?>" />
-          <div style="flex:1">
-            <div style="font-weight:600"><?php echo htmlspecialchars($post['name']); ?></div>
-            <div class="muted" style="font-size:12px"><?php echo $time_ago_str; ?> • <strong><?php echo $category; ?></strong></div>
-          </div>
-          <div style="font-size:18px;opacity:.6">
-            <button class="icon-btn menu-btn" data-id="<?php echo $post['id']; ?>" title="Post menu" aria-label="Open post actions">
-              <!-- SVG for menu -->
-              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
-                <circle cx="6" cy="12" r="2"></circle>
-                <circle cx="12" cy="12" r="2"></circle>
-                <circle cx="18" cy="12" r="2"></circle>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="post-body">
-          <div><?php echo nl2br(htmlspecialchars($post['content'])); ?></div>
-          <?php echo $image_html; ?>
-        </div>
-        <div class="post-foot">
-          <div class="actions-row" role="toolbar" aria-label="Post actions">
-            <button class="action-inline like-btn <?php echo $liked ? 'liked' : ''; ?>" data-id="<?php echo $post['id']; ?>" aria-pressed="<?php echo $liked ? 'true' : 'false'; ?>" aria-label="Like post">
-              <!-- Like SVG -->
-              <svg viewBox="0 0 24 24" fill="<?php echo $liked ? 'currentColor' : 'none'; ?>" stroke="currentColor" aria-hidden="true">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.69l-1.06-1.08a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path>
-              </svg>
-              <span class="sr-only">Like</span>
-              <span class="count" aria-hidden="true"><?php echo $likes; ?></span>
-            </button>
-
-            <button class="action-inline comment-btn" data-id="<?php echo $post['id']; ?>" aria-label="Comment on post">
-              <!-- Comment SVG -->
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
-              <span class="sr-only">Comment</span>
-              <span class="count" aria-hidden="true">0</span> <!-- We don't have comments in the database yet -->
-            </button>
-
-            <button class="action-inline share-btn" data-id="<?php echo $post['id']; ?>" aria-label="Share post">
-              <!-- Share SVG -->
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-              </svg>
-              <span class="sr-only">Share</span>
-              <span class="count" aria-hidden="true"><?php echo $shares; ?></span>
-            </button>
-          </div>
-        </div>
-      </article>
-</div>
 
       <div id="tab-news" class="card tab-panel hidden"><h4>Latest News</h4><div id="news-content" class="muted">Loading news…</div></div>
 
