@@ -47,7 +47,7 @@
           <button id="settingPriv" role="menuitem" class="btn small setting-priv" style="width:100%;text-align:left;" type="button">Settings and Privacy</button>
           <button id="helpBtn" role="menuitem" class="btn small help-btn" style="width:100%;text-align:left;" type="button">Help and Support</button>
           <button id="modeBtn" role="menuitem" class="btn small mode-btn" style="width:100%;text-align:left;" type="button">Mode</button>
-          <button id="logoutBtn" role="menuitem" class="btn small logout-btn" style="width:100%;text-align:left;" type="button">Logout</button>
+          <button id="logoutBtn" data-action="logout" class="btn small logout-btn" type="button">Log Out</button>
         </div>
       </div>
     </div>
@@ -62,23 +62,10 @@
           <li class="active" data-tab="feed" role="tab" tabindex="0" aria-selected="true">Feed</li>
           <li data-tab="news" role="tab" tabindex="-1" aria-selected="false">News</li>
           <li data-tab="profile" role="tab" tabindex="-1" aria-selected="false">Profile</li>
-
-          <li data-tab="write" role="tab" tabindex="-1" aria-selected="false">
-            <button class="nav-write" aria-label="Write a Story" title="Write a Story (Cmd/Ctrl+K)" type="button">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" style="margin-right:8px">
-                <path d="M3 21v-3l11-11 3 3L6 21H3z"></path>
-                <path d="M14 7l3 3"></path>
-              </svg>
-              <span class="nav-write-label">Write Post</span>
-            </button>
-          </li>
-
-          <li data-tab="mystories" role="tab" tabindex="-1" aria-selected="false">My Stories</li>
           <li data-tab="trending" role="tab" tabindex="-1" aria-selected="false">Trending</li>
           <li data-tab="anonymous" role="tab" tabindex="-1" aria-selected="false">Anonymous Room</li>
         </ul>
       </nav>
-
       <div class="card friends" aria-label="Friends list">
         <h4>Friends</h4>
         <div id="friends-list" aria-live="polite"></div>
@@ -131,9 +118,6 @@
 
           </div>
       </div>
-
-      <div id="tab-write" class="card tab-panel hidden"><h4>Write a Story</h4><div id="write-content" class="muted"></div></div>
-      <div id="tab-mystories" class="card tab-panel hidden"><h4>My Stories</h4><div id="mystories-content" class="muted"></div></div>
       <div id="tab-trending" class="card tab-panel hidden"><h4>Trending</h4><div id="trending-content" class="muted"></div></div>
       <div id="tab-anonymous" class="card tab-panel hidden">
         <h4>Anonymous Room</h4>

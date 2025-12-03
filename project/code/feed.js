@@ -2103,73 +2103,6 @@
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Write story, My stories, Trending renderers (smaller helpers)
-  // ---------------------------------------------------------------------------
-  function renderWrite(){
-    const el = document.getElementById('write-content');
-    if(!el) return;
-    el.innerHTML = `
-      <form id="writeStoryForm" style="display:flex;flex-direction:column;gap:8px;">
-        <input name="title" placeholder="Story title" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"/>
-        <textarea name="body" rows="8" placeholder="Write your story..." style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select name="category" id="write-category-select" style="padding:6px;border-radius:6px;">
-            <option value="">— None —</option>
-            ${categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
-          </select>
-          <button class="btn primary" type="submit">Publish Story</button>
-        </div>
-      </form>
-    `;
-    const form = document.getElementById('writeStoryForm');
-    form.onsubmit = (e) => {
-      e.preventDefault();
-      const fd = new FormData(form);
-      const title = (fd.get('title')||'').trim();
-      const body = (fd.get('body')||'').trim();
-      const categoryId = fd.get('category') ? Number(fd.get('category')) : null;
-      if(!title && !body){ toast('Write something first'); return; }
-      const u = getUserProfile();
-      const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: (title ? `# ${title}\n\n${body}` : body), image: null, categoryId, likes:0, comments:[], shares:0, liked:false };
-      posts.unshift(p);
-      notifications.unshift({ id:Date.now(), text:'You published a story.', createdAt: Date.now(), avatar:u.avatar });
-      saveState(); renderFeed(); renderNotifications();
-      toast('Story published');
-      setActiveTab('mystories');
-    };
-  }
-
-  function renderMyStories(){
-    const el = document.getElementById('mystories-content');
-    if(!el) return;
-    const u = getUserProfile();
-    const mine = posts.filter(p => p.author.name === u.name);
-    if(mine.length===0){ el.innerHTML = `<div class="muted">You haven't published any stories yet.</div>`; return; }
-    el.innerHTML = '';
-    mine.forEach(p => {
-      const row = document.createElement('div'); row.style.marginBottom='12px';
-      row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:700">${escapeHtml((p.text||'').split('\n')[0].replace(/^#\s*/,''))}</div><div class="muted" style="font-size:12px">${escapeHtml(timeAgo(p.createdAt))}</div></div><div><button class="btn small edit-story" data-id="${p.id}">Edit</button><button class="btn small delete-story" data-id="${p.id}" style="margin-left:8px">Delete</button></div></div><div style="margin-top:6px">${escapeHtml((p.text||'').split('\n').slice(1).join('\n').slice(0,350))}</div>`;
-      el.appendChild(row);
-    });
-    el.querySelectorAll('.edit-story').forEach(b => b.onclick = async () => {
-      const id = Number(b.dataset.id);
-      const post = posts.find(x=>x.id===id);
-      if(!post) return;
-      const newText = await openModal({ title:'Edit story', input:true, placeholder:'Edit story (markdown ok)', confirmText:'Save' , html: escapeHtml(post.text||'')});
-      if(newText === null) return;
-      posts = posts.map(pp => pp.id===id ? {...pp, text: newText} : pp);
-      saveState(); renderMyStories(); renderFeed();
-      toast('Story updated');
-    });
-    el.querySelectorAll('.delete-story').forEach(b => b.onclick = () => {
-      const id = Number(b.dataset.id);
-      if(!confirm('Delete this story?')) return;
-      posts = posts.filter(x=>x.id!==id);
-      saveState(); renderMyStories(); renderFeed();
-      toast('Story deleted');
-    });
-  }
 
   function renderTrending(){
     const el = document.getElementById('trending-content');
@@ -2677,6 +2610,22 @@
     restoreTabFromHashOrLast();
     toast('Welcome back!');
   }
+     // Function to handle logout from any button/link
+function attachDelegatedLogout() {
+  // We use event delegation to find all elements with the 'data-action="logout"' attribute
+  document.addEventListener('click', (e) => {
+    // Check if the clicked element has the logout data attribute
+    if (e.target.closest('[data-action="logout"]')) {
+      e.preventDefault(); // Stop any default link behavior
+
+      // 1. Remove the saved login state
+      localStorage.removeItem("loggedInUser");
+      
+      // 2. Redirect the user back to the login page
+      window.location.href = "login.html";
+    }
+  });
+}
 // Mobile Navigation (Hamburger Menu)
 function initMobileNav() {
   const body = document.body;
@@ -2697,6 +2646,7 @@ function initMobileNav() {
 function initMobileSearchToggle() {
     const body = document.body;
     const searchIconContainer = document.querySelector('#app .topbar .center-search');
+ 
     const searchInput = document.getElementById('global-search');
     
     if (searchIconContainer && searchInput) {
