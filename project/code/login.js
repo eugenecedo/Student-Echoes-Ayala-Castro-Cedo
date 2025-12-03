@@ -39,7 +39,15 @@ document.getElementById('login-form').addEventListener('submit', function (e) {
         return showError("Please enter both email and password.");
     }
 
-    showSuccess("Logged in successfully! (Simulated)");
+    // 1. Save the "logged in" state so the Feed page lets you in
+    localStorage.setItem("loggedInUser", email);
+
+    showSuccess("Logged in successfully! Redirecting...");
+
+    // 2. Redirect to feed.html after a short delay (so user sees the success message)
+    setTimeout(() => {
+        window.location.href = "feed.html";
+    }, 1000); 
 });
 
 // REGISTER FORM EVENT

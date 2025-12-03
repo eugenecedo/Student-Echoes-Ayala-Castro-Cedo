@@ -109,27 +109,6 @@
   // If not logged in, do nothing (stay on this page to let them log in)
 </script>
 
-  <script>
-  // Attach listener to login form
-  document.getElementById("login-form").addEventListener("submit", function(e) {
-    e.preventDefault(); // stop normal form submission
-
-    const email = document.getElementById("login-email").value;
-    const password = document.getElementById("login-password").value;
-
-    // Example: simple check (replace with your own logic)
-    if (email === "test@example.com" && password === "1234") {
-      // Save "logged in" state in localStorage
-      localStorage.setItem("loggedInUser", email);
-
-      // Redirect to feed.html
-      window.location.href = "feed.html";
-    } else {
-      alert("Invalid login!");
-    }
-  });
-</script>
-
 
   <!-- External JavaScript -->
   <script src="login.js"></script>
