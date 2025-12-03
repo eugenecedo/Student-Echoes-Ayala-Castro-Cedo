@@ -1124,7 +1124,6 @@ function initAnonymousPostButton() {
     const commonActionsHtml = `
       <div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn small" id="pm-save">Save post</button>
-        <button class="btn small" id="pm-delete">Delete</button>
         <button class="btn small" id="pm-copy">Copy link</button>
         <button class="btn small" id="pm-report" style="background:rgba(255,75,75,0.06)">Report</button>
       </div>
