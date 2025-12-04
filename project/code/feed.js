@@ -61,34 +61,6 @@
     }
   ];
 
-  // Hamburger menu functionality
-const hamburger = document.getElementById('hamburger');
-const body = document.body;
-
-if (hamburger) {
-    hamburger.addEventListener('click', () => {
-        body.classList.toggle('menu-open');
-        hamburger.setAttribute('aria-expanded', body.classList.contains('menu-open'));
-    });
-    
-    // Close menu when clicking outside or on a link
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.left') && !e.target.closest('#hamburger') && body.classList.contains('menu-open')) {
-            body.classList.remove('menu-open');
-            hamburger.setAttribute('aria-expanded', false);
-        }
-    });
-    
-    // Close menu when clicking a nav item
-    const navItems = document.querySelectorAll('.left .navcard li');
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            body.classList.remove('menu-open');
-            hamburger.setAttribute('aria-expanded', false);
-        });
-    });
-}
-
   // state (persisted)
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
@@ -184,15 +156,6 @@ if (hamburger) {
       </svg>
     `;
   }
-  function resetPostForm() {
-  if(postText) postText.value = '';
-  if(postImage) postImage.value = '';
-  if(preview) {
-    preview.src = '';
-    preview.style.display = 'none';
-  }
-  if(postCategorySelect) postCategorySelect.value = '';
-}
 
   // -- toast (small notification) --
   function toast(message, opts = {}) {
@@ -1135,71 +1098,39 @@ if (hamburger) {
   // post creation & preview for regular posts
   if(addImageBtn) addImageBtn.onclick = () => postImage && postImage.click();
   if(postImage) postImage.onchange = (e) => {
-  const f = e.target.files && e.target.files[0];
-  if(!f){ 
-    if(preview){ 
-      preview.style.display='none'; 
-      preview.src=''; 
-    } 
-    return; 
-  }
-  const r = new FileReader();
-  r.onload = (ev) => { 
-    if(preview){ 
-      preview.src = ev.target.result; 
-      preview.style.display='block'; 
-    } 
+    const f = e.target.files && e.target.files[0];
+    if(!f){ if(preview){ preview.style.display='none'; preview.src=''; } return; }
+    const r = new FileReader();
+    r.onload = (ev) => { if(preview){ preview.src = ev.target.result; preview.style.display='block'; } };
+    r.readAsDataURL(f);
   };
-  r.readAsDataURL(f);
-};
 
   function createPost(e){
-  if(e && e.preventDefault) e.preventDefault();
-  const text = (postText && postText.value || '').trim();
-  const file = (postImage && postImage.files && postImage.files[0]);
-  const cat = postCategorySelect && postCategorySelect.value ? Number(postCategorySelect.value) : null;
-  
-  // Check if there's text or a file
-  if(!text && !file) {
-    toast('Add text or image');
-    return;
+    if(e && e.preventDefault) e.preventDefault();
+    const text = (postText && postText.value || '').trim();
+    const file = (postImage && postImage.files && postImage.files[0]);
+    const cat = postCategorySelect && postCategorySelect.value ? Number(postCategorySelect.value) : null;
+    if(!text && !file && (!preview || !preview.src)) { toast('Add text or image'); return; }
+    if(file){
+      const fr = new FileReader();
+      fr.onload = (ev) => { actuallyCreatePost(text, ev.target.result, cat); };
+      fr.readAsDataURL(file);
+    } else {
+      actuallyCreatePost(text, (preview && preview.src) || null, cat);
+    }
   }
-  
-  if(file){
-    const fr = new FileReader();
-    fr.onload = (ev) => { actuallyCreatePost(text, ev.target.result, cat); };
-    fr.readAsDataURL(file);
-  } else {
-    // Only pass null for image if there's no file selected
-    actuallyCreatePost(text, null, cat);
-  }
-}
 
   function actuallyCreatePost(text, image, categoryId){
-  const u = getUserProfile();
-  const p = { 
-    id: Date.now(), 
-    author:{name:u.name, avatar:u.avatar}, 
-    createdAt: Date.now(), 
-    text: text, 
-    image: image,  // Will be null if no image
-    categoryId: categoryId, 
-    likes:0, 
-    comments: [], 
-    shares:0, 
-    liked:false 
-  };
-  
-  posts.unshift(p);
-  notifications.unshift({id:Date.now(), text:'You posted to the feed.', createdAt: Date.now(), avatar:u.avatar});
-  
-  resetPostForm(); // Use the helper function
-  
-  saveState(); 
-  renderFeed(); 
-  renderNotifications();
-  toast('Posted to your feed');
-}
+    const u = getUserProfile();
+    const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: text, image: image, categoryId: categoryId, likes:0, comments: [], shares:0, liked:false };
+    posts.unshift(p);
+    notifications.unshift({id:Date.now(), text:'You posted to the feed.', createdAt: Date.now(), avatar:u.avatar});
+    if(postText) postText.value=''; if(postImage) postImage.value=''; if(preview) { preview.src=''; preview.style.display='none'; }
+    if(postCategorySelect) postCategorySelect.value='';
+    saveState(); renderFeed(); renderNotifications();
+    toast('Posted to your feed');
+  }
+
   if(postForm) postForm.onsubmit = createPost;
   if(newCategoryBtn) newCategoryBtn.onclick = addCategoryPrompt;
 
@@ -2262,27 +2193,22 @@ if (hamburger) {
 
   // initialization
   function init(){
-  initTheme();
-  renderTopRightUser();
-  renderFriends();
-  renderPostCategoryOptions();
-  renderFeed();
-  renderNotifications();
-  renderCommunities();
-  renderTopStories();
-  renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
-  initNavAccessibility();
-  restoreTabFromHashOrLast();
-  initProfileIconShortcut();
-  attachDelegatedLogout();
-  
-  // Initialize hamburger menu
-  if (document.getElementById('hamburger')) {
-    body.classList.remove('menu-open');
+    initTheme();
+    renderTopRightUser();
+    renderFriends();
+    renderPostCategoryOptions();
+    renderFeed();
+    renderNotifications();
+    renderCommunities();
+    renderTopStories();
+    renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
+    initNavAccessibility();
+    restoreTabFromHashOrLast();
+    initProfileIconShortcut();
+    attachDelegatedLogout();
+    toast('Welcome back!');
   }
-  
-  toast('Welcome back!');
-}
+
   // Function to handle logout from any button/link
 function attachDelegatedLogout() {
   // We use event delegation to find all elements with the 'data-action="logout"' attribute

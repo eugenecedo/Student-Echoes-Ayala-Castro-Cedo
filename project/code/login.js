@@ -39,15 +39,24 @@ document.getElementById('login-form').addEventListener('submit', function (e) {
         return showError("Please enter both email and password.");
     }
 
-    localStorage.setItem("loggedInUser", email);
+    // Get user profile if exists, or create one
+    let userProfile = JSON.parse(localStorage.getItem("userProfile") || 'null');
     
-    // ✔ Store profile for feed.js
-    const name = localStorage.getItem("registeredName");
-    localStorage.setItem("userProfile", JSON.stringify({
-        name: name || "New User",
-        avatar: "https://i.pravatar.cc/80",
-    }));
-
+    if (!userProfile) {
+        // Create new profile with default avatar
+        const name = localStorage.getItem("registeredName") || email.split('@')[0];
+        userProfile = {
+            name: name,
+            avatar: "https://i.pravatar.cc/80?img=" + Math.floor(Math.random() * 70), // Random but consistent avatar
+            bio: "",
+            joined: new Date().toLocaleDateString(),
+            communitiesJoined: 0,
+            joinedCommunities: []
+        };
+        localStorage.setItem("userProfile", JSON.stringify(userProfile));
+    }
+    
+    localStorage.setItem("loggedInUser", email);
     showSuccess("Logged in successfully! Redirecting...");
 
     setTimeout(() => {
@@ -70,12 +79,22 @@ document.getElementById('register-form').addEventListener('submit', function (e)
         return showError("Please fill up all fields correctly.");
     }
 
-    // ✔ Save new user profile info
+    // Create user profile with consistent avatar
+    const avatarNumber = Math.floor(Math.random() * 70); // Random number 0-69
+    const userProfile = {
+        name: name,
+        avatar: "https://i.pravatar.cc/80?img=" + avatarNumber,
+        bio: "",
+        joined: new Date().toLocaleDateString(),
+        communitiesJoined: 0,
+        joinedCommunities: []
+    };
+
+    localStorage.setItem("userProfile", JSON.stringify(userProfile));
     localStorage.setItem("registeredName", name);
     localStorage.setItem("registeredEmail", email);
 
-    showSuccess("Account created! (Simulated)");
-
+    showSuccess("Account created successfully!");
     showForm("login-form");
 });
 
