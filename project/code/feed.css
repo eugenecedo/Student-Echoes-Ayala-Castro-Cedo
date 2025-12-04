@@ -170,7 +170,7 @@ main {
         padding: 0 !important;
         max-width: 100% !important;
     }
-    
+
     /* 17. Card adjustments */
     .card {
         padding: 12px !important;
@@ -216,11 +216,11 @@ main {
     .hamburger {
         display: none !important;
     }
-    
     /* 5. Adjust main content */
     .main {
         width: 100% !important;
     }
+
     
     /* 6. Search bar adjustments */
     .center-search {
