@@ -40,40 +40,228 @@ main {
 /* On desktop, the main section may use CSS Grid, so we only need to ensure 
    the central section doesn't have extra padding that pushes the content in. */
 /* --- feed.css: FINAL Mobile Alignment Fix (Targeting 768px or less) --- */
+/* ======================================================================
+   FINAL MOBILE LAYOUT (Applies ONLY when screen is <= 768px wide)
+   ====================================================================== */
 @media (max-width: 768px) {
-    
-    /* 1. Force the main content area to respect the padding set in step 2 */
-    main {
-        padding-left: 18px !important;
-        padding-right: 18px !important;
+    /* 1. FORCE TOPBAR TO BE FLEXIBLE */
+    #app .topbar { 
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 8px !important; 
+        padding: 0 10px !important;
     }
 
-    /* 2. Pull the header icons *inward* by overriding their edge-alignment.
-       (We are targeting the sections where the icons usually live) */
-    .topbar .hamburger,
-    .topbar .top-right-section { 
-        /* The !important flag is used to override any negative margin or absolute positioning 
-           that might be pushing them past the 18px boundary. */
-        margin-left: initial !important; 
-        margin-right: initial !important;
-        /* Reset any conflicting width or position properties */
-        position: initial !important;
+    /* 2. Show hamburger menu */
+    #app .topbar > .hamburger { 
+        display: flex !important;
+        order: 1 !important;
+    } 
+    
+    /* 3. Brand/Logo */
+    #app .topbar > .brand { 
+        order: 2 !important;
+        flex-grow: 1 !important;
+    } 
+    
+    /* 4. Search icon */
+    #app .topbar > .center-search { 
+        order: 3 !important;
+        flex-shrink: 0 !important; 
+        display: flex !important;
+        width: auto !important;
     }
     
-    /* 3. Ensure the Anonymous Room container is fully contained */
-    #tab-anonymous {
-        /* Remove any previous negative margins we tried */
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        /* Ensure the content within fills the new 18px boundary */
+    /* 5. Top right section (user, settings) */
+    #app .topbar > .top-right { 
+        order: 4 !important;
+        flex-shrink: 0 !important; 
+    }
+    
+    /* 6. Hide username on mobile */
+    #app .topbar > .top-right .username {
+        display: none !important; 
+    }
+    
+    /* 7. Main grid adjustments */
+    .grid { 
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+    }
+    
+    /* 8. Hide left and right sidebars by default */
+    .left { 
+        display: none !important; 
+    }
+    .right { 
+        display: none !important; 
+    }
+    
+    /* 9. When menu is open, show left sidebar */
+    body.menu-open .left {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 280px !important;
+        height: 100vh !important;
+        background: var(--panel) !important;
+        z-index: 1000 !important;
+        padding: 80px 20px 20px !important;
+        box-shadow: 4px 0 10px rgba(0, 0, 0, 0.5) !important;
+        overflow-y: auto !important;
+    }
+    
+    /* 10. Overlay when menu is open */
+    body.menu-open::before {
+        content: '' !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+        z-index: 999 !important;
+    }
+    
+    /* 11. Hamburger animation */
+    body.menu-open .hamburger span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+    body.menu-open .hamburger span:nth-child(2) {
+        opacity: 0;
+    }
+    body.menu-open .hamburger span:nth-child(3) {
+        transform: rotate(-45deg) translate(5px, -5px);
+    }
+    
+    /* 12. Search input adjustments */
+    #app .topbar .center-search .search input {
+        display: none !important;
+    }
+    
+    /* 13. Show search icon */
+    #app .topbar .center-search .search svg.icon {
+        display: block !important;
+        width: 24px !important;
+        height: 24px !important;
+        stroke: #e6eef6 !important;
+    }
+    
+    /* 14. Make search expandable */
+    #app .topbar .center-search .search {
+        padding: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    /* 15. Main content area */
+    .main {
+        width: 100% !important;
+        padding: 0 10px !important;
+    }
+    
+    /* 16. Feed list adjustments */
+    .feed-list {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+    
+    /* 17. Card adjustments */
+    .card {
+        padding: 12px !important;
+    }
+    
+    /* 18. Post adjustments */
+    .post {
+        margin-bottom: 12px !important;
+    }
+    
+    /* 19. Action buttons */
+    .action-inline {
+        padding: 6px !important;
+    }
+    
+    /* 20. Create post adjustments */
+    .create-post textarea {
+        padding: 12px !important;
+    }
+}
+
+/* ======================================================================
+   TABLET LAYOUT (768px to 1024px)
+   ====================================================================== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    /* 1. Grid layout for tablet */
+    .grid {
+        grid-template-columns: 250px 1fr !important;
+        gap: 20px !important;
+    }
+    
+    /* 2. Hide right sidebar on tablet */
+    .right {
+        display: none !important;
+    }
+    
+    /* 3. Show left sidebar */
+    .left {
+        display: block !important;
+    }
+    
+    /* 4. Hide hamburger on tablet */
+    .hamburger {
+        display: none !important;
+    }
+    
+    /* 5. Adjust main content */
+    .main {
         width: 100% !important;
     }
     
-    /* 4. Ensure the content inside the Anonymous Room does not have double padding */
-    #tab-anonymous .anonymous-room-header,
-    #tab-anonymous #anonymous-content {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
+    /* 6. Search bar adjustments */
+    .center-search {
+        max-width: 400px !important;
+    }
+    
+    /* 7. Feed list adjustments */
+    .feed-list {
+        max-width: 100% !important;
+    }
+}
+
+/* ======================================================================
+   DESKTOP LAYOUT (1025px and above)
+   ====================================================================== */
+@media (min-width: 1025px) {
+    /* 1. Full grid layout */
+    .grid {
+        grid-template-columns: 220px 1fr 300px !important;
+        gap: 24px !important;
+    }
+    
+    /* 2. Show all sections */
+    .left, .right {
+        display: block !important;
+    }
+    
+    /* 3. Hide hamburger */
+    .hamburger {
+        display: none !important;
+    }
+    
+    /* 4. Search bar full functionality */
+    .center-search {
+        max-width: 640px !important;
+    }
+    
+    /* 5. Feed list centered */
+    .feed-list {
+        max-width: 720px !important;
+        margin: 0 auto !important;
     }
 }
 /* Light theme */
