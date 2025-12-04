@@ -1304,97 +1304,258 @@ function getUserProfile() {
   };
 }
 // Replace the existing getUserProfile function with this corrected version:
-
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
   // Updated renderProfile to show a profile page for either the current user or another user.
   // renderProfile(editMode=false) uses viewedProfileUser to determine which profile to show.
-  function renderProfile(editMode=false){
-    const cont = document.getElementById('profile-content'); if(!cont) return;
-    const currentUser = getUserProfile();
-    const viewed = viewedProfileUser || null; // if null => show current user
-    const isViewingOwn = !viewed || (viewed && viewed.name && viewed.name === currentUser.name);
+  /* --- NEW: Instagram-Style Profile Renderer --- */
+  function renderProfile(editMode = false) {
+    const cont = document.getElementById('profile-content');
+    if (!cont) return;
 
-    // helper to get avatar/bio for a viewed user (try local posts or passed avatar)
-    function resolveProfileData(name, fallback) {
-      const profile = { name: name || (fallback && fallback.name) || 'Unknown', avatar: (fallback && fallback.avatar) || null, bio: (fallback && fallback.bio) || '' };
-      // try to find a post authored by them to grab avatar
+    const currentUser = getUserProfile();
+    const viewed = viewedProfileUser || null; // null = current user
+    const isViewingOwn = !viewed || (viewed && viewed.name === currentUser.name);
+
+    // Determine correct user data to show
+    let profileData = isViewingOwn ? currentUser : viewed;
+
+    // If viewing someone else, try to find a better avatar from their posts
+    if (!isViewingOwn) {
       const p = posts.find(pp => {
         const an = (pp.author && pp.author.name) || pp.author_name || '';
-        return an && name && an.toLowerCase() === name.toLowerCase();
+        return an && an.toLowerCase() === viewed.name.toLowerCase();
       });
-      if(p) {
-        profile.avatar = profile.avatar || ((p.author && p.author.avatar) || p.author_avatar);
+      if (p) {
+        // Use avatar from post if available, else fallback
+        const foundAvatar = (p.author && p.author.avatar) || p.author_avatar;
+        profileData = { ...viewed, avatar: foundAvatar || viewed.avatar, bio: viewed.bio || "Community Member" };
       }
-      return profile;
     }
 
-    if(isViewingOwn && !editMode) {
-      // show current user with edit button
-      const u = currentUser;
-      const postItems = posts.filter(p => {
-        const authorName = (p.author && p.author.name) || p.author_name || '';
-        if(!authorName) return false;
-        return authorName.toLowerCase() === String(u.name).toLowerCase();
-      });
-      const postCount = postItems.length;
-      const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
+    // Filter posts for this specific user
+    const userPosts = posts.filter(p => {
+      const authorName = (p.author && p.author.name) || p.author_name || '';
+      return authorName.toLowerCase() === String(profileData.name).toLowerCase();
+    });
 
-      cont.innerHTML = `
-        <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-          <img src="${escapeHtml(u.avatar || defaultAvatar)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">
-          <div>
-            <div style="font-size:22px;font-weight:700;">${escapeHtml(u.name)}</div>
-            <div class="muted">${escapeHtml(u.bio)}</div>
-            <div style="margin-top:6px;font-size:13px;">Joined: ${escapeHtml(u.joined)}</div>
-          </div>
-        </div>
-        <div>
-          <strong>Posts:</strong> ${postCount}<br>
-          <strong>Communities:</strong> ${u.communitiesJoined || 0}
-        </div>
-        <div style="margin-top:12px;">
-          <button class="btn small" id="editProfileBtn">Edit Profile</button>
-        </div>
-        <hr style="margin:12px 0;opacity:.06" />
-        <div style="margin-top:12px">
-          <strong>Your posts</strong>
-          <div style="margin-top:8px">
-            ${postItems.length === 0 ? `<div class="muted">You haven't posted yet.</div>` : `<div class="profile-gallery-grid" aria-live="polite">
-              ${postItems.map(p => {
-                const thumb = p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml((p.text||'').slice(0,60))}">` : `<div class="pg-txt">${escapeHtml((p.text||'').slice(0,120))}</div>`;
-                return `<button class="profile-gallery-item" data-id="${p.id}" aria-label="Open post">${thumb}</button>`;
-              }).join('')}
-            </div>`}
-          </div>
-        </div>
-      `;
-
-      // wire edit button
-      const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
-
-      // wire gallery item clicks
-      cont.querySelectorAll('.profile-gallery-item').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const id = Number(btn.dataset.id);
-          const post = posts.find(p => p.id === id);
-          if(!post) return;
-          if(post.image) {
-            openImageLightbox(post.image, post.text || '');
-          } else {
-            openModal({
-              title: `${escapeHtml(timeAgo(post.createdAt || Date.now()))}`,
-              html: `<div style="margin-top:8px">${escapeHtml(post.text || '')}</div>`,
-              confirmText: 'Close',
-              cancelText: ''
-            });
-          }
-        });
-      });
-
+    // 1. EDIT MODE (Legacy form logic)
+    if (editMode && isViewingOwn) {
+      renderEditProfileForm(cont, currentUser);
       return;
     }
+
+    // 2. VIEW MODE (New Instagram Grid)
+    const defaultAvatar = "https://i.pravatar.cc/150?u=default";
+    
+    cont.innerHTML = `
+      <div class="profile-header">
+        <img src="${escapeHtml(profileData.avatar || defaultAvatar)}" class="profile-avatar-large" alt="Profile">
+        
+        <div class="profile-info">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="margin:0; font-size:22px; font-weight:700;">${escapeHtml(profileData.name)}</h2>
+            ${isViewingOwn 
+              ? `<button class="btn small" id="btn-edit-profile">Edit Profile</button>` 
+              : `<button class="btn primary small">Follow</button>`
+            }
+          </div>
+          
+          <div class="profile-stats">
+            <div class="stat-item"><span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span></div>
+            <div class="stat-item"><span class="stat-value">${profileData.communitiesJoined || 0}</span> <span class="stat-label">Communities</span></div>
+            <div class="stat-item"><span class="stat-value">0</span> <span class="stat-label">Followers</span></div>
+          </div>
+          
+          <div style="font-size:14px; margin-top:4px; line-height:1.4;">
+            ${escapeHtml(profileData.bio || "")}
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:2px;"></div>
+      <div class="insta-grid">
+        ${userPosts.length === 0 
+          ? `<div class="muted" style="grid-column: 1/-1; text-align:center; padding:60px 0;">No posts yet.<br>Share your first moment!</div>` 
+          : userPosts.map(p => {
+              // Decide content (Image or Text Preview)
+              const content = p.image 
+                ? `<img src="${escapeHtml(p.image)}" loading="lazy" />`
+                : `<div class="insta-text-preview">${escapeHtml(p.text)}</div>`;
+                
+              return `
+                <button class="insta-item" onclick="window.feedApp.openPostDetail(${p.id})" aria-label="View post">
+                  ${content}
+                  <div class="insta-overlay">
+                    <span>❤️ ${p.likes || 0}</span>
+                  </div>
+                </button>
+              `;
+            }).join('')
+        }
+      </div>
+    `;
+
+    // Hook up Edit button
+    const editBtn = document.getElementById('btn-edit-profile');
+    if (editBtn) editBtn.onclick = () => renderProfile(true);
+  }
+
+  /* --- NEW: Helper for Post Detail Modal --- */
+  function openPostDetail(postId) {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    // Generate comments HTML
+    const commentsHtml = (post.comments || []).map(c => `
+      <div style="margin-bottom:8px; font-size:13px; line-height:1.4;">
+        <strong>${escapeHtml(c.author.name)}</strong> ${escapeHtml(c.text)}
+      </div>
+    `).join('');
+
+    // Modal Content
+    const html = `
+      <div class="post-detail-modal">
+        ${post.image 
+          ? `<img src="${escapeHtml(post.image)}" class="post-detail-img" />`
+          : `<div style="padding:24px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:16px; line-height:1.5;">${escapeHtml(post.text)}</div>`
+        }
+        
+        ${post.image && post.text 
+          ? `<div style="margin-top:8px; font-size:14px;"><strong>${escapeHtml((post.author && post.author.name) || post.author_name)}</strong> ${escapeHtml(post.text)}</div>` 
+          : ''}
+
+        <div class="actions-row" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
+           <button class="action-inline like-btn ${post.liked?'liked':''}" id="modal-like-btn">
+              ${svgLike(post.liked ? 'currentColor' : 'none')} <span style="margin-left:6px">${post.likes}</span>
+           </button>
+           <button class="action-inline">
+              ${svgComment()} <span style="margin-left:6px">${post.comments ? post.comments.length : 0}</span>
+           </button>
+        </div>
+
+        <div style="max-height:150px; overflow-y:auto; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.05);">
+          ${commentsHtml.length ? commentsHtml : '<div class="muted">No comments yet.</div>'}
+        </div>
+      </div>
+    `;
+
+    openModal({ 
+      title: post.image ? 'Photo' : 'Post', 
+      html: html, 
+      confirmText: 'Close', 
+      cancelText: '' 
+    });
+
+    // Make "Like" button interactive immediately inside modal
+    setTimeout(() => {
+      const likeBtn = document.querySelector('#modal-like-btn');
+      if(likeBtn) {
+        likeBtn.onclick = function() {
+          toggleLike(post.id); // Updates global state
+          
+          // Manually update modal button state to reflect change
+          const updatedPost = posts.find(p => p.id === postId);
+          const icon = likeBtn.querySelector('svg');
+          const count = likeBtn.querySelector('span');
+          
+          if (updatedPost.liked) {
+            likeBtn.classList.add('liked');
+            icon.setAttribute('fill', 'currentColor');
+          } else {
+            likeBtn.classList.remove('liked');
+            icon.setAttribute('fill', 'none');
+          }
+          count.textContent = updatedPost.likes;
+        };
+      }
+    }, 50);
+  }
+
+  /* --- NEW: Helper for Edit Form --- */
+  /* --- REPLACE renderEditProfileForm in feed.js with this --- */
+/* --- REPLACE renderEditProfileForm in feed.js with this --- */
+function renderEditProfileForm(cont, currentUser) {
+  let currentAvatar = currentUser.avatar;
+  
+  cont.innerHTML = `
+        <form id="editProfileForm" style="display:flex;flex-direction:column;gap:16px;">
+          <h3 style="margin:0;">Edit Profile</h3>
+          
+          <div style="display:flex; align-items:center; gap:20px;">
+            <img id="edit-avatar-preview" 
+                 src="${escapeHtml(currentAvatar)}" 
+                 class="profile-avatar-large" 
+                 style="width:80px; height:80px; flex-shrink:0;" 
+                 alt="Current Avatar">
+            <div>
+              <input type="file" id="avatar-upload" accept="image/*" style="display:none;">
+              <button type="button" class="btn small" onclick="document.getElementById('avatar-upload').click()">
+                Change Profile Photo
+              </button>
+              <div class="muted" style="font-size:12px; margin-top:4px;">Max size 2MB (Simulated)</div>
+            </div>
+          </div>
+          
+          <label style="display:block;">
+            <span class="muted" style="font-size:12px;display:block;margin-bottom:6px;">Display Name</span>
+            <input name="name" value="${escapeHtml(currentUser.name)}" style="width:100%;padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:inherit;">
+          </label>
+          
+          <label style="display:block;">
+            <span class="muted" style="font-size:12px;display:block;margin-bottom:6px;">Bio</span>
+            <textarea name="bio" rows="3" style="width:100%;padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:inherit;">${escapeHtml(currentUser.bio)}</textarea>
+          </label>
+          
+          <input type="hidden" id="new-avatar-url" name="avatar" value="${escapeHtml(currentAvatar)}">
+
+          <div style="display:flex; gap:12px; margin-top:8px;">
+             <button class="btn primary small" type="submit">Save Changes</button>
+             <button class="btn small" type="button" onclick="renderProfile(false)">Cancel</button>
+          </div>
+        </form>
+  `;
+
+  // --- Profile Picture Update Logic ---
+  const avatarUpload = document.getElementById('avatar-upload');
+  const avatarPreview = document.getElementById('edit-avatar-preview');
+  const newAvatarUrl = document.getElementById('new-avatar-url');
+
+  avatarUpload.onchange = function(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        // 1. Update the preview image
+        avatarPreview.src = e.target.result; 
+        // 2. Update the hidden input value which gets submitted
+        newAvatarUrl.value = e.target.result; 
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  // --- Form Submission Logic ---
+  const form = document.getElementById('editProfileForm');
+  form.onsubmit = function(ev){
+    ev.preventDefault();
+    const fd = new FormData(form);
+    
+    // Create new profile object using form data, including the updated 'avatar' value
+    const np = {
+      ...currentUser,
+      name: (fd.get('name') || currentUser.name).trim(),
+      bio: (fd.get('bio') || '').trim(),
+      avatar: fd.get('avatar') // This pulls the base64 URL from the hidden input
+    };
+    
+    // Save, re-render, and notify
+    setUserProfile(np); 
+    renderTopRightUser(); 
+    renderProfile(false);
+    toast('Profile updated successfully!');
+  };
 
     // viewing someone else's profile OR editing own profile
     if(isViewingOwn && editMode) {
@@ -2258,7 +2419,7 @@ function attachDelegatedLogout() {
     });
   }
 
-  // expose debug
+  // expose debug & tools
   window.feedApp = {
     getPosts: () => posts,
     getCategories: () => categories,
@@ -2270,9 +2431,9 @@ function attachDelegatedLogout() {
     doLogout,
     renderTopStories,
     renderNews,
-    openProfileView // expose for testing
+    openProfileView,
+    openPostDetail // <--- THIS is required for the new profile grid to work
   };
-
   // initialization
   function init(){
     initTheme();
