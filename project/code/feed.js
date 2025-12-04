@@ -1178,7 +1178,42 @@
   }
 
   // profile helpers
-  function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2, joinedCommunities:[] }; }
+  function getUserProfile() {
+  const raw = localStorage.getItem(KEY.PROFILE);
+
+  // If a saved profile exists, use it.
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  // Try to load the name saved during registration/login.
+  const regName = localStorage.getItem("registeredName");
+  const regAvatar = localStorage.getItem("registeredAvatar"); // optional if you save this
+
+  if (regName) {
+    return {
+      name: regName,
+      avatar: regAvatar || "https://i.pravatar.cc/80",
+      bio: "",
+      joined: new Date().toLocaleDateString(),
+      communitiesJoined: 0,
+      joinedCommunities: []
+    };
+  }
+
+  // FINAL fallback only if nothing exists
+  return {
+    name: "New User",
+    avatar: "https://i.pravatar.cc/80",
+    bio: "",
+    joined: new Date().toLocaleDateString(),
+    communitiesJoined: 0,
+    joinedCommunities: []
+  };
+}
+
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
@@ -2173,6 +2208,23 @@
     attachDelegatedLogout();
     toast('Welcome back!');
   }
+
+  // Function to handle logout from any button/link
+function attachDelegatedLogout() {
+  // We use event delegation to find all elements with the 'data-action="logout"' attribute
+  document.addEventListener('click', (e) => {
+    // Check if the clicked element has the logout data attribute
+    if (e.target.closest('[data-action="logout"]')) {
+      e.preventDefault(); // Stop any default link behavior
+
+      // 1. Remove the saved login state
+      localStorage.removeItem("loggedInUser");
+      
+      // 2. Redirect the user back to the login page
+      window.location.href = "login.html";
+    }
+  });
+}
 
   init();
 })();

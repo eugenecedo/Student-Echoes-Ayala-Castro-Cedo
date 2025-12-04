@@ -39,16 +39,22 @@ document.getElementById('login-form').addEventListener('submit', function (e) {
         return showError("Please enter both email and password.");
     }
 
-    // 1. Save the "logged in" state so the Feed page lets you in
     localStorage.setItem("loggedInUser", email);
+    
+    // ✔ Store profile for feed.js
+    const name = localStorage.getItem("registeredName");
+    localStorage.setItem("userProfile", JSON.stringify({
+        name: name || "New User",
+        avatar: "https://i.pravatar.cc/80",
+    }));
 
     showSuccess("Logged in successfully! Redirecting...");
 
-    // 2. Redirect to feed.html after a short delay (so user sees the success message)
     setTimeout(() => {
         window.location.href = "feed.html";
-    }, 1000); 
+    }, 1000);
 });
+
 
 // REGISTER FORM EVENT
 document.getElementById('register-form').addEventListener('submit', function (e) {
@@ -64,10 +70,15 @@ document.getElementById('register-form').addEventListener('submit', function (e)
         return showError("Please fill up all fields correctly.");
     }
 
+    // ✔ Save new user profile info
+    localStorage.setItem("registeredName", name);
+    localStorage.setItem("registeredEmail", email);
+
     showSuccess("Account created! (Simulated)");
 
     showForm("login-form");
 });
+
 
 // Forgot Password Modal
 function openForgot() {
