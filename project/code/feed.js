@@ -1422,8 +1422,8 @@ function getUserProfile() {
           
           <div class="profile-stats">
             <div class="stat-item"><span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span></div>
-            <div class="stat-item"><span class="stat-value">${profileData.communitiesJoined || 0}</span> <span class="stat-label">Communities</span></div>
             <div class="stat-item"><span class="stat-value">0</span> <span class="stat-label">Followers</span></div>
+             <div class="stat-item"><span class="stat-value">0</span> <span class="stat-label">Following</span></div>
           </div>
           
           <div style="font-size:14px; margin-top:4px; line-height:1.4;">
