@@ -1,35 +1,24 @@
-// Full modified feed.js with Instagram-like profile grid integrated,
-// photos constrained (not scrollable), and TikTok-style comment sheet UI.
-//
-// Changes made (summary):
-// - friends list persisted and made mutable so Add Friend / Unfriend buttons work
-// - friends UI updated to show action buttons in left sidebar and on viewed profiles
-// - small mobile-related fixes: rely on CSS media queries instead of inline hides
-(function(){
-  // KEY: central names for localStorage keys used across the app
+(() => {
   const KEY = {
     CATEGORIES: 'amu_categories',
     POSTS: 'amu_posts',
     NOTIFS: 'amu_notifications',
-    PROFILE: 'userProfile', // feed.js reads/writes this to get logged-in user
+    PROFILE: 'userProfile',
     THEME: 'theme',
     ANON: 'amu_anonymous_posts',
     LAST_TAB: 'amu_last_tab',
     SETTINGS: 'amu_settings',
     COMMUNITIES: 'amu_communities',
-    ANON_PROFILE: 'amu_anon_profile',
-    FRIENDS: 'amu_friends' // persisted friends
+    ANON_PROFILE: 'amu_anon_profile'
   };
 
-  // ---------------------------------------------------------------------------
-  // Seed / default data: used when localStorage is empty — makes the demo usable
-  // ---------------------------------------------------------------------------
+  // seed/default data (comments are arrays with replies)
   const seedFriends = [
-    { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true, isFriend:true },
-    { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true, isFriend:true },
-    { id:3, name:'Jennifer', avatar:'https://i.pravatar.cc/40?img=3', online:false, isFriend:true },
-    { id:4, name:'Anne', avatar:'https://i.pravatar.cc/40?img=4', online:false, isFriend:true },
-    { id:5, name:'Andrew', avatar:'https://i.pravatar.cc/40?img=5', online:true, isFriend:true }
+    { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true },
+    { id:2, name:'Fiona', avatar:'https://i.pravatar.cc/40?img=2', online:true },
+    { id:3, name:'Jennifer', avatar:'https://i.pravatar.cc/40?img=3', online:false },
+    { id:4, name:'Anne', avatar:'https://i.pravatar.cc/40?img=4', online:false },
+    { id:5, name:'Andrew', avatar:'https://i.pravatar.cc/40?img=5', online:true }
   ];
 
   const defaultCategories = [
@@ -39,7 +28,6 @@
     { id:4, name:'Space' }
   ];
 
-  // A couple of starter posts so the feed isn't empty on first load
   const defaultPosts = [
     {
       id:101,
@@ -73,14 +61,11 @@
     }
   ];
 
-  // ---------------------------------------------------------------------------
-  // Application state (in-memory), persisted to localStorage by saveState()
-  // ---------------------------------------------------------------------------
+  // state (persisted)
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
   let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
-  // load friends from storage if present, otherwise use seedFriends
-  let friends = JSON.parse(localStorage.getItem(KEY.FRIENDS) || 'null') || seedFriends.slice();
+  const friends = seedFriends.slice();
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
   let communities = JSON.parse(localStorage.getItem(KEY.COMMUNITIES) || 'null') || [
     { id:1, name:'UI/UX Designers', members:54, description:'Designers sharing UI patterns' },
@@ -88,10 +73,10 @@
   ];
   let activeCategoryId = null;
 
-  // NEW: when another user is being "viewed" (stalked), viewedProfileUser holds that user's minimal profile
+  // NEW: currently viewed profile (null = current user). When you click another user's avatar, set this to that user object (with name/avatar/bio optional)
   let viewedProfileUser = null;
 
-  // Cute anonymous avatars (replaces ABCD letters)
+  // anonymous avatar palette - four cute avatar choices
   const ANON_AVATARS = [
     { id: 'anon-1', name: 'Kitty', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#fff7f7'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='#ff6b81'>🐱</text></svg>`) },
     { id: 'anon-2', name: 'Puppy', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#f7fff6'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='#3fb24a'>🐶</text></svg>`) },
@@ -99,9 +84,7 @@
     { id: 'anon-4', name: 'Bunny', src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='100%' height='100%' fill='#eef9ff'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='26' fill='#2b9bd6'>🐰</text></svg>`) }
   ];
 
-  // ---------------------------------------------------------------------------
-  // DOM references cached once for performance
-  // ---------------------------------------------------------------------------
+  // dom refs (queried once)
   const friendsList = document.getElementById('friends-list');
   const feedEl = document.getElementById('feed');
   const notifList = document.getElementById('notif-list');
@@ -123,11 +106,11 @@
   const modalRoot = document.getElementById('modal-root');
   const toastRoot = document.getElementById('toast-container');
 
-  // Top stories refs
+  // Top stories DOM refs (new)
   const topStoriesList = document.getElementById('top-stories-list');
   const moreNewsBtn = document.getElementById('more-news-btn');
 
-  // settings menu controls
+  // settings menu buttons
   const settingsBtn = document.getElementById('settings-btn');
   const settingsMenu = document.getElementById('settings-menu');
   const settingPrivBtn = document.getElementById('settingPriv');
@@ -135,16 +118,10 @@
   const modeBtn = document.getElementById('modeBtn');
   const logoutBtn = document.getElementById('logoutBtn');
 
-  // keep anonymous preview data in memory while user composes an anon post
+  // keep anonymous preview data in outer scope
   let anonPreviewData = null;
 
-  // ---------------------------------------------------------------------------
-  // Utility helpers
-  // ---------------------------------------------------------------------------
-  /**
-   * saveState()
-   * Persist the in-memory arrays to localStorage so the demo state survives reloads.
-   */
+  // helpers
   function saveState(){
     try {
       localStorage.setItem(KEY.CATEGORIES, JSON.stringify(categories));
@@ -152,49 +129,35 @@
       localStorage.setItem(KEY.NOTIFS, JSON.stringify(notifications));
       localStorage.setItem(KEY.ANON, JSON.stringify(anonymousPosts));
       localStorage.setItem(KEY.COMMUNITIES, JSON.stringify(communities));
-      localStorage.setItem(KEY.FRIENDS, JSON.stringify(friends));
     } catch (e) {
       console.warn('saveState() failed', e);
     }
   }
-
-  /**
-   * escapeHtml(s)
-   * Simple utility to escape text before inserting into HTML to avoid XSS in this demo.
-   */
   function escapeHtml(s){ if(!s && s!==0) return ''; return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-  /**
-   * timeAgo(ts)
-   * Convert a timestamp in ms to a short human-friendly relative string.
-   */
   function timeAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<10) return 'just now'; if(s<60) return s+'s'; const m=Math.floor(s/60); if(m<60) return m+'m'; const h=Math.floor(m/60); if(h<24) return h+'h'; const d=Math.floor(h/24); if(d<7) return d+'d'; return new Date(ts).toLocaleDateString(); }
-
-  /**
-   * debounce(fn, wait)
-   * Returns a debounced version of fn — useful for input events like search.
-   */
   function debounce(fn, wait=220){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
-  // ---------------------------------------------------------------------------
-  // Small SVG icon helpers — return inline SVG used in buttons
-  // ---------------------------------------------------------------------------
+  // small svg icon helpers (returns inline SVG string)
   function svgLike(fill = 'none', stroke = 'currentColor') {
     return `<svg viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.69l-1.06-1.08a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
   }
-  function svgComment() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`; }
-  function svgShare() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`; }
+  function svgComment() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`;
+  }
+  function svgShare() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
+  }
   function svgMenu() {
-    return `<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true"><circle cx="6" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="18" cy="12" r="2"></circle></svg>`;
+    return `
+      <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
+        <circle cx="6" cy="12" r="2"></circle>
+        <circle cx="12" cy="12" r="2"></circle>
+        <circle cx="18" cy="12" r="2"></circle>
+      </svg>
+    `;
   }
 
-  // ---------------------------------------------------------------------------
-  // Toast (ephemeral in-app notifications)
-  // ---------------------------------------------------------------------------
-  /**
-   * toast(message, opts)
-   * Show a small message to the user. Auto-hides after a timeout.
-   */
+  // -- toast (small notification) --
   function toast(message, opts = {}) {
     if(!toastRoot) return;
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
@@ -211,36 +174,7 @@
     }, timeout);
   }
 
-  // ---------------------------------------------------------------------------
-  // Friend helpers: add/unfriend, UI wiring
-  // ---------------------------------------------------------------------------
-  function isFriendByName(name){ if(!name) return false; return friends.some(f=>String(f.name).toLowerCase() === String(name).toLowerCase()); }
-
-  function toggleFriend(name, avatar){
-    if(!name) return;
-    const idx = friends.findIndex(f => String(f.name).toLowerCase() === String(name).toLowerCase());
-    if(idx !== -1){
-      // remove friend
-      const removed = friends.splice(idx,1)[0];
-      saveState();
-      renderFriends();
-      toast(`${removed.name} removed from friends`);
-      // if we are seeing this user's profile, update the profile button label
-      renderProfile(false);
-      return;
-    }
-    // add friend
-    const newFriend = { id: Date.now(), name: name, avatar: avatar || ('https://i.pravatar.cc/40?u=' + encodeURIComponent(name)), online: false, isFriend:true };
-    friends.push(newFriend);
-    saveState();
-    renderFriends();
-    toast(`${name} added to friends`);
-    renderProfile(false);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Settings menu aria state helper
-  // ---------------------------------------------------------------------------
+  // ensure settings menu toggling keeps ARIA in sync
   function setSettingsOpen(open) {
     if(!settingsBtn || !settingsMenu) return;
     settingsBtn.setAttribute('aria-expanded', String(Boolean(open)));
@@ -251,35 +185,23 @@
     }
   }
   if(settingsBtn && settingsMenu) {
-    // toggle settings menu open/close on click
     settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const isOpen = settingsMenu.style.display === 'block';
       setSettingsOpen(!isOpen);
     });
-    // close settings when clicking outside
     document.addEventListener('click', function(e) {
       if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
         setSettingsOpen(false);
       }
     });
-    // keyboard handlers for accessibility
     settingsBtn.addEventListener('keydown', (e) => {
       if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); setSettingsOpen(!(settingsMenu.style.display === 'block')); }
       if(e.key === 'Escape') setSettingsOpen(false);
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Modal: accessible dialog helper that returns a Promise for result
-  // ---------------------------------------------------------------------------
-  /**
-   * openModal(options)
-   * options: { title, html, input (bool), placeholder, confirmText, cancelText, width }
-   *
-   * When input=true a textarea is added and the promise resolves with the textarea value
-   * Otherwise it resolves with true when confirm is clicked, null when canceled.
-   */
+  // -- modal (accessible, returns promise) --
   function openModal({ title = '', html = '', input = false, placeholder = '', confirmText = 'OK', cancelText = 'Cancel', width = 720 } = {}) {
     return new Promise((resolve) => {
       const prevFocus = document.activeElement;
@@ -323,6 +245,7 @@
         }, 40);
       }
 
+      // attach synchronously
       modalRoot.appendChild(backdrop);
       modalRoot.appendChild(box);
       modalRoot.setAttribute('aria-hidden','false');
@@ -331,7 +254,6 @@
         box.classList.add('show');
       });
 
-      // accessibility: trap focus inside modal while open
       function getFocusables(container) {
         return Array.from(container.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'));
       }
@@ -383,114 +305,59 @@
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Lightbox helper: open an image in a modal
-  // ---------------------------------------------------------------------------
+  // -- lightbox for images (uses modal) --
   function openImageLightbox(src, alt='') {
     openModal({ title: '', html: `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" class="lightbox-img" />`, confirmText: 'Close', cancelText: '' , width: 980});
   }
 
-  // ---------------------------------------------------------------------------
-  // COMMENTS (REGULAR POSTS) — TIKTOK-LIKE COMMENTS SHEET
-  // ---------------------------------------------------------------------------
-  // We'll override the original openComments to render a TikTok-style sheet:
-  // - modal-body contains header, a scrollable comment list, and a fixed footer input
-  // - add/like/reply interactions update the in-modal list without closing the modal
+  // ---------- Comments modal for regular posts ----------
   function openComments(postId) {
     const post = posts.find(p => p.id === postId);
     if(!post) return;
 
-    function renderCommentRow(c) {
-      const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
-      return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="${escapeHtml((c.author && c.author.avatar) || 'https://i.pravatar.cc/36')}" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
-        <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:8px">
-            <strong style="font-size:14px">${escapeHtml((c.author && c.author.name) || 'User')}</strong>
-            <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(c.createdAt))}</div>
+    function renderCommentsHtml(comments) {
+      if(!comments || comments.length === 0) return `<div class="muted">No comments yet.</div>`;
+      return comments.map(c => `
+        <div style="margin-bottom:12px;padding:8px;border-radius:8px;background:transparent;">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <img src="${escapeHtml(c.author.avatar)}" style="width:36px;height:36px;border-radius:50%"/>
+            <div style="flex:1">
+              <div style="font-weight:600">${escapeHtml(c.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(c.createdAt))}</span></div>
+              <div style="margin-top:6px">${escapeHtml(c.text)}</div>
+              <div style="margin-top:8px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
+              ${c.replies && c.replies.length ? `<div style="margin-top:8px;margin-left:44px">${c.replies.map(r=>`
+                <div style="margin-bottom:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.01)">
+                  <div style="font-weight:600">${escapeHtml(r.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt))}</span></div>
+                  <div style="margin-top:6px">${escapeHtml(r.text)}</div>
+                  <div style="margin-top:6px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
+                </div>
+              `).join('')}</div>` : ''}
+            </div>
           </div>
-          <div style="margin-top:6px;font-size:14px">${escapeHtml(c.text)}</div>
-          ${ repliesCount ? `<div style="margin-top:8px;font-size:13px;color:rgba(255,255,255,0.6)">${repliesCount} repl${repliesCount>1?'ies':'y'} — <button class="btn tiny view-replies" data-cid="${c.id}">View</button></div>` : '' }
         </div>
-        <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-          <button class="btn small like-comment" data-cid="${c.id}" aria-label="Like comment">❤</button>
-          <button class="btn small reply-comment" data-cid="${c.id}" aria-label="Reply to comment">↩</button>
-        </div>
-      </div>`;
+      `).join('');
     }
 
-    const commentsHtml = (post.comments || []).map(c => renderCommentRow(c)).join('');
-
     const html = `
-      <div class="comments-sheet" style="display:flex;flex-direction:column;height:70vh;">
-        <div class="cs-header" style="padding:12px 12px 8px;border-bottom:1px solid rgba(0,0,0,0.04);">
-          <strong>Comments (${(post.comments && post.comments.length) || 0})</strong>
-        </div>
-        <div class="cs-list" style="overflow:auto;padding:8px 4px;flex:1;">
-          ${commentsHtml || `<div class="muted">No comments yet. Be the first to comment!</div>`}
-        </div>
-        <div class="cs-footer" style="padding:8px;border-top:1px solid rgba(0,0,0,0.04);display:flex;gap:8px;align-items:center;background:linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0))">
-          <img src="${escapeHtml(getUserProfile().avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover"/>
-          <input id="__newCommentInput" placeholder="Add a comment..." style="flex:1;padding:10px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:inherit"/>
-          <button id="__submitNewComment" class="btn primary">Post</button>
+      <div style="max-height:58vh;overflow:auto;padding-right:8px">
+        ${renderCommentsHtml(post.comments)}
+      </div>
+      <div style="margin-top:12px">
+        <strong>Add a comment</strong>
+        <div style="margin-top:8px">
+          <textarea id="__newCommentInput" placeholder="Write a comment..." style="width:100%;min-height:80px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
+          <div style="margin-top:8px"><button class="btn primary" id="__submitNewComment">Post comment</button></div>
         </div>
       </div>
     `;
 
-    // Use openModal but keep the modal's confirm/close button for dismissing
-    openModal({ title: '', html, confirmText: 'Close', cancelText: '' });
+    openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
 
     const modal = modalRoot.querySelector('.modal');
     if(!modal) return;
-    const csList = modal.querySelector('.cs-list');
+
     const submitBtn = modal.querySelector('#__submitNewComment');
     const newCommentInput = modal.querySelector('#__newCommentInput');
-
-    // helper to re-render comment list inside modal
-    function refreshCommentsInModal() {
-      const rows = (post.comments || []).map(c => renderCommentRow(c)).join('');
-      if(csList) csList.innerHTML = rows || `<div class="muted">No comments yet. Be the first to comment!</div>`;
-      // attach per-row handlers
-      if(csList) {
-        csList.querySelectorAll('.reply-comment').forEach(b => {
-          b.onclick = async (e) => {
-            e.stopPropagation();
-            const cid = Number(b.dataset.cid);
-            const comment = (post.comments || []).find(x => x.id === cid);
-            if(!comment) return;
-            const reply = await openModal({ title:`Reply to ${escapeHtml((comment.author&&comment.author.name)||'comment')}`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
-            if(reply && reply.trim()){
-              comment.replies = comment.replies || [];
-              comment.replies.push({ id: Date.now()+Math.floor(Math.random()*99), author: { name: getUserProfile().name, avatar: getUserProfile().avatar }, text: reply.trim(), createdAt: Date.now() });
-              saveState();
-              refreshCommentsInModal();
-              toast('Reply posted');
-            }
-          };
-        });
-        csList.querySelectorAll('.view-replies').forEach(b => {
-          b.onclick = (e) => {
-            e.stopPropagation();
-            const cid = Number(b.dataset.cid);
-            const c = (post.comments || []).find(x=>x.id===cid);
-            if(!c || !c.replies || c.replies.length===0) return;
-            // show replies in a small modal
-            const repliesHtml = c.replies.map(r => `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.02)"><div style="font-weight:600">${escapeHtml((r.author&&r.author.name)||'Anonymous')} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt||Date.now()))}</span></div><div style="margin-top:6px">${escapeHtml(r.text)}</div></div>`).join('');
-            openModal({ title: 'Replies', html: `<div style="max-height:50vh;overflow:auto;padding-right:8px">${repliesHtml}</div>`, confirmText:'Close', cancelText:'' });
-          };
-        });
-        csList.querySelectorAll('.like-comment').forEach(b => {
-          b.onclick = (e) => {
-            e.stopPropagation();
-            // simple demo: toggle a `liked` flag on comment object if desired — here we just show toast
-            toast('Liked comment (demo)');
-          };
-        });
-      }
-    }
-
-    refreshCommentsInModal();
-
     if(submitBtn && newCommentInput) {
       submitBtn.addEventListener('click', () => {
         const txt = (newCommentInput.value || '').trim();
@@ -500,128 +367,40 @@
         post.comments = post.comments || [];
         post.comments.push(c);
         notifications.unshift({ id: Date.now(), text:'You commented on a post.', createdAt: Date.now(), avatar: u.avatar });
-        saveState();
-        newCommentInput.value = '';
-        refreshCommentsInModal();
-        renderFeed(); renderNotifications();
+        saveState(); renderFeed(); renderNotifications();
+        const closeBtn = modal.querySelector('.modal-close');
+        if(closeBtn) closeBtn.click();
+        setTimeout(()=> openComments(postId), 120);
         toast('Comment added');
       });
     }
-  }
 
-  // ---------------------------------------------------------------------------
-  // ANONYMOUS COMMENTS — also converted to TikTok-like sheet
-  // ---------------------------------------------------------------------------
-  function openAnonComments(anonId) {
-    const post = anonymousPosts.find(p => p.id === anonId);
-    if(!post) return;
-
-    function renderCommentRow(c) {
-      const repliesCount = (c.replies && c.replies.length) ? c.replies.length : 0;
-      return `<div class="cs-row" data-cid="${c.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);">
-        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:40px;height:40px;border-radius:50%;flex:0 0 40px;object-fit:cover"/>
-        <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:8px">
-            <strong style="font-size:14px">Anonymous</strong>
-            <div class="muted" style="font-size:12px">${escapeHtml(timeAgo(c.createdAt))}</div>
-          </div>
-          <div style="margin-top:6px;font-size:14px">${escapeHtml(c.text)}</div>
-          ${ repliesCount ? `<div style="margin-top:8px;font-size:13px;color:rgba(255,255,255,0.6)">${repliesCount} repl${repliesCount>1?'ies':'y'} — <button class="btn tiny view-replies" data-cid="${c.id}">View</button></div>` : '' }
-        </div>
-        <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-          <button class="btn small like-comment" data-cid="${c.id}" aria-label="Like comment">❤</button>
-          <button class="btn small reply-comment" data-cid="${c.id}" aria-label="Reply to comment">↩</button>
-        </div>
-      </div>`;
-    }
-
-    const commentsHtml = (post.comments || []).map(c => renderCommentRow(c)).join('');
-
-    const html = `
-      <div class="comments-sheet" style="display:flex;flex-direction:column;height:70vh;">
-        <div class="cs-header" style="padding:12px 12px 8px;border-bottom:1px solid rgba(0,0,0,0.04);">
-          <strong>Comments (${(post.comments && post.comments.length) || 0})</strong>
-        </div>
-        <div class="cs-list" style="overflow:auto;padding:8px 4px;flex:1;">
-          ${commentsHtml || `<div class="muted">No comments yet. Be the first to comment!</div>`}
-        </div>
-        <div class="cs-footer" style="padding:8px;border-top:1px solid rgba(0,0,0,0.04);display:flex;gap:8px;align-items:center;background:linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0))">
-          <img src="${escapeHtml((ANON_AVATARS[0] && ANON_AVATARS[0].src) || '')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover"/>
-          <input id="__newAnonCommentInput" placeholder="Add a comment..." style="flex:1;padding:10px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:inherit"/>
-          <button id="__submitNewAnonComment" class="btn primary">Post</button>
-        </div>
-      </div>
-    `;
-
-    openModal({ title: '', html, confirmText: 'Close', cancelText: '' });
-
-    const modal = modalRoot.querySelector('.modal');
-    if(!modal) return;
-    const csList = modal.querySelector('.cs-list');
-    const submitBtn = modal.querySelector('#__submitNewAnonComment');
-    const newCommentInput = modal.querySelector('#__newAnonCommentInput');
-
-    function refreshCommentsInModal() {
-      const rows = (post.comments || []).map(c => renderCommentRow(c)).join('');
-      if(csList) csList.innerHTML = rows || `<div class="muted">No comments yet. Be the first to comment!</div>`;
-      if(csList) {
-        csList.querySelectorAll('.reply-comment').forEach(b => {
-          b.onclick = async (e) => {
-            e.stopPropagation();
-            const cid = Number(b.dataset.cid);
-            const comment = (post.comments || []).find(x => x.id === cid);
-            if(!comment) return;
-            const reply = await openModal({ title:`Reply (anonymous)`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
-            if(reply && reply.trim()){
-              comment.replies = comment.replies || [];
-              comment.replies.push({ id: Date.now()+Math.floor(Math.random()*99), text: reply.trim(), createdAt: Date.now() });
-              saveState();
-              refreshCommentsInModal();
-              toast('Reply posted');
-            }
-          };
-        });
-        csList.querySelectorAll('.view-replies').forEach(b => {
-          b.onclick = (e) => {
-            e.stopPropagation();
-            const cid = Number(b.dataset.cid);
-            const c = (post.comments || []).find(x=>x.id===cid);
-            if(!c || !c.replies || c.replies.length===0) return;
-            const repliesHtml = c.replies.map(r => `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.02)"><div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt||Date.now()))}</span></div><div style="margin-top:6px">${escapeHtml(r.text)}</div></div>`).join('');
-            openModal({ title: 'Replies', html: `<div style="max-height:50vh;overflow:auto;padding-right:8px">${repliesHtml}</div>`, confirmText:'Close', cancelText:'' });
-          };
-        });
-        csList.querySelectorAll('.like-comment').forEach(b => {
-          b.onclick = (e) => {
-            e.stopPropagation();
-            toast('Liked comment (demo)');
-          };
-        });
-      }
-    }
-
-    refreshCommentsInModal();
-
-    if(submitBtn && newCommentInput) {
-      submitBtn.addEventListener('click', () => {
-        const txt = (newCommentInput.value || '').trim();
-        if(!txt) { toast('Write a comment first'); return; }
-        const c = { id: Date.now() + Math.floor(Math.random()*99), text: txt, createdAt: Date.now(), replies: [] };
-        post.comments = post.comments || [];
-        post.comments.push(c);
-        saveState();
-        newCommentInput.value = '';
-        refreshCommentsInModal();
-        renderAnonymousRoom();
-        toast('Comment added');
+    modal.querySelectorAll('.reply-to-comment').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cid = Number(btn.dataset.cid);
+        const pid = Number(btn.dataset.pid);
+        const postObj = posts.find(p=>p.id===pid);
+        if(!postObj) return;
+        const comment = (postObj.comments || []).find(c=>c.id===cid);
+        if(!comment) return;
+        const replyText = await openModal({ title: `Reply to ${escapeHtml(comment.author.name)}`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
+        if(replyText && replyText.trim()) {
+          const u = getUserProfile();
+          const reply = { id: Date.now() + Math.floor(Math.random()*99), author: { name: u.name, avatar: u.avatar }, text: replyText.trim(), createdAt: Date.now() };
+          comment.replies = comment.replies || [];
+          comment.replies.push(reply);
+          notifications.unshift({ id: Date.now(), text:`You replied to ${comment.author.name}`, createdAt: Date.now(), avatar: u.avatar });
+          saveState(); renderFeed(); renderNotifications();
+          const closeBtn = modal.querySelector('.modal-close');
+          if(closeBtn) closeBtn.click();
+          setTimeout(()=> openComments(pid), 120);
+          toast('Reply posted');
+        }
       });
-    }
+    });
   }
 
-  // ---------------------------------------------------------------------------
-  // Anonymous Room — create, view, comment on anonymous posts
-  // (unchanged aside from comment UI updates handled above)
-  // ---------------------------------------------------------------------------
+  // ---------- Anonymous Room (with avatar chooser + visible image preview) ----------
   function getSavedAnonProfile() {
     try {
       const raw = localStorage.getItem(KEY.ANON_PROFILE);
@@ -640,7 +419,7 @@
     const savedAnon = getSavedAnonProfile();
     const selectedId = savedAnon.avatarId || ANON_AVATARS[0].id;
 
-    // Render the compose area and feed container
+    // create UI: a card with create-anon-post form and then a feed list of anonymous posts
     el.innerHTML = `
       <div class="card" style="margin-bottom:12px">
         <form id="anon-create-form" style="position:relative;">
@@ -679,12 +458,13 @@
     const feedContainer = document.getElementById('anon-feed-list');
     if(!feedContainer) return;
 
-    // Bind UI for image preview & avatar chooser
+    // get references for preview + image input
     const anonImageInput = document.getElementById('anon-image');
     const anonAddImageBtn = document.getElementById('anon-add-image');
     const anonPreviewEl = document.getElementById('anon-preview');
     const anonRemoveBtn = document.getElementById('anon-remove-preview');
 
+    // initialize preview UI if a preview was selected earlier in the session (keeps it until submit)
     if(anonPreviewData) {
       anonPreviewEl.src = anonPreviewData;
       anonPreviewEl.style.display = 'block';
@@ -694,6 +474,7 @@
       if(anonRemoveBtn) anonRemoveBtn.style.display = 'none';
     }
 
+    // wire avatar chooser + image input
     el.querySelectorAll('.anon-avatar-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         el.querySelectorAll('.anon-avatar-btn').forEach(b => b.setAttribute('aria-pressed','false'));
@@ -704,7 +485,9 @@
     });
 
     if(anonAddImageBtn) {
-      anonAddImageBtn.addEventListener('click', () => { if(anonImageInput) anonImageInput.click(); });
+      anonAddImageBtn.addEventListener('click', () => {
+        if(anonImageInput) anonImageInput.click();
+      });
     }
 
     if(anonImageInput) {
@@ -738,11 +521,12 @@
       });
     }
 
+    // click preview to view lightbox (bigger)
     anonPreviewEl && anonPreviewEl.addEventListener('click', () => {
       if(anonPreviewData) openImageLightbox(anonPreviewData, 'Anonymous preview');
     });
 
-    // Render the list of anonymous posts and wire their actions
+    // Render anonymous posts (most recent first)
     function renderAnonList(){
       if(!feedContainer) return;
       if(anonymousPosts.length === 0){
@@ -769,12 +553,12 @@
             <div class="actions-row" role="toolbar" aria-label="Anonymous post actions">
               <button class="action-inline anon-like-btn ${p.liked ? 'liked' : ''}" data-id="${p.id}" aria-pressed="${p.liked ? 'true' : 'false'}" aria-label="Like anonymous post">${svgLike(p.liked ? 'currentColor' : 'none')}<span class="sr-only">Like</span><span class="count" aria-hidden="true">${p.likes||0}</span></button>
               <button class="action-inline anon-comment-btn" data-id="${p.id}" aria-label="Comment on anonymous post">${svgComment()}<span class="sr-only">Comment</span><span class="count" aria-hidden="true">${commentCount}</span></button>
-              <button class="action-inline anon-share-btn" data-id="${p.id}" aria-label="Share anonymous post">${svgShare()}<span class="sr-only">Share</span><span class="count" aria-hidden="true">${p.shares}</span></button>
+              <button class="action-inline anon-share-btn" data-id="${p.id}" aria-label="Share anonymous post">${svgShare()}<span class="sr-only">Share</span><span class="count" aria-hidden="true">${p.shares||0}</span></button>
             </div>
           </div>
         </article>`;
       }).join('');
-      // attach handlers
+      // attach handlers (images + actions)
       feedContainer.querySelectorAll('.post-body img').forEach(img => {
         img.addEventListener('click', (e) => openImageLightbox(e.currentTarget.getAttribute('src'), 'Anonymous image'));
       });
@@ -799,7 +583,7 @@
       });
     }
 
-    // Submit anonymous post: collects text + selected avatar + optional image preview
+    // create anon post handler
     const form = document.getElementById('anon-create-form');
     if(form) {
       form.addEventListener('submit', (e) => {
@@ -812,7 +596,7 @@
         const p = { id: Date.now(), text, createdAt: Date.now(), image: anonPreviewData || null, likes:0, shares:0, liked:false, comments: [], avatarId: avatar.id, avatarSrc: avatar.src };
         anonymousPosts.push(p);
         saveState();
-        // reset UI
+        // reset
         if(ta) ta.value = '';
         anonPreviewData = null;
         if(anonImageInput) anonImageInput.value = '';
@@ -827,7 +611,91 @@
     renderAnonList();
   }
 
-  // Anonymous post menu actions (copy, report, delete)
+  // Anonymous comments modal (unchanged from earlier behavior)
+  function openAnonComments(anonId) {
+    const post = anonymousPosts.find(p => p.id === anonId);
+    if(!post) return;
+
+    function renderCommentsHtml(comments) {
+      if(!comments || comments.length === 0) return `<div class="muted">No comments yet.</div>`;
+      return comments.map(c => `
+        <div style="margin-bottom:12px;padding:8px;border-radius:8px;background:transparent;">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='12' r='8' fill='%23b3cde0'/%3E%3Cpath d='M2 36c0-4 4-6 16-6s16 2 16 6' fill='%23dbeef6'/%3E%3C/svg%3E" style="width:36px;height:36px;border-radius:50%"/>
+            <div style="flex:1">
+              <div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(c.createdAt))}</span></div>
+              <div style="margin-top:6px">${escapeHtml(c.text)}</div>
+              <div style="margin-top:8px"><button class="btn small reply-to-anon-comment" data-cid="${c.id}" data-pid="${anonId}">Reply</button></div>
+              ${c.replies && c.replies.length ? `<div style="margin-top:8px;margin-left:44px">${c.replies.map(r=>`
+                <div style="margin-bottom:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.01)">
+                  <div style="font-weight:600">Anonymous <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt))}</span></div>
+                  <div style="margin-top:6px">${escapeHtml(r.text)}</div>
+                </div>
+              `).join('')}</div>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    const html = `
+      <div style="max-height:58vh;overflow:auto;padding-right:8px">
+        ${renderCommentsHtml(post.comments)}
+      </div>
+      <div style="margin-top:12px">
+        <strong>Add a comment (anonymous)</strong>
+        <div style="margin-top:8px">
+          <textarea id="__newAnonCommentInput" placeholder="Write a comment..." style="width:100%;min-height:80px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
+          <div style="margin-top:8px"><button class="btn primary" id="__submitNewAnonComment">Post comment</button></div>
+        </div>
+      </div>
+    `;
+    openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
+
+    const modal = modalRoot.querySelector('.modal');
+    if(!modal) return;
+
+    const submitBtn = modal.querySelector('#__submitNewAnonComment');
+    const newCommentInput = modal.querySelector('#__newAnonCommentInput');
+    if(submitBtn && newCommentInput) {
+      submitBtn.addEventListener('click', () => {
+        const txt = (newCommentInput.value || '').trim();
+        if(!txt) { toast('Write a comment first'); return; }
+        const c = { id: Date.now() + Math.floor(Math.random()*99), text: txt, createdAt: Date.now(), replies: [] };
+        post.comments = post.comments || [];
+        post.comments.push(c);
+        saveState(); renderAnonymousRoom();
+        const closeBtn = modal.querySelector('.modal-close');
+        if(closeBtn) closeBtn.click();
+        setTimeout(()=> openAnonComments(anonId), 120);
+        toast('Comment added');
+      });
+    }
+
+    modal.querySelectorAll('.reply-to-anon-comment').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cid = Number(btn.dataset.cid);
+        const pid = Number(btn.dataset.pid);
+        const p = anonymousPosts.find(x => x.id === pid);
+        if(!p) return;
+        const comment = (p.comments || []).find(c => c.id === cid);
+        if(!comment) return;
+        const replyText = await openModal({ title: `Reply (anonymous)`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
+        if(replyText && replyText.trim()) {
+          const reply = { id: Date.now() + Math.floor(Math.random()*99), text: replyText.trim(), createdAt: Date.now() };
+          comment.replies = comment.replies || [];
+          comment.replies.push(reply);
+          saveState(); renderAnonymousRoom();
+          const closeBtn = modal.querySelector('.modal-close');
+          if(closeBtn) closeBtn.click();
+          setTimeout(()=> openAnonComments(pid), 120);
+          toast('Reply posted');
+        }
+      });
+    });
+  }
+
+  // anon menu for owner actions (delete only, since all posts are anonymous there is no owner transformation)
   function openAnonPostMenu(anonId){
     const post = anonymousPosts.find(p => p.id === anonId);
     if(!post) return;
@@ -862,7 +730,7 @@
     };
   }
 
-  // Like and share helpers for anonymous posts
+  // anonymous like/share toggles
   function toggleAnonLike(id){
     anonymousPosts = anonymousPosts.map(p => p.id===id ? {...p, liked: !p.liked, likes: (!p.liked ? (p.likes||0)+1 : Math.max(0,(p.likes||0)-1)) } : p);
     saveState();
@@ -889,15 +757,7 @@
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Renderers: friends, notifications, categories, communities, feed panels
-  // ---------------------------------------------------------------------------
-
-  /**
-   * renderFriends()
-   * Render list of friends on the left sidebar. Clicking a friend opens that user's
-   * profile (stalk view). New: shows Add Friend / Unfriend buttons.
-   */
+  // -- renderers for main UI --
   function renderFriends(){
     if(!friendsList) return;
     friendsList.innerHTML = '';
@@ -906,35 +766,16 @@
       d.style.cursor = 'pointer';
       d.setAttribute('role','button');
       d.setAttribute('tabindex','0');
-      d.innerHTML = `<img src="${escapeHtml(f.avatar)}" alt="${escapeHtml(f.name)}"/><div style="flex:1"><div style="font-weight:600">${escapeHtml(f.name)}</div><div class="muted">${f.online?'Online':'Offline'}</div></div>
-      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-        <button class="btn small friend-action" data-name="${escapeHtml(f.name)}">${f.isFriend ? 'Unfriend' : 'Add Friend'}</button>
-      </div>`;
+      d.innerHTML = `<img src="${f.avatar}" alt="${escapeHtml(f.name)}"/><div style="flex:1"><div style="font-weight:600">${escapeHtml(f.name)}</div><div class="muted">${f.online?'Online':'Offline'}</div></div><div style="width:10px;height:10px;border-radius:50%;background:${f.online?'#34d399':'#94a3b8'}"></div>`;
       // Clicking a friend opens their profile page (stalking)
-      d.addEventListener('click', (ev) => {
-        // if the click originated from the friend-action button, ignore here
-        const btn = ev.target.closest && ev.target.closest('.friend-action');
-        if(btn) return;
+      d.addEventListener('click', () => {
         openProfileView({ name: f.name, avatar: f.avatar });
       });
       d.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileView({ name: f.name, avatar: f.avatar }); } });
-      // friend action button
-      const actionBtn = d.querySelector('.friend-action');
-      if(actionBtn){
-        actionBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const name = actionBtn.dataset.name;
-          toggleFriend(name, f.avatar);
-        });
-      }
       friendsList.appendChild(d);
     });
   }
 
-  /**
-   * renderNotifications()
-   * Render small list of notifications in the sidebar.
-   */
   function renderNotifications(){
     if(!notifList) return;
     notifList.innerHTML = '';
@@ -947,40 +788,24 @@
     updateSideBadges();
   }
 
-  // small helper to map category id to readable name
   function getCategoryName(id){ if(!id) return 'Uncategorized'; const c = categories.find(x=>x.id===id); return c ? c.name : 'Uncategorized'; }
 
-  /**
-   * renderPostCategoryOptions()
-   * Fill the "create post" select with available categories from state.
-   */
   function renderPostCategoryOptions(){
     if(!postCategorySelect) return;
     postCategorySelect.innerHTML='';
-    const none = document.createElement('option'); none.value=''; none.textContent='Categories'; postCategorySelect.appendChild(none);
+    const none = document.createElement('option'); none.value=''; none.textContent='— None —'; postCategorySelect.appendChild(none);
     categories.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; postCategorySelect.appendChild(o); });
   }
 
-  // ---------------------------------------------------------------------------
-  // Profile view code: open gallery (modal) and full profile tab view
-  // ---------------------------------------------------------------------------
-
-  /**
-   * openProfileView(user)
-   * Navigate to profile tab and set viewedProfileUser — this is what allows users
-   * to "stalk" other users' profiles. `user` is an object { name, avatar?, bio? }.
-   */
+  // NEW helper: openProfileView(user) sets the viewedProfileUser and navigates to profile tab
   function openProfileView(user) {
-    viewedProfileUser = user || null; // null => own profile
+    // user: { name: string, avatar?: string, bio?: string, joined?: string }
+    viewedProfileUser = user || null;
     setActiveTab('profile');
     renderProfile(false);
   }
 
-  /**
-   * openProfileGallery(author)
-   * Show a modal gallery of a user's posts (used from the friends list and post avatars).
-   * The modal includes an "Open profile" button that sends the user to the profile tab.
-   */
+  // Profile gallery (Instagram-like) for any author (keeps modal gallery but now "Open profile" goes to the profile tab)
   function openProfileGallery(author) {
     const current = getUserProfile();
     const viewed = author && author.name ? author : current;
@@ -990,7 +815,7 @@
       return p ? (p.author && p.author.avatar) || p.author_avatar || current.avatar : current.avatar;
     })();
 
-    // Find posts authored by the viewed person (checks both author.name and author_name for compatibility)
+    // Find posts authored by this viewed person — check different fields
     const userPosts = posts.filter(p => {
       const an = (p.author && p.author.name) || p.author_name || '';
       if(!an) return false;
@@ -1024,7 +849,6 @@
     const modal = modalRoot.querySelector('.modal');
     if(!modal) return;
 
-    // Open selected post in lightbox/modal when clicked
     modal.querySelectorAll('.profile-gallery-item').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = Number(btn.dataset.id);
@@ -1043,13 +867,14 @@
       });
     });
 
-    // "Open profile" button: goes to profile tab and sets viewedProfileUser appropriately
+    // "Open profile" button now takes you to the profile page (stalk mode)
     const openProfileBtn = modal.querySelector('#openProfileFromGallery');
     if(openProfileBtn) openProfileBtn.addEventListener('click', () => {
       const closeBtn = modal.querySelector('.modal-close');
       if(closeBtn) closeBtn.click();
       setTimeout(() => {
-        viewedProfileUser = null; // own profile
+        // view current user's profile
+        viewedProfileUser = null;
         setActiveTab('profile');
         renderProfile(false);
       }, 160);
@@ -1060,22 +885,15 @@
       const closeBtn = modal.querySelector('.modal-close');
       if(closeBtn) closeBtn.click();
       setTimeout(() => {
-        viewedProfileUser = { name: viewedName, avatar: avatar }; // view other person's profile
+        // view the profile of the 'viewed' author from the gallery
+        viewedProfileUser = { name: viewedName, avatar: avatar };
         setActiveTab('profile');
         renderProfile(false);
       }, 160);
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Feed renderer and wiring for post actions (like/share/comment/menu)
-  // ---------------------------------------------------------------------------
-
-  /**
-   * renderFeed()
-   * Render visible posts into the main feed panel, applying search and category filter.
-   * Attaches button handlers for like, share, comment and post menu.
-   */
+  // Minimalist renderFeed: icons (SVG) in action buttons
   function renderFeed(){
     if(!feedEl) return;
     const q = (globalSearch && globalSearch.value || '').trim().toLowerCase();
@@ -1130,10 +948,10 @@
       `;
       feedEl.appendChild(art);
 
-      // Clicking the avatar image opens that user's profile view (stalk mode)
       const headImg = art.querySelector('.post-head img');
       if(headImg) {
         headImg.style.cursor = 'pointer';
+        // Clicking another user's avatar should navigate to their profile page (view their posts)
         headImg.addEventListener('click', () => {
           const authorObj = post.author && post.author.name ? { name: post.author.name, avatar: post.author.avatar } : (post.author_name ? { name: post.author_name, avatar: post.author_avatar } : null);
           if(authorObj && authorObj.name) {
@@ -1146,13 +964,11 @@
       }
     });
 
-    // image click to open lightbox
     feedEl.querySelectorAll('.post-body img').forEach(img => img.onclick = (e) => {
       const src = e.currentTarget.getAttribute('src');
       openImageLightbox(src, e.currentTarget.getAttribute('alt') || '');
     });
 
-    // wire like/share/comment/menu buttons
     feedEl.querySelectorAll('.like-btn').forEach(b => b.onclick = () => {
       const id = Number(b.dataset.id);
       toggleLike(id);
@@ -1171,9 +987,7 @@
     feedEl.querySelectorAll('.menu-btn').forEach(b => b.onclick = (e) => openPostMenu(e.currentTarget, Number(b.dataset.id)));
   }
 
-  // ---------------------------------------------------------------------------
-  // Post action implementations (like, share, menu)
-  // ---------------------------------------------------------------------------
+  // actions for regular posts
   function toggleLike(id){
     posts = posts.map(p => p.id===id ? {...p, liked: !p.liked, likes: (!p.liked ? p.likes+1 : Math.max(0,p.likes-1)) } : p);
     saveState();
@@ -1181,10 +995,6 @@
     updateSideBadges();
   }
 
-  /**
-   * sharePost(id)
-   * Copies post text (and image URL if present) to clipboard and notifies user.
-   */
   function sharePost(id){
     const p = posts.find(x=>x.id===id); if(!p) return;
     let text = (p.text || '') + (p.image ? '\n' + p.image : '');
@@ -1206,11 +1016,7 @@
     }
   }
 
-  /**
-   * openPostMenu(btn, postId)
-   * Opens modal with actions: Save, Copy link, Report. If the current user
-   * owns the post, also show Edit and Delete actions.
-   */
+  // post menu for regular posts
   function openPostMenu(btn, postId){
     const user = getUserProfile();
     const post = posts.find(p=>p.id===postId);
@@ -1289,9 +1095,7 @@
     };
   }
 
-  // ---------------------------------------------------------------------------
-  // Create post (regular feed) — file input preview + actual creation
-  // ---------------------------------------------------------------------------
+  // post creation & preview for regular posts
   if(addImageBtn) addImageBtn.onclick = () => postImage && postImage.click();
   if(postImage) postImage.onchange = (e) => {
     const f = e.target.files && e.target.files[0];
@@ -1316,10 +1120,6 @@
     }
   }
 
-  /**
-   * actuallyCreatePost(text, image, categoryId)
-   * Build a post object from the current user profile and insert at the top of the feed.
-   */
   function actuallyCreatePost(text, image, categoryId){
     const u = getUserProfile();
     const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: text, image: image, categoryId: categoryId, likes:0, comments: [], shares:0, liked:false };
@@ -1334,10 +1134,6 @@
   if(postForm) postForm.onsubmit = createPost;
   if(newCategoryBtn) newCategoryBtn.onclick = addCategoryPrompt;
 
-  /**
-   * addCategoryPrompt()
-   * Ask the user for a new category name and add it to state if not duplicate.
-   */
   function addCategoryPrompt(){
     openModal({ title: 'New category', input:true, placeholder:'Category name', confirmText:'Add' }).then(name => {
       if(!name) return;
@@ -1350,9 +1146,7 @@
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Categories page renderer — shows number of posts per category and allows rename
-  // ---------------------------------------------------------------------------
+  // categories page
   function renderCategoriesPage(){
     if(!categoriesContent) return;
     const counts = {}; posts.forEach(p => { const id = p.categoryId || 0; counts[id] = (counts[id]||0)+1; });
@@ -1383,43 +1177,23 @@
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Profile helpers: get/set profile and UI rendering of profile tab
-  // ---------------------------------------------------------------------------
-
-  /**
-   * getUserProfile()
-   * Retrieve the saved user profile from localStorage. If none exists, return a demo default.
-   * Note: feed.js expects the object format: { name, avatar, bio, joined, communitiesJoined, joinedCommunities }
-   */
+  // profile helpers
   function getUserProfile(){ const raw = localStorage.getItem(KEY.PROFILE); if(raw) try { return JSON.parse(raw); } catch(e){} return { name:'Marjohn', avatar:'https://i.pravatar.cc/80?img=7', bio:'Frontend dev. Loves design & coffee.', joined:'Feb 2024', communitiesJoined:2, joinedCommunities:[] }; }
-
-  /**
-   * setUserProfile(upd)
-   * Persist a profile object to localStorage and refresh small UI areas that depend on it.
-   */
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
-
-  /**
-   * renderTopRightUser()
-   * Update the header top-right user avatar and name.
-   */
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
-  /**
-   * renderProfile(editMode=false)
-   * Render the profile tab. If viewedProfileUser is set, show that user's public posts.
-   * If viewedProfileUser is null, show the current user's profile (and allow editing).
-   */
+  // Updated renderProfile to show a profile page for either the current user or another user.
+  // renderProfile(editMode=false) uses viewedProfileUser to determine which profile to show.
   function renderProfile(editMode=false){
     const cont = document.getElementById('profile-content'); if(!cont) return;
     const currentUser = getUserProfile();
     const viewed = viewedProfileUser || null; // if null => show current user
     const isViewingOwn = !viewed || (viewed && viewed.name && viewed.name === currentUser.name);
 
-    // helper: attempt to resolve additional profile data by scanning posts authored by the name
+    // helper to get avatar/bio for a viewed user (try local posts or passed avatar)
     function resolveProfileData(name, fallback) {
       const profile = { name: name || (fallback && fallback.name) || 'Unknown', avatar: (fallback && fallback.avatar) || null, bio: (fallback && fallback.bio) || '' };
+      // try to find a post authored by them to grab avatar
       const p = posts.find(pp => {
         const an = (pp.author && pp.author.name) || pp.author_name || '';
         return an && name && an.toLowerCase() === name.toLowerCase();
@@ -1430,8 +1204,8 @@
       return profile;
     }
 
-    // If viewing own profile and not editing: show full editable summary and the user's posts
     if(isViewingOwn && !editMode) {
+      // show current user with edit button
       const u = currentUser;
       const postItems = posts.filter(p => {
         const authorName = (p.author && p.author.name) || p.author_name || '';
@@ -1471,10 +1245,10 @@
         </div>
       `;
 
-      // wire edit button to switch to edit mode
+      // wire edit button
       const eb = document.getElementById('editProfileBtn'); if(eb) eb.onclick = () => renderProfile(true);
 
-      // wire gallery click to open post (image or text)
+      // wire gallery item clicks
       cont.querySelectorAll('.profile-gallery-item').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const id = Number(btn.dataset.id);
@@ -1496,9 +1270,10 @@
       return;
     }
 
-    // If editing own profile: show edit form UI (upload avatar, webcam, remove)
+    // viewing someone else's profile OR editing own profile
     if(isViewingOwn && editMode) {
-      let currentAvatar = currentUser.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
+      // show edit UI for own profile (existing behavior)
+      let currentAvatar = currentUser.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23b3cde0'/%3E%3Cpath d='M2 20c0-4 4-6 10-6s10 2 10 6' fill='%23dbeef6'/%3E%3C/svg%3E";
       cont.innerHTML = `
         <form id="editProfileForm" style="display:flex;flex-direction:column;gap:10px;">
           <label>Name:<br>
@@ -1526,8 +1301,6 @@
         </form>
         <div id="webcam-modal-root"></div>
       `;
-      // ... the rest of the edit wiring (avatar upload/webcam/save/cancel) is unchanged from earlier,
-      // and is included here to keep behavior consistent with the original demo code.
       const avatarPreview = document.getElementById('avatarPreview');
       const avatarUpload = document.getElementById('avatarUpload');
       const pickPhotoBtn = document.getElementById('pickPhotoBtn');
@@ -1579,7 +1352,7 @@
           toast('Camera access denied');
           webcamModalRoot.innerHTML = '';
         });
-              snapBtn.onclick = function(){
+        snapBtn.onclick = function(){
           const canvas = document.createElement('canvas');
           canvas.width = video.videoWidth || 240;
           canvas.height = video.videoHeight || 180;
@@ -1599,7 +1372,7 @@
         };
       };
 
-      // remove photo and revert to default SVG
+      // Remove photo and use default SVG
       removePhotoBtn.onclick = () => {
         if(confirm('Are you sure you want to remove your profile photo?')){
           currentAvatar = defaultAvatar;
@@ -1608,13 +1381,13 @@
         }
       };
 
-      // save profile changes
+      // Save profile
       form.onsubmit = function(ev){
         ev.preventDefault();
         const fd = new FormData(form), prev = getUserProfile();
         const np = {
           name: (fd.get('name')||prev.name).trim(),
-          avatar: currentAvatar,
+          avatar: currentAvatar, // dataURL or SVG
           bio: (fd.get('bio')||'').trim(),
           joined: prev.joined,
           communitiesJoined: prev.communitiesJoined || 0,
@@ -1627,7 +1400,7 @@
       return;
     }
 
-    // Viewing someone else's profile (read-only): show their posts and summary
+    // Viewing another user's profile (read-only)
     if(viewedProfileUser) {
       const profile = resolveProfileData(viewedProfileUser.name, viewedProfileUser);
       const userPosts = posts.filter(p => {
@@ -1655,22 +1428,7 @@
         </div>
       `;
 
-      // Add Friend / Unfriend button in viewed profile header
-      const header = cont.querySelector('div[style*="display:flex;gap:16px"]') || cont;
-      const alreadyFriend = isFriendByName(profile.name);
-      const actionDiv = document.createElement('div');
-      actionDiv.style.marginTop = '10px';
-      actionDiv.innerHTML = `<button id="profile-friend-btn" class="btn small">${alreadyFriend ? 'Unfriend' : 'Add Friend'}</button>`;
-      header.appendChild(actionDiv);
-      const pf = document.getElementById('profile-friend-btn');
-      if(pf){
-        pf.addEventListener('click', (e) => {
-          e.preventDefault();
-          toggleFriend(profile.name, profile.avatar);
-        });
-      }
-
-      // wire gallery items to open posts
+      // wire gallery items
       cont.querySelectorAll('.profile-gallery-item').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const id = Number(btn.dataset.id);
@@ -1692,230 +1450,12 @@
       return;
     }
 
-    // fallback: show basic current user info
+    // default fallback: show current user summary if somehow none matched
     const u = currentUser;
     cont.innerHTML = `<div><strong>${escapeHtml(u.name)}</strong><div class="muted">${escapeHtml(u.bio)}</div></div>`;
   }
 
-  // =====================================================================
-  // INSTAGRAM-LIKE PROFILE GRID PATCH + IMAGE CONTAINMENT
-  // =====================================================================
-
-  (function applyProfileGridPatch(){
-    // small helper to inject CSS once (adds image containment rules and comments styles)
-    function ensureInstaGridStyles() {
-      if (document.getElementById('insta-grid-styles')) return;
-      const css = `
-        /* Insta grid */
-        .insta-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-          gap: 8px;
-        }
-        .insta-tile {
-          position: relative;
-          width: 100%;
-          padding-top: 100%; /* square */
-          overflow: hidden;
-          background: #111;
-          border-radius: 6px;
-          cursor: pointer;
-        }
-        .insta-tile .tile-media {
-          position: absolute;
-          top: 0; left: 0; right: 0; bottom: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .insta-tile img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-          -webkit-user-drag: none;
-          user-select: none;
-          pointer-events: none;
-        }
-        .insta-tile .pg-txt {
-          padding: 10px;
-          color: #fff;
-          font-size: 13px;
-          text-align: center;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .insta-tile .tile-overlay {
-          position: absolute;
-          top: 0; left: 0; right: 0; bottom: 0;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 8px;
-          background: linear-gradient(180deg, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.45) 100%);
-          opacity: 0;
-          transition: opacity 160ms ease;
-        }
-        .insta-tile:focus .tile-overlay,
-        .insta-tile:hover .tile-overlay {
-          opacity: 1;
-        }
-        .insta-tile .overlay-left,
-        .insta-tile .overlay-right {
-          display:flex;
-          gap:8px;
-          align-items:center;
-        }
-        .insta-tile .icon {
-          background: rgba(0,0,0,0.45);
-          border: none;
-          color: #fff;
-          padding: 6px 8px;
-          border-radius: 6px;
-          display: inline-flex;
-          gap:6px;
-          align-items:center;
-          font-size: 13px;
-          cursor: pointer;
-        }
-        .insta-tile .icon svg { width: 16px; height: 16px; }
-        .insta-tile .icon:focus { outline: 2px solid rgba(255,255,255,0.18); }
-        .insta-tile .count { font-weight:600; margin-left:4px; }
-        .insta-tile .liked { color: #ff6b81; }
-
-        /* Feed & lightbox images: make contained to avoid scrollbars and overflow */
-        .post-body img, .lightbox-img {
-          max-width: 100%;
-          height: auto;
-          display: block;
-          object-fit: cover;
-          border-radius: 6px;
-        }
-        .modal .modal-body {
-          max-height: 70vh;
-          overflow: auto;
-        }
-
-        /* TikTok-like comments styles (fallback core styling) */
-        .comments-sheet .cs-list .cs-row img { flex-shrink:0; }
-        .comments-sheet .btn.tiny { font-size:12px;padding:4px 8px;border-radius:6px; }
-      `;
-      const s = document.createElement('style');
-      s.id = 'insta-grid-styles';
-      s.appendChild(document.createTextNode(css));
-      document.head.appendChild(s);
-    }
-
-    function smallHeartSvg(fill = 'none', stroke = 'currentColor') {
-      return `<svg viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.69l-1.06-1.08a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
-    }
-    function smallCommentSvg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`; }
-    function smallShareSvg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`; }
-
-    // If renderProfile isn't defined in this scope for some reason, bail.
-    if (typeof renderProfile !== 'function') return;
-
-    // Capture original for reuse
-    const originalRenderProfile = renderProfile;
-
-    // Replace renderProfile with a wrapper that uses original and then replaces gallery
-    renderProfile = function(editMode=false){
-      // Call original to build the profile markup
-      originalRenderProfile(editMode);
-
-      const cont = document.getElementById('profile-content');
-      if(!cont) return;
-
-      ensureInstaGridStyles();
-
-      // Find all profile-gallery-grid elements and replace them
-      const grids = cont.querySelectorAll('.profile-gallery-grid');
-      if(!grids || grids.length === 0) return;
-
-      grids.forEach(grid => {
-        // Gather posts referenced by buttons inside the existing grid
-        const items = Array.from(grid.querySelectorAll('.profile-gallery-item')).map(btn => {
-          const id = Number(btn.dataset.id);
-          return posts.find(p => p.id === id);
-        }).filter(Boolean);
-
-        // Build insta-grid HTML
-        const instaHtml = `<div class="insta-grid" aria-live="polite">${items.map(p => {
-          const thumb = p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml((p.text||'').slice(0,60))}">` : `<div class="pg-txt">${escapeHtml((p.text||'').slice(0,120))}</div>`;
-          const likedClass = p.liked ? 'liked' : '';
-          const commentCount = (p.comments && p.comments.length) ? p.comments.length : 0;
-          return `<div class="insta-tile" data-id="${p.id}" tabindex="0" aria-label="Open post ${escapeHtml((p.text||'').slice(0,40))}">
-            <div class="tile-media">${thumb}</div>
-            <div class="tile-overlay" aria-hidden="true">
-              <div class="overlay-left">
-                <button class="icon action-like ${likedClass}" data-id="${p.id}" title="Like" aria-pressed="${p.liked ? 'true' : 'false'}">${smallHeartSvg(p.liked ? 'currentColor' : 'none')}<span class="count" aria-hidden="true">${p.likes||0}</span></button>
-                <button class="icon action-comment" data-id="${p.id}" title="Comment">${smallCommentSvg()}<span class="count" aria-hidden="true">${commentCount}</span></button>
-              </div>
-              <div class="overlay-right">
-                <button class="icon action-share" data-id="${p.id}" title="Share">${smallShareSvg()}</button>
-              </div>
-            </div>
-          </div>`;
-        }).join('')}</div>`;
-
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = instaHtml;
-        grid.replaceWith(wrapper.firstElementChild);
-
-        // Wire events
-        const instaGrid = cont.querySelector('.insta-grid');
-        if(!instaGrid) return;
-
-        instaGrid.querySelectorAll('.insta-tile').forEach(tile => {
-          const id = Number(tile.dataset.id);
-          tile.addEventListener('click', (e) => {
-            if (e.target.closest('button')) return;
-            const post = posts.find(p=>p.id===id);
-            if(!post) return;
-            if(post.image) openImageLightbox(post.image, post.text || '');
-            else openModal({ title: `${escapeHtml(timeAgo(post.createdAt || Date.now()))}`, html: `<div style="margin-top:8px">${escapeHtml(post.text || '')}</div>`, confirmText: 'Close', cancelText: '' });
-          });
-          tile.addEventListener('keydown', (e) => {
-            if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tile.click(); }
-          });
-        });
-
-        instaGrid.querySelectorAll('.action-like').forEach(b => {
-          b.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            const id = Number(b.dataset.id);
-            toggleLike(id);
-            // re-render profile to reflect updated counts
-            setTimeout(()=> renderProfile(false), 60);
-          });
-        });
-
-        instaGrid.querySelectorAll('.action-comment').forEach(b => {
-          b.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            const id = Number(b.dataset.id);
-            openComments(id);
-            setTimeout(()=> renderProfile(false), 160);
-          });
-        });
-
-        instaGrid.querySelectorAll('.action-share').forEach(b => {
-          b.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            const id = Number(b.dataset.id);
-            sharePost(id);
-            setTimeout(()=> renderProfile(false), 120);
-          });
-        });
-
-      }); // end grids.forEach
-    }; // end renderProfile wrapper
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Tabs, navigation and accessibility helpers
-  // ---------------------------------------------------------------------------
+  // tabs plumbing (unchanged mapping)
   const TAB_TO_PANEL_ID = {
     feed: 'tab-feed',
     news: 'tab-news',
@@ -1950,11 +1490,6 @@
     li.focus();
   }
 
-  /**
-   * setActiveTab(tab)
-   * Switch view between the main panels (feed, profile, news, etc.).
-   * When switching to certain tabs we call render functions to populate them.
-   */
   function setActiveTab(tab){
     if(!navList) return;
     navList.querySelectorAll('li').forEach(li => {
@@ -1964,14 +1499,12 @@
       li.setAttribute('tabindex', is ? '0' : '-1');
     });
 
-    // hide all tab-panels and show the one for `tab`
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
 
     const panelId = TAB_TO_PANEL_ID[tab] || TAB_TO_PANEL_ID['feed'];
     const panelEl = document.getElementById(panelId);
     if(panelEl) panelEl.classList.remove('hidden');
 
-    // show/hide feed-card vs feed list depending on tab
     if(tab === 'feed'){
       const feedCard = document.getElementById('tab-feed'); if(feedCard) feedCard.classList.remove('hidden');
       if(feedEl) feedEl.classList.remove('hidden');
@@ -1980,7 +1513,6 @@
       const feedCard = document.getElementById('tab-feed'); if(feedCard) feedCard.classList.add('hidden');
     }
 
-    // call renderers for tabs that need it
     if(tab === 'profile') renderProfile(false);
     if(tab === 'categories') renderCategoriesPage();
     if(tab === 'news') renderNews();
@@ -2008,9 +1540,7 @@
     setActiveTab(tab);
   }
 
-  // ---------------------------------------------------------------------------
-  // News fetching + helpers (spaceflight news API fallback + local curated items)
-  // ---------------------------------------------------------------------------
+  // news
   async function fetchNews(limit = 6){
     try {
       const res = await fetch(`https://api.spaceflightnewsapi.net/v3/articles?_limit=${limit}`);
@@ -2061,17 +1591,13 @@
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
 
-  /**
-   * renderNews()
-   * Load news items and display items that match school-related keywords.
-   * If none are found, show curated fallback items and a small message.
-   */
   async function renderNews(){
     const el = document.getElementById('news-content');
     if(!el) return;
     el.innerHTML = `<div class="muted">Loading news…</div>`;
     try {
       const items = await fetchNews(50);
+      // filter to school-related items exclusively; if none, show curated fallback and message
       const schoolItems = items.filter(isSchoolRelated);
       let filtered = schoolItems;
       if(filtered.length === 0) {
@@ -2103,7 +1629,74 @@
     }
   }
 
+  // write story
+  function renderWrite(){
+    const el = document.getElementById('write-content');
+    if(!el) return;
+    el.innerHTML = `
+      <form id="writeStoryForm" style="display:flex;flex-direction:column;gap:8px;">
+        <input name="title" placeholder="Story title" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"/>
+        <textarea name="body" rows="8" placeholder="Write your story..." style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select name="category" id="write-category-select" style="padding:6px;border-radius:6px;">
+            <option value="">— None —</option>
+            ${categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
+          </select>
+          <button class="btn primary" type="submit">Publish Story</button>
+        </div>
+      </form>
+    `;
+    const form = document.getElementById('writeStoryForm');
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const title = (fd.get('title')||'').trim();
+      const body = (fd.get('body')||'').trim();
+      const categoryId = fd.get('category') ? Number(fd.get('category')) : null;
+      if(!title && !body){ toast('Write something first'); return; }
+      const u = getUserProfile();
+      const p = { id: Date.now(), author:{name:u.name, avatar:u.avatar}, createdAt: Date.now(), text: (title ? `# ${title}\n\n${body}` : body), image: null, categoryId, likes:0, comments:[], shares:0, liked:false };
+      posts.unshift(p);
+      notifications.unshift({ id:Date.now(), text:'You published a story.', createdAt: Date.now(), avatar:u.avatar });
+      saveState(); renderFeed(); renderNotifications();
+      toast('Story published');
+      setActiveTab('mystories');
+    };
+  }
 
+  // my stories
+  function renderMyStories(){
+    const el = document.getElementById('mystories-content');
+    if(!el) return;
+    const u = getUserProfile();
+    const mine = posts.filter(p => p.author.name === u.name);
+    if(mine.length===0){ el.innerHTML = `<div class="muted">You haven't published any stories yet.</div>`; return; }
+    el.innerHTML = '';
+    mine.forEach(p => {
+      const row = document.createElement('div'); row.style.marginBottom='12px';
+      row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:700">${escapeHtml((p.text||'').split('\n')[0].replace(/^#\s*/,''))}</div><div class="muted" style="font-size:12px">${escapeHtml(timeAgo(p.createdAt))}</div></div><div><button class="btn small edit-story" data-id="${p.id}">Edit</button><button class="btn small delete-story" data-id="${p.id}" style="margin-left:8px">Delete</button></div></div><div style="margin-top:6px">${escapeHtml((p.text||'').split('\n').slice(1).join('\n').slice(0,350))}</div>`;
+      el.appendChild(row);
+    });
+    el.querySelectorAll('.edit-story').forEach(b => b.onclick = async () => {
+      const id = Number(b.dataset.id);
+      const post = posts.find(x=>x.id===id);
+      if(!post) return;
+      const newText = await openModal({ title:'Edit story', input:true, placeholder:'Edit story (markdown ok)', confirmText:'Save' , html: escapeHtml(post.text||'')});
+      if(newText === null) return;
+      posts = posts.map(pp => pp.id===id ? {...pp, text: newText} : pp);
+      saveState(); renderMyStories(); renderFeed();
+      toast('Story updated');
+    });
+    el.querySelectorAll('.delete-story').forEach(b => b.onclick = () => {
+      const id = Number(b.dataset.id);
+      if(!confirm('Delete this story?')) return;
+      posts = posts.filter(x=>x.id!==id);
+      saveState(); renderMyStories(); renderFeed();
+      toast('Story deleted');
+    });
+  }
+
+  // trending
   function renderTrending(){
     const el = document.getElementById('trending-content');
     if(!el) return;
@@ -2114,23 +1707,18 @@
     el.innerHTML = `<div style="display:flex;gap:12px"><div style="flex:1"><strong>Top posts</strong><div style="margin-top:8px">${byScore.map(p=>`<div style="margin-bottom:8px"><div style="font-weight:600">${escapeHtml((p.text||'').slice(0,80))}</div><div class="muted">${escapeHtml(getCategoryName(p.categoryId))} • ${escapeHtml(String(p.likes))} likes</div></div>`).join('')}</div></div><div style="width:220px"><strong>Top categories</strong><div class="muted" style="margin-top:8px">${topCats.map(c=>`${escapeHtml(getCategoryName(c.id))} — ${c.count} posts`).join('<br>')}</div></div></div>`;
   }
 
-  /**
-   * renderPostCategoryOptionsForSelect(selectEl)
-   * Populate a <select> element with categories (used for write/story select).
-   */
+  // populate writer selects quickly
   function renderPostCategoryOptionsForSelect(selectEl){
     if(!selectEl) return;
     selectEl.innerHTML = `<option value="">— None —</option>${categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}`;
   }
 
-  // Wire global search input to re-render feed with debounce
+  // UI bindings
   if(globalSearch){
     globalSearch.addEventListener('input', debounce(()=>renderFeed(), 180));
   }
 
-  // ---------------------------------------------------------------------------
-  // Theme / mode toggles
-  // ---------------------------------------------------------------------------
+  // THEME & MODE BUTTON LOGIC
   function setTheme(isLight) {
     try {
       if(isLight) document.body.classList.add('theme-light');
@@ -2162,7 +1750,10 @@
     modeBtn.setAttribute('aria-pressed', String(!isLight));
   }
 
-  if(themeToggle) themeToggle.addEventListener('click', ()=> toggleTheme());
+  if(themeToggle) themeToggle.addEventListener('click', ()=>{
+    toggleTheme();
+  });
+
   if(modeBtn) {
     modeBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -2171,9 +1762,7 @@
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Settings & Help modals wiring
-  // ---------------------------------------------------------------------------
+  // Settings modal: Settings & Privacy
   function openSettingsModal() {
     const saved = (() => {
       try { return JSON.parse(localStorage.getItem(KEY.SETTINGS) || '{}'); } catch(e){ return {}; }
@@ -2227,6 +1816,7 @@
     }
   }
 
+  // Help & Support modal
   function openHelpModal() {
     const html = `
       <div style="display:flex;flex-direction:column;gap:10px;">
@@ -2253,7 +1843,7 @@
     }
   }
 
-  // wire settings & help menu buttons
+  // wire settings menu actions
   if(settingPrivBtn) {
     settingPrivBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -2269,9 +1859,7 @@
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Login / logout helpers
-  // ---------------------------------------------------------------------------
+  // LOGOUT / resolveLoginPath / doLogout
   const LOGIN_PATH_CANDIDATES = [
     'login.html',
     'log in.html',
@@ -2281,11 +1869,6 @@
     'index.html'
   ];
 
-  /**
-   * resolveLoginPath()
-   * Tries a small list of likely login page paths and returns one that responds.
-   * This is a convenience to try redirecting to a good login page after logout.
-   */
   async function resolveLoginPath() {
     for (const candidate of LOGIN_PATH_CANDIDATES) {
       try {
@@ -2309,10 +1892,6 @@
     return LOGIN_PATH_CANDIDATES[0];
   }
 
-  /**
-   * doLogout()
-   * Clears local login flags and userProfile and redirects to a login page.
-   */
   async function doLogout() {
     try {
       localStorage.removeItem('loggedIn');
@@ -2331,7 +1910,7 @@
     }
   }
 
-  // Delegated logout: global listener so logout button works even if added later
+  // Delegated logout
   function attachDelegatedLogout() {
     document.addEventListener('click', function delegatedLogoutClick(e) {
       const btn = e.target.closest && e.target.closest('#logoutBtn');
@@ -2352,9 +1931,7 @@
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Small side icon & badge helpers
-  // ---------------------------------------------------------------------------
+  // side-icons wiring and helpers (new)
   function updateSideBadges(){
     // placeholder - no side badges in this simplified demo
   }
@@ -2369,9 +1946,7 @@
     updateSideBadges();
   }
 
-  // ---------------------------------------------------------------------------
-  // Profile icon shortcut: clicking top-right avatar opens own profile
-  // ---------------------------------------------------------------------------
+  // Profile avatar shortcut (modified so clicking profile opens profile tab and shows user's posts)
   function initProfileIconShortcut() {
     const profileIcon = document.getElementById('profile-icon');
     if (profileIcon) {
@@ -2412,9 +1987,7 @@
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Keyboard shortcuts for quick navigation
-  // ---------------------------------------------------------------------------
+  // keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if(e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable)) return;
     if(e.key === '/') { e.preventDefault(); globalSearch && globalSearch.focus(); }
@@ -2425,9 +1998,7 @@
     }
   });
 
-  // ---------------------------------------------------------------------------
-  // initTheme(): read saved theme preference and apply
-  // ---------------------------------------------------------------------------
+  // theme & init
   function initTheme(){
     try {
       const t = localStorage.getItem(KEY.THEME);
@@ -2437,9 +2008,7 @@
     } catch(e){}
   }
 
-  // ---------------------------------------------------------------------------
-  // Top stories rendering (uses news functions above)
-  // ---------------------------------------------------------------------------
+  // Top stories
   async function renderTopStories() {
     if(!topStoriesList) return;
     topStoriesList.innerHTML = 'Loading top stories…';
@@ -2492,9 +2061,8 @@
       renderNews();
     });
   }
-  // ---------------------------------------------------------------------------
-  // Communities render + join/create actions (already in demo state)
-  // ---------------------------------------------------------------------------
+
+  // Communities: render and actions (join/create)
   function renderCommunities(){
     const el = document.getElementById('communities-list');
     if(!el) return;
@@ -2561,9 +2129,8 @@
     saveState();
     renderCommunities();
   }
-  // ---------------------------------------------------------------------------
-  // Clear notifications action
-  // ---------------------------------------------------------------------------
+
+  // Top-level helpers: clear notifs, show notifications
   if(clearNotifsBtn) {
     clearNotifsBtn.addEventListener('click', () => {
       if(!confirm('Clear all notifications?')) return;
@@ -2574,9 +2141,7 @@
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Expose debug helpers for console / testing
-  // ---------------------------------------------------------------------------
+  // expose debug
   window.feedApp = {
     getPosts: () => posts,
     getCategories: () => categories,
@@ -2591,6 +2156,7 @@
     openProfileView // expose for testing
   };
 
+  // initialization
   function init(){
     initTheme();
     renderTopRightUser();
@@ -2605,59 +2171,8 @@
     restoreTabFromHashOrLast();
     initProfileIconShortcut();
     attachDelegatedLogout();
-    initMobileNav(); 
-    initMobileSearchToggle();
-    restoreTabFromHashOrLast();
     toast('Welcome back!');
   }
-     // Function to handle logout from any button/link
-function attachDelegatedLogout() {
-  // We use event delegation to find all elements with the 'data-action="logout"' attribute
-  document.addEventListener('click', (e) => {
-    // Check if the clicked element has the logout data attribute
-    if (e.target.closest('[data-action="logout"]')) {
-      e.preventDefault(); // Stop any default link behavior
 
-      // 1. Remove the saved login state
-      localStorage.removeItem("loggedInUser");
-      
-      // 2. Redirect the user back to the login page
-      window.location.href = "login.html";
-    }
-  });
-}
-// Mobile Navigation (Hamburger Menu)
-function initMobileNav() {
-  const body = document.body;
-  const hamburger = document.getElementById('hamburger');
-  if (hamburger) { 
-    hamburger.addEventListener('click', () => {
-      body.classList.toggle('menu-open'); 
-      const isExpanded = body.classList.contains('menu-open');
-      hamburger.setAttribute('aria-expanded', isExpanded);
-      body.style.overflow = isExpanded ? 'hidden' : '';
-    });
-  }
-}
-
-/// ---------------------------------------------------------------------------
-// Mobile Search Toggle
-// ---------------------------------------------------------------------------
-function initMobileSearchToggle() {
-    const body = document.body;
-    // Target the search icon container for the click event
-    const searchIconContainer = document.querySelector('#app .topbar .center-search');
- 
-    
-    if (searchIconContainer) {
-        searchIconContainer.addEventListener('click', (event) => {
-            // Only activate the toggle when in mobile view
-            if (window.innerWidth <= 768) {
-                event.preventDefault(); 
-                body.classList.toggle('search-active');
-            }
-        });
-    }
-}
   init();
 })();
