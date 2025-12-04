@@ -31,10 +31,239 @@ body {
 /* --- feed.css: New styles for alignment --- */
 
 /* Ensures the header and main content share the same horizontal padding on small screens. */
-.topbar,
-main {
-    padding-left: 18px;
-    padding-right: 18px;
+/* --- Make the topbar sticky like Threads --- */
+.topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  background: var(--bg) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  padding: 12px 0 !important;
+  margin-bottom: 0 !important;
+}
+
+body.theme-light .topbar {
+  background: rgba(245, 247, 251, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Adjust main content to account for sticky header */
+.grid {
+  padding-top: 0 !important;
+}
+
+/* Ensure the container wraps properly */
+.container {
+  position: relative;
+}
+
+/* --- Threads-like Refresh Button Styling --- */
+.brand .logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add a subtle pulsing animation to indicate refresh capability */
+@keyframes subtle-pulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(2, 6, 23, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 12px rgba(0, 180, 216, 0.3);
+  }
+}
+
+.brand .logo:hover {
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 180, 216, 0.2);
+  animation: subtle-pulse 2s infinite;
+}
+
+.brand .logo:active {
+  transform: scale(0.98);
+}
+
+/* Enhanced refresh animation when clicking */
+.logo.refreshing .logo-svg {
+  transform: rotate(360deg);
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Mobile adjustments for sticky header */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 8px 0 !important;
+  }
+  
+  /* Ensure hamburger menu still works with sticky header */
+  body.menu-open .topbar {
+    background: var(--bg) !important;
+  }
+  
+  body.theme-light.menu-open .topbar {
+    background: var(--bg-light) !important;
+  }
+  
+  /* Adjust for mobile scrolling */
+  .grid {
+    min-height: calc(100vh - 60px);
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .topbar {
+    padding: 10px 0 !important;
+  }
+}
+
+/* Prevent body scroll when menu is open on mobile */
+body.menu-open {
+  overflow: hidden;
+}
+
+/* Ensure topbar remains on top of everything */
+.topbar {
+  z-index: 1000 !important;
+}
+/* --- Enhanced Sticky Header for Threads-like Experience --- */
+
+/* Main app container */
+#app {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Make the topbar truly sticky and prominent */
+.topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  background: var(--bg) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 12px 0 !important;
+  margin-bottom: 0 !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Light theme adjustments */
+body.theme-light .topbar {
+  background: rgba(245, 247, 251, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Shadow effect when scrolled */
+.topbar.scrolled {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+body.theme-light .topbar.scrolled {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Adjust main content area */
+main.grid {
+  padding-top: 4px !important;
+  min-height: calc(100vh - 80px);
+}
+
+/* Enhanced logo refresh animation */
+@keyframes logoPulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(2, 6, 23, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(0, 180, 216, 0.4);
+    transform: scale(1.02);
+  }
+}
+
+.brand .logo:hover {
+  animation: logoPulse 2s infinite ease-in-out;
+  transform: scale(1.02);
+}
+
+/* Active refresh animation */
+.logo.refreshing .logo-svg {
+  animation: rotateRefresh 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes rotateRefresh {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Scroll to top indicator */
+.brand .logo::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  transform: translateX(-50%);
+  transition: width 0.3s ease;
+}
+
+.brand .logo:hover::after {
+  width: 80%;
+}
+
+/* Mobile adjustments for sticky behavior */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 10px 0 !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+  }
+  
+  /* Ensure mobile menu works with sticky header */
+  body.menu-open .topbar {
+    z-index: 1002 !important;
+  }
+  
+  /* Adjust for mobile scrolling */
+  main.grid {
+    min-height: calc(100vh - 70px);
+  }
+  
+  /* Smaller logo on mobile */
+  .brand .logo {
+    padding: 6px 10px;
+  }
+}
+
+/* Add scroll detection for shadow effect */
+@media (min-width: 769px) {
+  /* No extra styles needed for desktop, just keep it responsive */
 }
 
 /* On desktop, the main section may use CSS Grid, so we only need to ensure 

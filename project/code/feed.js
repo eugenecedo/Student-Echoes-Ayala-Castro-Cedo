@@ -60,7 +60,8 @@
       comments: []
     }
   ];
-   // Logo refresh functionality
+   // Logo refresh functionality - Updated with better visual feedback
+// Logo refresh functionality - Now also scrolls to top
 function initLogoRefresh() {
   const logo = document.getElementById('logo-refresh');
   if (!logo) return;
@@ -68,6 +69,12 @@ function initLogoRefresh() {
   logo.addEventListener('click', () => {
     // Add refreshing class for animation
     logo.classList.add('refreshing');
+    
+    // Scroll to top first
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
     
     // Clear any active category filter
     activeCategoryId = null;
@@ -77,16 +84,22 @@ function initLogoRefresh() {
       globalSearch.value = '';
     }
     
-    // Force a re-render of the feed
-    renderFeed();
-    
-    // Show toast notification
-    toast('Feed refreshed!');
+    // Force a re-render of the feed after a short delay
+    setTimeout(() => {
+      renderFeed();
+      toast('Feed refreshed!');
+      
+      // Add a small shake effect for extra feedback
+      logo.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        logo.style.transform = 'scale(1)';
+      }, 150);
+    }, 300); // Slight delay to allow scroll animation to complete
     
     // Remove refreshing class after animation
     setTimeout(() => {
       logo.classList.remove('refreshing');
-    }, 600);
+    }, 1000);
   });
   
   // Make logo keyboard accessible
@@ -100,9 +113,11 @@ function initLogoRefresh() {
   // Set proper ARIA attributes
   logo.setAttribute('role', 'button');
   logo.setAttribute('tabindex', '0');
-  logo.setAttribute('aria-label', 'Refresh feed');
+  logo.setAttribute('aria-label', 'Refresh feed - Click to refresh and scroll to top');
+  
+  // Add hover title
+  logo.title = 'Refresh feed and scroll to top';
 }
-
   // Hamburger menu functionality
 const hamburger = document.getElementById('hamburger');
 const body = document.body;
@@ -2478,9 +2493,22 @@ function attachDelegatedLogout() {
     openPostDetail // <--- THIS is required for the new profile grid to work
   };
   // initialization
+  function initScrollTracking() {
+  const topbar = document.querySelector('.topbar');
+  
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 20) {
+      topbar.classList.add('scrolled');
+    } else {
+      topbar.classList.remove('scrolled');
+    }
+  });
+}
+
   function init(){
     initTheme();
     initLogoRefresh();
+    initScrollTracking();
   renderTopRightUser();
   renderFriends();
   renderPostCategoryOptions();
