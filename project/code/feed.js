@@ -61,34 +61,6 @@
     }
   ];
 
-  // Hamburger menu functionality
-const hamburger = document.getElementById('hamburger');
-const body = document.body;
-
-if (hamburger) {
-    hamburger.addEventListener('click', () => {
-        body.classList.toggle('menu-open');
-        hamburger.setAttribute('aria-expanded', body.classList.contains('menu-open'));
-    });
-    
-    // Close menu when clicking outside or on a link
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.left') && !e.target.closest('#hamburger') && body.classList.contains('menu-open')) {
-            body.classList.remove('menu-open');
-            hamburger.setAttribute('aria-expanded', false);
-        }
-    });
-    
-    // Close menu when clicking a nav item
-    const navItems = document.querySelectorAll('.left .navcard li');
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            body.classList.remove('menu-open');
-            hamburger.setAttribute('aria-expanded', false);
-        });
-    });
-}
-
   // state (persisted)
   let categories = JSON.parse(localStorage.getItem(KEY.CATEGORIES) || 'null') || defaultCategories.slice();
   let posts = JSON.parse(localStorage.getItem(KEY.POSTS) || 'null') || defaultPosts.slice();
@@ -2264,27 +2236,22 @@ function attachDelegatedLogout() {
 
   // initialization
   function init(){
-  initTheme();
-  renderTopRightUser();
-  renderFriends();
-  renderPostCategoryOptions();
-  renderFeed();
-  renderNotifications();
-  renderCommunities();
-  renderTopStories();
-  renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
-  initNavAccessibility();
-  restoreTabFromHashOrLast();
-  initProfileIconShortcut();
-  attachDelegatedLogout();
-  
-  // Initialize hamburger menu
-  if (document.getElementById('hamburger')) {
-    body.classList.remove('menu-open');
+    initTheme();
+    renderTopRightUser();
+    renderFriends();
+    renderPostCategoryOptions();
+    renderFeed();
+    renderNotifications();
+    renderCommunities();
+    renderTopStories();
+    renderPostCategoryOptionsForSelect(document.getElementById('write-category-select'));
+    initNavAccessibility();
+    restoreTabFromHashOrLast();
+    initProfileIconShortcut();
+    attachDelegatedLogout();
+    toast('Welcome back!');
   }
-  
-  toast('Welcome back!');
-}
+
   // Function to handle logout from any button/link
 function attachDelegatedLogout() {
   // We use event delegation to find all elements with the 'data-action="logout"' attribute
