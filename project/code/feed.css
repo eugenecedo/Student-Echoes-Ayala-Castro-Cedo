@@ -170,7 +170,7 @@ main {
         padding: 0 !important;
         max-width: 100% !important;
     }
-
+    
     /* 17. Card adjustments */
     .card {
         padding: 12px !important;
@@ -216,11 +216,11 @@ main {
     .hamburger {
         display: none !important;
     }
+    
     /* 5. Adjust main content */
     .main {
         width: 100% !important;
     }
-
     
     /* 6. Search bar adjustments */
     .center-search {
@@ -648,36 +648,72 @@ textarea::placeholder {
   }
 
   /* Profile gallery grid for mobile */
-  .profile-gallery-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-    margin-top: 12px !important;
-  }
+  /* --- feed.css: Profile Gallery Fixes --- */
 
-  .profile-gallery-item {
-    aspect-ratio: 1 / 1 !important;
+/* The Grid Container */
+/* --- feed.css: Profile Gallery Fixes --- */
+
+/* The Grid Container */
+.profile-gallery-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important; /* Always 3 columns */
+    gap: 4px !important; /* Tight gap like Instagram */
     width: 100% !important;
-    height: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border-radius: 8px !important;
-    overflow: hidden !important;
-  }
+    margin-top: 16px !important;
+}
 
-  .profile-gallery-item img {
+/* The Individual Post Item (Button) */
+.profile-gallery-item {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important; /* Remove button padding */
+    border: none !important;
+    background: #000 !important; /* Black background for contrast */
+    aspect-ratio: 1 / 1 !important; /* Force perfect square */
+    cursor: pointer !important;
+    overflow: hidden !important;
+    border-radius: 0 !important; /* Square edges usually look cleaner in grid */
+}
+
+/* The Image inside the item */
+.profile-gallery-item img {
     width: 100% !important;
     height: 100% !important;
-    object-fit: cover !important;
-  }
+    object-fit: cover !important; /* Ensure image covers the square without stretching */
+    display: block !important;
+    transition: transform 0.2s ease;
+}
 
-  .pg-txt {
-    padding: 12px !important;
-    font-size: 12px !important;
-    line-height: 1.3 !important;
+/* Hover effect */
+.profile-gallery-item:hover img {
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+/* Text-only posts in the grid */
+.pg-txt {
+    width: 100% !important;
     height: 100% !important;
+    padding: 10px !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
     overflow: hidden !important;
-  }
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-dark);
+}
 
+/* Mobile specific override */
+@media (max-width: 600px) {
+    .profile-gallery-grid {
+        grid-template-columns: repeat(3, 1fr) !important; /* Keep 3 cols on mobile, or change to 2 if preferred */
+        gap: 2px !important;
+    }
+}
   /* Edit form adjustments */
   #editProfileForm {
     padding: 0 !important;

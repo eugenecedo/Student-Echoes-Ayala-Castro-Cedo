@@ -1247,44 +1247,10 @@ if (hamburger) {
   }
 
   // profile helpers
-  function getUserProfile() {
-  const raw = localStorage.getItem(KEY.PROFILE);
+ /* --- In feed.js, REPLACE the entire getUserProfile function with this: --- */
 
-  // If a saved profile exists, use it.
-  if (raw) {
-    try {
-      return JSON.parse(raw);
-    } catch (e) {}
-  }
-
-  // Try to load the name saved during registration/login.
-  const regName = localStorage.getItem("registeredName");
-  const regAvatar = localStorage.getItem("registeredAvatar"); // optional if you save this
-
-  if (regName) {
-    return {
-      name: regName,
-      avatar: regAvatar || "https://i.pravatar.cc/80",
-      bio: "",
-      joined: new Date().toLocaleDateString(),
-      communitiesJoined: 0,
-      joinedCommunities: []
-    };
-  }
-
-  // FINAL fallback only if nothing exists
-  return {
-    name: "New User",
-    avatar: "https://i.pravatar.cc/80",
-    bio: "",
-    joined: new Date().toLocaleDateString(),
-    communitiesJoined: 0,
-    joinedCommunities: []
-  };
-}
-// Replace the existing getUserProfile function with this corrected version:
 function getUserProfile() {
-  // First try to get the user profile from localStorage
+  // 1. Try to get the user profile from localStorage
   const raw = localStorage.getItem(KEY.PROFILE);
   
   if (raw) {
@@ -1294,7 +1260,8 @@ function getUserProfile() {
       if (profile && profile.name) {
         return {
           name: profile.name,
-          avatar: profile.avatar || "https://i.pravatar.cc/80",
+          // FIX: Ensure if avatar is missing from storage, we use a STATIC ID (?img=12), not random
+          avatar: profile.avatar || "https://i.pravatar.cc/80?img=12", 
           bio: profile.bio || "",
           joined: profile.joined || new Date().toLocaleDateString(),
           communitiesJoined: profile.communitiesJoined || 0,
@@ -1306,35 +1273,38 @@ function getUserProfile() {
     }
   }
 
-  // Try to get registration data
+  // 2. Try to get registration data (legacy support)
   const savedName = localStorage.getItem("registeredName") || localStorage.getItem("userName");
   const savedAvatar = localStorage.getItem("registeredAvatar") || localStorage.getItem("userAvatar");
   
   if (savedName) {
     const newProfile = {
       name: savedName,
-      avatar: savedAvatar || "https://i.pravatar.cc/80",
+      // FIX: Use static ID if savedAvatar is missing
+      avatar: savedAvatar || "https://i.pravatar.cc/80?img=12", 
       bio: "",
       joined: new Date().toLocaleDateString(),
       communitiesJoined: 0,
       joinedCommunities: []
     };
     
-    // Save this profile for future use
     localStorage.setItem(KEY.PROFILE, JSON.stringify(newProfile));
     return newProfile;
   }
 
-  // Final fallback
+  // 3. Final Fallback (The Guest User)
   return {
-    name: "New User",
-    avatar: "https://i.pravatar.cc/80",
+    name: "Guest User",
+    // FIX: CRITICAL CHANGE HERE. Added ?img=12 so it never changes randomly.
+    avatar: "https://i.pravatar.cc/80?img=12", 
     bio: "",
     joined: new Date().toLocaleDateString(),
     communitiesJoined: 0,
     joinedCommunities: []
   };
 }
+// Replace the existing getUserProfile function with this corrected version:
+
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
