@@ -1241,7 +1241,59 @@ if (hamburger) {
     joinedCommunities: []
   };
 }
+// Replace the existing getUserProfile function with this corrected version:
+function getUserProfile() {
+  // First try to get the user profile from localStorage
+  const raw = localStorage.getItem(KEY.PROFILE);
+  
+  if (raw) {
+    try {
+      const profile = JSON.parse(raw);
+      // Ensure we have valid name and avatar
+      if (profile && profile.name) {
+        return {
+          name: profile.name,
+          avatar: profile.avatar || "https://i.pravatar.cc/80",
+          bio: profile.bio || "",
+          joined: profile.joined || new Date().toLocaleDateString(),
+          communitiesJoined: profile.communitiesJoined || 0,
+          joinedCommunities: profile.joinedCommunities || []
+        };
+      }
+    } catch (e) {
+      console.warn('Error parsing user profile', e);
+    }
+  }
 
+  // Try to get registration data
+  const savedName = localStorage.getItem("registeredName") || localStorage.getItem("userName");
+  const savedAvatar = localStorage.getItem("registeredAvatar") || localStorage.getItem("userAvatar");
+  
+  if (savedName) {
+    const newProfile = {
+      name: savedName,
+      avatar: savedAvatar || "https://i.pravatar.cc/80",
+      bio: "",
+      joined: new Date().toLocaleDateString(),
+      communitiesJoined: 0,
+      joinedCommunities: []
+    };
+    
+    // Save this profile for future use
+    localStorage.setItem(KEY.PROFILE, JSON.stringify(newProfile));
+    return newProfile;
+  }
+
+  // Final fallback
+  return {
+    name: "New User",
+    avatar: "https://i.pravatar.cc/80",
+    bio: "",
+    joined: new Date().toLocaleDateString(),
+    communitiesJoined: 0,
+    joinedCommunities: []
+  };
+}
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
@@ -1974,25 +2026,16 @@ if (hamburger) {
   }
 
   // Delegated logout
-  function attachDelegatedLogout() {
-    document.addEventListener('click', function delegatedLogoutClick(e) {
-      const btn = e.target.closest && e.target.closest('#logoutBtn');
-      if (btn) {
-        e.preventDefault();
-        e.stopPropagation();
-        doLogout().catch(err => console.error('logout error', err));
-      }
-    }, true);
-
-    document.addEventListener('keydown', function delegatedLogoutKey(e) {
-      const active = document.activeElement;
-      if (!active) return;
-      if (active.id === 'logoutBtn' && (e.key === 'Enter' || e.key === ' ')) {
-        e.preventDefault();
-        doLogout().catch(err => console.error('logout error', err));
-      }
-    });
-  }
+  // Keep this function (around line 1550) and remove the duplicate at the end:
+function attachDelegatedLogout() {
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-action="logout"]')) {
+      e.preventDefault();
+      localStorage.removeItem("loggedInUser");
+      window.location.href = "login.html";
+    }
+  });
+}
 
   // side-icons wiring and helpers (new)
   function updateSideBadges(){
