@@ -60,6 +60,49 @@
       comments: []
     }
   ];
+   // Logo refresh functionality
+function initLogoRefresh() {
+  const logo = document.getElementById('logo-refresh');
+  if (!logo) return;
+  
+  logo.addEventListener('click', () => {
+    // Add refreshing class for animation
+    logo.classList.add('refreshing');
+    
+    // Clear any active category filter
+    activeCategoryId = null;
+    
+    // Reset search if active
+    if (globalSearch && globalSearch.value.trim()) {
+      globalSearch.value = '';
+    }
+    
+    // Force a re-render of the feed
+    renderFeed();
+    
+    // Show toast notification
+    toast('Feed refreshed!');
+    
+    // Remove refreshing class after animation
+    setTimeout(() => {
+      logo.classList.remove('refreshing');
+    }, 600);
+  });
+  
+  // Make logo keyboard accessible
+  logo.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      logo.click();
+    }
+  });
+  
+  // Set proper ARIA attributes
+  logo.setAttribute('role', 'button');
+  logo.setAttribute('tabindex', '0');
+  logo.setAttribute('aria-label', 'Refresh feed');
+}
+
   // Hamburger menu functionality
 const hamburger = document.getElementById('hamburger');
 const body = document.body;
@@ -2437,6 +2480,7 @@ function attachDelegatedLogout() {
   // initialization
   function init(){
     initTheme();
+    initLogoRefresh();
   renderTopRightUser();
   renderFriends();
   renderPostCategoryOptions();

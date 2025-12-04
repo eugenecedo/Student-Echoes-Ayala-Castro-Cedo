@@ -352,17 +352,100 @@ textarea::placeholder {
   margin-bottom:16px;
   position:relative;
 }
+/* Logo styling */
 .brand .logo {
-  font-weight:800;
-  font-size:20px;
-  letter-spacing:0.4px;
-  color: inherit;   
-  padding:6px 10px;
-  border-radius:8px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  box-shadow: 0 1px 6px rgba(2,6,23,0.15) inset;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.2);
 }
 
+.brand .logo:hover {
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 180, 216, 0.2);
+}
+
+.brand .logo:active {
+  transform: scale(0.98);
+}
+
+.logo-svg {
+  flex-shrink: 0;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.logo-text {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  color: #e6eef6;
+  background: linear-gradient(90deg, #e6eef6, #b3cde0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 2px 4px rgba(2, 6, 23, 0.3);
+}
+
+/* Logo refresh animation */
+.logo.refreshing .logo-svg {
+  transform: rotate(360deg);
+}
+
+/* Light theme adjustments */
+body.theme-light .logo-text {
+  background: linear-gradient(90deg, #0b1220, #1a365d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+body.theme-light .brand .logo {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 180, 216, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .brand .logo:hover {
+  background: rgba(255, 255, 255, 1);
+  border: 1px solid rgba(0, 180, 216, 0.3);
+  box-shadow: 0 6px 16px rgba(0, 180, 216, 0.15);
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .logo-text {
+    font-size: 16px;
+  }
+  
+  .logo-svg {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .brand .logo {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .logo-text {
+    font-size: 17px;
+  }
+  
+  .brand .logo {
+    padding: 7px 11px;
+  }
+}
 /* center search */
 .center-search { flex:1; display:flex; justify-content:center; }
 .search {
