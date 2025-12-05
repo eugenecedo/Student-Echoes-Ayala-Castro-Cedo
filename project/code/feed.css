@@ -1736,3 +1736,84 @@ body.menu-open::before {
   background: linear-gradient(90deg, #00b4d8, #0077b6);
   color: white;
 }
+
+/* --- feed.css --- */
+.mobile-search-cancel {
+  display: none !important; /* The !important ensures it overrides any default button styling */
+}
+/* --- MOBILE SEARCH FIX (Max-width: 768px) --- */
+@media (max-width: 768px) {
+
+  /* 1. Default State: Hide the Cancel Button */
+  .mobile-search-cancel {
+    display: none;
+  }
+
+  body.search-active .mobile-search-cancel {
+    display: block !important; 
+    /* ... other cancel button styles ... */
+  }
+
+  /* 2. ACTIVE STATE: When body has 'search-active' */
+  
+  /* Hide the Logo, Hamburger, and Profile to make room */
+  body.search-active #app .topbar .brand,
+  body.search-active #app .topbar .hamburger,
+  body.search-active #app .topbar .top-right {
+    display: none !important;
+  }
+
+  /* Make Topbar a flex container */
+  body.search-active #app .topbar {
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 10px !important;
+    gap: 8px !important;
+  }
+
+  /* Expand the Search Container */
+  body.search-active #app .topbar .center-search {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    order: 1 !important;
+    gap: 8px !important; /* Space between Input and Cancel button */
+  }
+
+  /* Style the Search Input Wrapper */
+  body.search-active #app .topbar .center-search .search {
+    flex: 1 !important; /* Take remaining space */
+    display: flex !important;
+    align-items: center !important;
+    background: var(--card) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    border-radius: 99px !important; /* Rounded pill shape */
+    padding: 0 12px !important;
+    height: 40px !important;
+  }
+
+  /* FORCE INPUT VISIBILITY */
+  body.search-active #app .topbar .center-search .search input {
+    display: block !important;
+    width: 100% !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-dark) !important;
+    outline: none !important;
+    margin-left: 8px !important;
+    font-size: 16px !important; /* readable size */
+  }
+
+  /* Show the Cancel Button */
+  body.search-active .mobile-search-cancel {
+    display: block !important;
+    white-space: nowrap !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--accent) !important; /* Use theme accent color */
+    font-weight: 600 !important;
+    padding: 4px 8px !important;
+    cursor: pointer !important;
+  }
+}

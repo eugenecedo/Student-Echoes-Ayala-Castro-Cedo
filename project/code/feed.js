@@ -2579,10 +2579,84 @@ function attachDelegatedLogout() {
   });
 }
 
+/* --- feed.js --- */
+
+function initMobileSearch() {
+  const searchContainer = document.querySelector('.center-search');
+  const searchInput = document.getElementById('global-search');
+  const body = document.body;
+  
+  if (!searchContainer || !searchInput) return;
+
+  // 1. Create and Inject a "Cancel" button dynamically
+  // We check if it exists first to avoid duplicates
+  let cancelBtn = searchContainer.querySelector('.mobile-search-cancel');
+  if (!cancelBtn) {
+    cancelBtn = document.createElement('button');
+    cancelBtn.className = 'mobile-search-cancel btn small';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.type = 'button';
+    cancelBtn.setAttribute('aria-label', 'Close search');
+    // Append it after the search input wrapper
+    searchContainer.appendChild(cancelBtn);
+  }
+
+  // Helper to open search
+  function openSearch() {
+    body.classList.add('search-active');
+    searchInput.focus();
+  }
+
+  // Helper to close search
+  function closeSearch() {
+    body.classList.remove('search-active');
+    searchInput.value = ''; // Clear text
+    searchInput.blur();
+    // Reset the feed to show all posts again
+    if (window.feedApp && window.feedApp.renderFeed) {
+      window.feedApp.renderFeed();
+    }
+  }
+
+  // 2. Event Listener: Click the Search Icon (or container) to OPEN
+  // We target the .search wrapper which contains the icon and input
+  const searchWrapper = searchContainer.querySelector('.search');
+  if (searchWrapper) {
+    searchWrapper.addEventListener('click', (e) => {
+      // Only trigger on mobile
+      if (window.innerWidth <= 768) {
+        // If search isn't active yet, open it
+        if (!body.classList.contains('search-active')) {
+          e.stopPropagation(); // Prevent bubbling
+          openSearch();
+        }
+      }
+    });
+  }
+
+  // 3. Event Listener: Click the Cancel Button to CLOSE
+  cancelBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeSearch();
+  });
+
+  // 4. Event Listener: Press "Enter" on keyboard
+  // This fixes the "Can't search" feeling by hiding the keyboard to show results
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchInput.blur(); // Hides virtual keyboard
+    }
+    if (e.key === 'Escape') {
+      closeSearch();
+    }
+  });
+}
   function init(){
     initTheme();
     initLogoRefresh();
     initScrollTracking();
+    initMobileSearch()
   renderTopRightUser();
   renderFriends();
   renderPostCategoryOptions();
