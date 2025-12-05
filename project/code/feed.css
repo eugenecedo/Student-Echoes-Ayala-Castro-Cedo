@@ -1715,3 +1715,24 @@ body.menu-open::before {
     gap: 2px; /* Tighter gap on small screens */
   }
 }
+
+/* --- feed.css --- */
+
+/* State for the button when you are already following someone */
+.btn.following-state {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--muted);
+}
+
+.btn.following-state:hover {
+  border-color: #ff7675; /* Reddish border on hover to indicate Unfollow */
+  color: #ff7675;
+  content: "Unfollow"; /* Optional: CSS trick to change text on hover */
+}
+
+/* Specific style for Follow Back to make it pop */
+.btn.follow-back-state {
+  background: linear-gradient(90deg, #00b4d8, #0077b6);
+  color: white;
+}

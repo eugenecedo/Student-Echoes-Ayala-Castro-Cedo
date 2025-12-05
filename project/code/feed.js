@@ -1318,7 +1318,8 @@ function getUserProfile() {
       if (profile && profile.name) {
         return {
           name: profile.name,
-          // FIX: Ensure if avatar is missing from storage, we use a STATIC ID (?img=12), not random
+          following: profile.following || [] ,
+          catch (e) { console.warn('Error parsing user profile', e); },
           avatar: profile.avatar || "https://i.pravatar.cc/80?img=12", 
           bio: profile.bio || "",
           joined: profile.joined || new Date().toLocaleDateString(),
@@ -1350,25 +1351,63 @@ function getUserProfile() {
     return newProfile;
   }
 
-  // 3. Final Fallback (The Guest User)
+  // Default fallback (Guest)
   return {
     name: "Guest User",
-    // FIX: CRITICAL CHANGE HERE. Added ?img=12 so it never changes randomly.
-    avatar: "https://i.pravatar.cc/80?img=12", 
+    avatar: "https://i.pravatar.cc/80?img=12",
     bio: "",
     joined: new Date().toLocaleDateString(),
     communitiesJoined: 0,
-    joinedCommunities: []
+    joinedCommunities: [],
+    following: [] // <--- Add this
   };
 }
 // Replace the existing getUserProfile function with this corrected version:
   function setUserProfile(upd){ localStorage.setItem(KEY.PROFILE, JSON.stringify(upd)); renderTopRightUser(); renderProfile(false); saveState(); }
   function renderTopRightUser(){ const u=getUserProfile(); const img = document.querySelector('.user img'); const nm = document.querySelector('.username'); if(img) img.src = u.avatar; if(nm) nm.textContent = u.name; }
 
-  // Updated renderProfile to show a profile page for either the current user or another user.
-  // renderProfile(editMode=false) uses viewedProfileUser to determine which profile to show.
-  /* --- NEW: Instagram-Style Profile Renderer --- */
-  function renderProfile(editMode = false) {
+ /* --- feed.js (Add this helper function) --- */
+
+function toggleFollowUser(targetUsername) {
+  const currentUser = getUserProfile();
+  
+  // Ensure following array exists
+  if (!currentUser.following) currentUser.following = [];
+  
+  const index = currentUser.following.indexOf(targetUsername);
+  
+  if (index > -1) {
+    // Already following -> Unfollow
+    currentUser.following.splice(index, 1);
+    toast(`Unfollowed ${targetUsername}`);
+  } else {
+    // Not following -> Follow
+    currentUser.following.push(targetUsername);
+    
+    // Check if we just followed back a friend
+    const isFriend = friends.some(f => f.name === targetUsername);
+    if(isFriend) {
+      toast(`You and ${targetUsername} are now following each other!`);
+    } else {
+      toast(`Following ${targetUsername}`);
+    }
+    
+    // Add a notification for simulation purposes
+    notifications.unshift({
+        id: Date.now(), 
+        text: `You started following ${targetUsername}`, 
+        createdAt: Date.now(), 
+        avatar: getUserProfile().avatar
+    });
+    renderNotifications();
+  }
+  
+  // Save and Refresh UI
+  setUserProfile(currentUser);
+  renderProfile(false); // Re-render profile to update button state
+}
+  /* --- feed.js (Replace existing renderProfile) --- */
+function renderProfile(editMode = false) {
     const cont = document.getElementById('profile-content');
     if (!cont) return;
 
@@ -1379,14 +1418,13 @@ function getUserProfile() {
     // Determine correct user data to show
     let profileData = isViewingOwn ? currentUser : viewed;
 
-    // If viewing someone else, try to find a better avatar from their posts
+    // Logic to find a better avatar if viewing a stranger
     if (!isViewingOwn) {
       const p = posts.find(pp => {
         const an = (pp.author && pp.author.name) || pp.author_name || '';
         return an && an.toLowerCase() === viewed.name.toLowerCase();
       });
       if (p) {
-        // Use avatar from post if available, else fallback
         const foundAvatar = (p.author && p.author.avatar) || p.author_avatar;
         profileData = { ...viewed, avatar: foundAvatar || viewed.avatar, bio: viewed.bio || "Community Member" };
       }
@@ -1398,13 +1436,48 @@ function getUserProfile() {
       return authorName.toLowerCase() === String(profileData.name).toLowerCase();
     });
 
-    // 1. EDIT MODE (Legacy form logic)
+    // --- FOLLOW BUTTON LOGIC ---
+    let actionButtonHtml = '';
+    
+    // Ensure following array exists for safety
+    currentUser.following = currentUser.following || []; 
+
+    if (isViewingOwn) {
+        actionButtonHtml = `<button class="btn small" id="btn-edit-profile">Edit Profile</button>`;
+    } else {
+        const isFollowing = currentUser.following.includes(profileData.name);
+        
+        // Simulating "Follow Back": 
+        // We assume people in the 'friends' list follow the user.
+        // If they are in 'friends' but we don't follow them yet, show "Follow Back".
+        const isFollower = friends.some(f => f.name === profileData.name); 
+
+        if (isFollowing) {
+            actionButtonHtml = `<button class="btn small following-state" id="btn-toggle-follow">Following</button>`;
+        } else if (isFollower) {
+            actionButtonHtml = `<button class="btn primary small follow-back-state" id="btn-toggle-follow">Follow Back</button>`;
+        } else {
+            actionButtonHtml = `<button class="btn primary small" id="btn-toggle-follow">Follow</button>`;
+        }
+    }
+
+    // --- STATS LOGIC ---
+    // Note: Since this is a frontend demo, 'Followers' is simulated for the viewed user
+    // based on if the current user follows them + a random base number.
+    const amIFollowing = currentUser.following.includes(profileData.name) ? 1 : 0;
+    const baseFollowers = isViewingOwn ? 120 : 45; // Fake base numbers
+    const followersCount = baseFollowers + amIFollowing;
+    
+    // For 'Following', we use the real array length if viewing own profile
+    const followingCount = isViewingOwn ? currentUser.following.length : 15; // 15 is fake number for others
+
+    // 1. EDIT MODE
     if (editMode && isViewingOwn) {
       renderEditProfileForm(cont, currentUser);
       return;
     }
 
-    // 2. VIEW MODE (New Instagram Grid)
+    // 2. VIEW MODE
     const defaultAvatar = "https://i.pravatar.cc/150?u=default";
     
     cont.innerHTML = `
@@ -1414,16 +1487,13 @@ function getUserProfile() {
         <div class="profile-info">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="margin:0; font-size:22px; font-weight:700;">${escapeHtml(profileData.name)}</h2>
-            ${isViewingOwn 
-              ? `<button class="btn small" id="btn-edit-profile">Edit Profile</button>` 
-              : `<button class="btn primary small">Follow</button>`
-            }
+            ${actionButtonHtml}
           </div>
           
           <div class="profile-stats">
             <div class="stat-item"><span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span></div>
-            <div class="stat-item"><span class="stat-value">0</span> <span class="stat-label">Followers</span></div>
-             <div class="stat-item"><span class="stat-value">0</span> <span class="stat-label">Following</span></div>
+            <div class="stat-item"><span class="stat-value">${followersCount}</span> <span class="stat-label">Followers</span></div>
+             <div class="stat-item"><span class="stat-value">${followingCount}</span> <span class="stat-label">Following</span></div>
           </div>
           
           <div style="font-size:14px; margin-top:4px; line-height:1.4;">
@@ -1437,7 +1507,6 @@ function getUserProfile() {
         ${userPosts.length === 0 
           ? `<div class="muted" style="grid-column: 1/-1; text-align:center; padding:60px 0;">No posts yet.<br>Share your first moment!</div>` 
           : userPosts.map(p => {
-              // Decide content (Image or Text Preview)
               const content = p.image 
                 ? `<img src="${escapeHtml(p.image)}" loading="lazy" />`
                 : `<div class="insta-text-preview">${escapeHtml(p.text)}</div>`;
@@ -1458,8 +1527,13 @@ function getUserProfile() {
     // Hook up Edit button
     const editBtn = document.getElementById('btn-edit-profile');
     if (editBtn) editBtn.onclick = () => renderProfile(true);
-  }
 
+    // Hook up Follow button
+    const followBtn = document.getElementById('btn-toggle-follow');
+    if (followBtn) {
+        followBtn.onclick = () => toggleFollowUser(profileData.name);
+    }
+}
   /* --- NEW: Helper for Post Detail Modal --- */
   function openPostDetail(postId) {
     const post = posts.find(p => p.id === postId);
