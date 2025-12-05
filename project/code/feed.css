@@ -1816,4 +1816,59 @@ body.menu-open::before {
     padding: 4px 8px !important;
     cursor: pointer !important;
   }
+  /* --- Back to Profile Button Styles --- */
+.back-to-profile-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  max-width: 200px !important;
+  margin: 0 auto 16px auto !important;
+  padding: 8px 16px !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  background: rgba(0, 180, 216, 0.1) !important;
+  border: 1px solid rgba(0, 180, 216, 0.2) !important;
+  color: var(--accent) !important;
+}
+
+.back-to-profile-btn:hover {
+  background: rgba(0, 180, 216, 0.2) !important;
+  transform: translateX(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 180, 216, 0.1) !important;
+}
+
+.back-to-profile-btn:active {
+  transform: translateX(0) !important;
+}
+
+.back-to-profile-btn:before {
+  content: "";
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Light theme adjustment */
+body.theme-light .back-to-profile-btn {
+  background: rgba(0, 180, 216, 0.08) !important;
+  border: 1px solid rgba(0, 180, 216, 0.15) !important;
+  color: #0077b6 !important;
+}
+
+body.theme-light .back-to-profile-btn:hover {
+  background: rgba(0, 180, 216, 0.15) !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .back-to-profile-btn {
+    max-width: 100% !important;
+    margin: 0 0 12px 0 !important;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+  }
+}
 }

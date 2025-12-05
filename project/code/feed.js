@@ -62,11 +62,15 @@
   ];
    // Logo refresh functionality - Updated with better visual feedback
 // Logo refresh functionality - Now also scrolls to top
+// Logo refresh functionality - Now also scrolls to top and resets profile
 function initLogoRefresh() {
   const logo = document.getElementById('logo-refresh');
   if (!logo) return;
   
   logo.addEventListener('click', () => {
+    // Reset profile view
+    viewedProfileUser = null;
+    
     // Add refreshing class for animation
     logo.classList.add('refreshing');
     
@@ -893,11 +897,21 @@ if (hamburger) {
 
   // NEW helper: openProfileView(user) sets the viewedProfileUser and navigates to profile tab
   function openProfileView(user) {
-    // user: { name: string, avatar?: string, bio?: string, joined?: string }
-    viewedProfileUser = user || null;
-    setActiveTab('profile');
-    renderProfile(false);
-  }
+  console.log('openProfileView called with:', user);
+  console.log('Previous viewedProfileUser:', viewedProfileUser);
+  
+  viewedProfileUser = user;
+  
+  console.log('New viewedProfileUser:', viewedProfileUser);
+  
+  setActiveTab('profile');
+  renderProfile(false);
+}
+
+function setActiveTab(tab) {
+  console.log('setActiveTab called with tab:', tab);
+  console.log('Current viewedProfileUser:', viewedProfileUser);
+}
 
   // Profile gallery (Instagram-like) for any author (keeps modal gallery but now "Open profile" goes to the profile tab)
   function openProfileGallery(author) {
@@ -1046,14 +1060,14 @@ if (hamburger) {
       if(headImg) {
         headImg.style.cursor = 'pointer';
         // Clicking another user's avatar should navigate to their profile page (view their posts)
-        headImg.addEventListener('click', () => {
-          const authorObj = post.author && post.author.name ? { name: post.author.name, avatar: post.author.avatar } : (post.author_name ? { name: post.author_name, avatar: post.author_avatar } : null);
-          if(authorObj && authorObj.name) {
-            openProfileView(authorObj);
-          } else {
-            openProfileGallery(post.author || { name: post.author_name });
-          }
-        });
+       headImg.addEventListener('click', () => {
+        const authorObj = post.author && post.author.name ? { name: post.author.name, avatar: post.author.avatar } : (post.author_name ? { name: post.author_name, avatar: post.author_avatar } : null);
+        if(authorObj && authorObj.name) {
+          openProfileView(authorObj);
+        } else {
+          openProfileGallery(post.author || { name: post.author_name });
+        }
+      });
         headImg.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const authorObj = post.author && post.author.name ? { name: post.author.name, avatar: post.author.avatar } : (post.author_name ? { name: post.author_name, avatar: post.author_avatar } : null); if(authorObj && authorObj.name) openProfileView(authorObj); else openProfileGallery(post.author || { name: post.author_name }); } });
       }
     });
@@ -1406,133 +1420,159 @@ function toggleFollowUser(targetUsername) {
   setUserProfile(currentUser);
   renderProfile(false); // Re-render profile to update button state
 }
-  /* --- feed.js (Replace existing renderProfile) --- */
+/* --- Updated renderProfile function with Back Button --- */
 function renderProfile(editMode = false) {
-    const cont = document.getElementById('profile-content');
-    if (!cont) return;
+  const cont = document.getElementById('profile-content');
+  if (!cont) return;
 
-    const currentUser = getUserProfile();
-    const viewed = viewedProfileUser || null; // null = current user
-    const isViewingOwn = !viewed || (viewed && viewed.name === currentUser.name);
+  const currentUser = getUserProfile();
+  const viewed = viewedProfileUser || null; // null = current user
+  const isViewingOwn = !viewed || (viewed && viewed.name === currentUser.name);
 
-    // Determine correct user data to show
-    let profileData = isViewingOwn ? currentUser : viewed;
+  // Determine correct user data to show
+  let profileData = isViewingOwn ? currentUser : viewed;
 
-    // Logic to find a better avatar if viewing a stranger
-    if (!isViewingOwn) {
-      const p = posts.find(pp => {
-        const an = (pp.author && pp.author.name) || pp.author_name || '';
-        return an && an.toLowerCase() === viewed.name.toLowerCase();
-      });
-      if (p) {
-        const foundAvatar = (p.author && p.author.avatar) || p.author_avatar;
-        profileData = { ...viewed, avatar: foundAvatar || viewed.avatar, bio: viewed.bio || "Community Member" };
-      }
-    }
-
-    // Filter posts for this specific user
-    const userPosts = posts.filter(p => {
-      const authorName = (p.author && p.author.name) || p.author_name || '';
-      return authorName.toLowerCase() === String(profileData.name).toLowerCase();
+  // Logic to find a better avatar if viewing a stranger
+  if (!isViewingOwn) {
+    const p = posts.find(pp => {
+      const an = (pp.author && pp.author.name) || pp.author_name || '';
+      return an && an.toLowerCase() === viewed.name.toLowerCase();
     });
+    if (p) {
+      const foundAvatar = (p.author && p.author.avatar) || p.author_avatar;
+      profileData = { ...viewed, avatar: foundAvatar || viewed.avatar, bio: viewed.bio || "Community Member" };
+    }
+  }
 
-    // --- FOLLOW BUTTON LOGIC ---
-    let actionButtonHtml = '';
+  // Filter posts for this specific user
+  const userPosts = posts.filter(p => {
+    const authorName = (p.author && p.author.name) || p.author_name || '';
+    return authorName.toLowerCase() === String(profileData.name).toLowerCase();
+  });
+
+  // --- BACK BUTTON LOGIC ---
+  let backButtonHtml = '';
+  if (!isViewingOwn) {
+    backButtonHtml = `
+      <button class="btn small back-to-profile-btn" id="back-to-my-profile" 
+              style="margin-bottom: 16px; background: rgba(0, 180, 216, 0.1); 
+                     border: 1px solid rgba(0, 180, 216, 0.2); color: var(--accent);">
+        ← Back to My Profile
+      </button>
+    `;
+  }
+
+  // --- FOLLOW BUTTON LOGIC ---
+  let actionButtonHtml = '';
+  
+  // Ensure following array exists for safety
+  currentUser.following = currentUser.following || []; 
+
+  if (isViewingOwn) {
+    actionButtonHtml = `<button class="btn small" id="btn-edit-profile">Edit Profile</button>`;
+  } else {
+    const isFollowing = currentUser.following.includes(profileData.name);
     
-    // Ensure following array exists for safety
-    currentUser.following = currentUser.following || []; 
+    // Simulating "Follow Back": 
+    // We assume people in the 'friends' list follow the user.
+    // If they are in 'friends' but we don't follow them yet, show "Follow Back".
+    const isFollower = friends.some(f => f.name === profileData.name); 
 
-    if (isViewingOwn) {
-        actionButtonHtml = `<button class="btn small" id="btn-edit-profile">Edit Profile</button>`;
+    if (isFollowing) {
+      actionButtonHtml = `<button class="btn small following-state" id="btn-toggle-follow">Following</button>`;
+    } else if (isFollower) {
+      actionButtonHtml = `<button class="btn primary small follow-back-state" id="btn-toggle-follow">Follow Back</button>`;
     } else {
-        const isFollowing = currentUser.following.includes(profileData.name);
-        
-        // Simulating "Follow Back": 
-        // We assume people in the 'friends' list follow the user.
-        // If they are in 'friends' but we don't follow them yet, show "Follow Back".
-        const isFollower = friends.some(f => f.name === profileData.name); 
-
-        if (isFollowing) {
-            actionButtonHtml = `<button class="btn small following-state" id="btn-toggle-follow">Following</button>`;
-        } else if (isFollower) {
-            actionButtonHtml = `<button class="btn primary small follow-back-state" id="btn-toggle-follow">Follow Back</button>`;
-        } else {
-            actionButtonHtml = `<button class="btn primary small" id="btn-toggle-follow">Follow</button>`;
-        }
+      actionButtonHtml = `<button class="btn primary small" id="btn-toggle-follow">Follow</button>`;
     }
+  }
 
-    // --- STATS LOGIC ---
-    // Note: Since this is a frontend demo, 'Followers' is simulated for the viewed user
-    // based on if the current user follows them + a random base number.
-    const amIFollowing = currentUser.following.includes(profileData.name) ? 1 : 0;
-    const baseFollowers = isViewingOwn ? 120 : 45; // Fake base numbers
-    const followersCount = baseFollowers + amIFollowing;
+  // --- STATS LOGIC ---
+  const amIFollowing = currentUser.following.includes(profileData.name) ? 1 : 0;
+  const baseFollowers = isViewingOwn ? 120 : 45; // Fake base numbers
+  const followersCount = baseFollowers + amIFollowing;
+  
+  // For 'Following', we use the real array length if viewing own profile
+  const followingCount = isViewingOwn ? currentUser.following.length : 15; // 15 is fake number for others
+
+  // 1. EDIT MODE
+  if (editMode && isViewingOwn) {
+    renderEditProfileForm(cont, currentUser);
+    return;
+  }
+
+  // 2. VIEW MODE
+  const defaultAvatar = "https://i.pravatar.cc/150?u=default";
+  
+  cont.innerHTML = `
+    ${backButtonHtml}
     
-    // For 'Following', we use the real array length if viewing own profile
-    const followingCount = isViewingOwn ? currentUser.following.length : 15; // 15 is fake number for others
-
-    // 1. EDIT MODE
-    if (editMode && isViewingOwn) {
-      renderEditProfileForm(cont, currentUser);
-      return;
-    }
-
-    // 2. VIEW MODE
-    const defaultAvatar = "https://i.pravatar.cc/150?u=default";
-    
-    cont.innerHTML = `
-      <div class="profile-header">
-        <img src="${escapeHtml(profileData.avatar || defaultAvatar)}" class="profile-avatar-large" alt="Profile">
+    <div class="profile-header">
+      <img src="${escapeHtml(profileData.avatar || defaultAvatar)}" class="profile-avatar-large" alt="Profile">
+      
+      <div class="profile-info">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2 style="margin:0; font-size:22px; font-weight:700;">
+              ${escapeHtml(profileData.name)}
+            </h2>
+            ${!isViewingOwn ? `<div style="font-size:13px; color:var(--accent); margin-top:4px;">@${escapeHtml(profileData.username || profileData.name.toLowerCase().replace(/\s+/g, ''))}</div>` : ''}
+          </div>
+          ${actionButtonHtml}
+        </div>
         
-        <div class="profile-info">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="margin:0; font-size:22px; font-weight:700;">${escapeHtml(profileData.name)}</h2>
-            ${actionButtonHtml}
-          </div>
-          
-          <div class="profile-stats">
-            <div class="stat-item"><span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span></div>
-            <div class="stat-item"><span class="stat-value">${followersCount}</span> <span class="stat-label">Followers</span></div>
-             <div class="stat-item"><span class="stat-value">${followingCount}</span> <span class="stat-label">Following</span></div>
-          </div>
-          
-          <div style="font-size:14px; margin-top:4px; line-height:1.4;">
-            ${escapeHtml(profileData.bio || "")}
-          </div>
+        <div class="profile-stats">
+          <div class="stat-item"><span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span></div>
+          <div class="stat-item"><span class="stat-value">${followersCount}</span> <span class="stat-label">Followers</span></div>
+          <div class="stat-item"><span class="stat-value">${followingCount}</span> <span class="stat-label">Following</span></div>
+        </div>
+        
+        <div style="font-size:14px; margin-top:4px; line-height:1.4;">
+          ${escapeHtml(profileData.bio || (isViewingOwn ? "Add a bio in your profile settings" : "No bio available"))}
         </div>
       </div>
+    </div>
 
-      <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:2px;"></div>
-      <div class="insta-grid">
-        ${userPosts.length === 0 
-          ? `<div class="muted" style="grid-column: 1/-1; text-align:center; padding:60px 0;">No posts yet.<br>Share your first moment!</div>` 
-          : userPosts.map(p => {
-              const content = p.image 
-                ? `<img src="${escapeHtml(p.image)}" loading="lazy" />`
-                : `<div class="insta-text-preview">${escapeHtml(p.text)}</div>`;
-                
-              return `
-                <button class="insta-item" onclick="window.feedApp.openPostDetail(${p.id})" aria-label="View post">
-                  ${content}
-                  <div class="insta-overlay">
-                    <span>❤️ ${p.likes || 0}</span>
-                  </div>
-                </button>
-              `;
-            }).join('')
-        }
-      </div>
-    `;
+    <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:2px;"></div>
+    <div class="insta-grid">
+      ${userPosts.length === 0 
+        ? `<div class="muted" style="grid-column: 1/-1; text-align:center; padding:60px 0;">No posts yet.<br>Share your first moment!</div>` 
+        : userPosts.map(p => {
+            const content = p.image 
+              ? `<img src="${escapeHtml(p.image)}" loading="lazy" />`
+              : `<div class="insta-text-preview">${escapeHtml(p.text)}</div>`;
+              
+            return `
+              <button class="insta-item" onclick="window.feedApp.openPostDetail(${p.id})" aria-label="View post">
+                ${content}
+                <div class="insta-overlay">
+                  <span>❤️ ${p.likes || 0}</span>
+                </div>
+              </button>
+            `;
+          }).join('')
+      }
+    </div>
+  `;
 
-    // Hook up Edit button
-    const editBtn = document.getElementById('btn-edit-profile');
-    if (editBtn) editBtn.onclick = () => renderProfile(true);
+  // Hook up Back button
+  const backBtn = document.getElementById('back-to-my-profile');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      viewedProfileUser = null;
+      renderProfile(false);
+    });
+  }
 
-    // Hook up Follow button
-    const followBtn = document.getElementById('btn-toggle-follow');
-    if (followBtn) {
-        followBtn.onclick = () => toggleFollowUser(profileData.name);
-    }
+  // Hook up Edit button
+  const editBtn = document.getElementById('btn-edit-profile');
+  if (editBtn) editBtn.onclick = () => renderProfile(true);
+
+  // Hook up Follow button
+  const followBtn = document.getElementById('btn-toggle-follow');
+  if (followBtn) {
+    followBtn.onclick = () => toggleFollowUser(profileData.name);
+  }
 }
   /* --- NEW: Helper for Post Detail Modal --- */
   function openPostDetail(postId) {
@@ -1903,46 +1943,63 @@ function renderEditProfileForm(cont, currentUser) {
     });
   }
 
-  function activateNavItem(li){
-    const tab = li.dataset.tab;
-    setActiveTab(tab);
-    li.focus();
+ function activateNavItem(li) {
+  const tab = li.dataset.tab;
+  
+  // Reset to own profile ONLY when clicking profile tab in navigation
+  if (tab === 'profile') {
+    viewedProfileUser = null;
+  }
+  
+  setActiveTab(tab);
+  li.focus();
+}
+
+ function setActiveTab(tab) {
+  if (!navList) return;
+  
+  navList.querySelectorAll('li').forEach(li => {
+    const is = li.dataset.tab === tab;
+    li.classList.toggle('active', is);
+    li.setAttribute('aria-selected', is ? 'true' : 'false');
+    li.setAttribute('tabindex', is ? '0' : '-1');
+  });
+
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+
+  const panelId = TAB_TO_PANEL_ID[tab] || TAB_TO_PANEL_ID['feed'];
+  const panelEl = document.getElementById(panelId);
+  if (panelEl) panelEl.classList.remove('hidden');
+
+  if (tab === 'feed') {
+    const feedCard = document.getElementById('tab-feed');
+    if (feedCard) feedCard.classList.remove('hidden');
+    if (feedEl) feedEl.classList.remove('hidden');
+  } else {
+    const feedList = document.getElementById('feed');
+    if (feedList) feedList.classList.add('hidden');
+    const feedCard = document.getElementById('tab-feed');
+    if (feedCard) feedCard.classList.add('hidden');
   }
 
-  function setActiveTab(tab){
-    if(!navList) return;
-    navList.querySelectorAll('li').forEach(li => {
-      const is = li.dataset.tab === tab;
-      li.classList.toggle('active', is);
-      li.setAttribute('aria-selected', is ? 'true' : 'false');
-      li.setAttribute('tabindex', is ? '0' : '-1');
-    });
+  if (tab === 'profile') renderProfile(false);
+  if (tab === 'categories') renderCategoriesPage();
+  if (tab === 'news') renderNews();
+  if (tab === 'write') renderWrite();
+  if (tab === 'mystories') renderMyStories();
+  if (tab === 'trending') renderTrending();
+  if (tab === 'anonymous') renderAnonymousRoom();
+  if (tab === 'findpeople') renderFindPeople(); // Add this if you have findpeople tab
 
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
-
-    const panelId = TAB_TO_PANEL_ID[tab] || TAB_TO_PANEL_ID['feed'];
-    const panelEl = document.getElementById(panelId);
-    if(panelEl) panelEl.classList.remove('hidden');
-
-    if(tab === 'feed'){
-      const feedCard = document.getElementById('tab-feed'); if(feedCard) feedCard.classList.remove('hidden');
-      if(feedEl) feedEl.classList.remove('hidden');
-    } else {
-      const feedList = document.getElementById('feed'); if(feedList) feedList.classList.add('hidden');
-      const feedCard = document.getElementById('tab-feed'); if(feedCard) feedCard.classList.add('hidden');
-    }
-
-    if(tab === 'profile') renderProfile(false);
-    if(tab === 'categories') renderCategoriesPage();
-    if(tab === 'news') renderNews();
-    if(tab === 'write') renderWrite();
-    if(tab === 'mystories') renderMyStories();
-    if(tab === 'trending') renderTrending();
-    if(tab === 'anonymous') renderAnonymousRoom();
-
-    try { const newHash = `#${tab}`; if(location.hash !== newHash) history.replaceState(null, '', newHash); } catch(e){}
-    try { localStorage.setItem(KEY.LAST_TAB, tab); } catch(e){}
-  }
+  try {
+    const newHash = `#${tab}`;
+    if (location.hash !== newHash) history.replaceState(null, '', newHash);
+  } catch (e) {}
+  
+  try {
+    localStorage.setItem(KEY.LAST_TAB, tab);
+  } catch (e) {}
+}
 
   if(navList) {
     initNavAccessibility();
@@ -2397,16 +2454,32 @@ function attachDelegatedLogout() {
     }
   }
 
-  // keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    if(e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable)) return;
-    if(e.key === '/') { e.preventDefault(); globalSearch && globalSearch.focus(); }
-    if(e.key === 'n') { e.preventDefault(); postText && postText.focus(); }
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      setActiveTab('write');
-    }
-  });
+  // Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+  
+  if (e.key === '/') { 
+    e.preventDefault(); 
+    globalSearch && globalSearch.focus(); 
+  }
+  
+  // Escape key to go back to your profile when viewing someone else
+  if (e.key === 'Escape' && viewedProfileUser) {
+    viewedProfileUser = null;
+    renderProfile(false);
+    toast('Returned to your profile');
+  }
+  
+  if (e.key === 'n') { 
+    e.preventDefault(); 
+    postText && postText.focus(); 
+  }
+  
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    setActiveTab('write');
+  }
+});
 
   // theme & init
   function initTheme(){
