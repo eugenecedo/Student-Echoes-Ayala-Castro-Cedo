@@ -4,7 +4,6 @@
     POSTS: 'amu_posts',
     NOTIFS: 'amu_notifications',
     PROFILE: 'userProfile',
-    USERS: 'amu_users',
     THEME: 'theme',
     ANON: 'amu_anonymous_posts',
     LAST_TAB: 'amu_last_tab',
@@ -12,74 +11,7 @@
     COMMUNITIES: 'amu_communities',
     ANON_PROFILE: 'amu_anon_profile'
   };
-   // Add these sample users data near the top with other seed data (around line 140)
-const sampleUsers = [
-  { 
-    id: 1001, 
-    name: 'Alex Johnson', 
-    avatar: 'https://i.pravatar.cc/80?img=6',
-    username: 'alexj',
-    bio: 'Computer Science Student | UI/UX Enthusiast',
-    followers: 245,
-    following: 128,
-    postsCount: 42,
-    isFriend: false,
-    isFollowing: false,
-    mutualFriends: 3
-  },
-  { 
-    id: 1002, 
-    name: 'Maria Garcia', 
-    avatar: 'https://i.pravatar.cc/80?img=7',
-    username: 'mariag',
-    bio: 'Art History Major | Photography Lover',
-    followers: 189,
-    following: 210,
-    postsCount: 31,
-    isFriend: true,
-    isFollowing: true,
-    mutualFriends: 5
-  },
-  { 
-    id: 1003, 
-    name: 'David Chen', 
-    avatar: 'https://i.pravatar.cc/80?img=8',
-    username: 'davidc',
-    bio: 'Engineering Student | Robotics Club',
-    followers: 312,
-    following: 156,
-    postsCount: 67,
-    isFriend: false,
-    isFollowing: false,
-    mutualFriends: 2
-  },
-  { 
-    id: 1004, 
-    name: 'Sophia Williams', 
-    avatar: 'https://i.pravatar.cc/80?img=9',
-    username: 'sophiaw',
-    bio: 'Biology Major | Environmental Activist',
-    followers: 178,
-    following: 89,
-    postsCount: 23,
-    isFriend: false,
-    isFollowing: true,
-    mutualFriends: 1
-  },
-  { 
-    id: 1005, 
-    name: 'James Wilson', 
-    avatar: 'https://i.pravatar.cc/80?img=10',
-    username: 'jamesw',
-    bio: 'Business Student | Startup Founder',
-    followers: 421,
-    following: 278,
-    postsCount: 89,
-    isFriend: true,
-    isFollowing: false,
-    mutualFriends: 7
-  }
-];
+
   // seed/default data (comments are arrays with replies)
   const seedFriends = [
     { id:1, name:'Emily', avatar:'https://i.pravatar.cc/40?img=1', online:true },
@@ -128,7 +60,6 @@ const sampleUsers = [
       comments: []
     }
   ];
-  
    // Logo refresh functionality - Updated with better visual feedback
 // Logo refresh functionality - Now also scrolls to top
 function initLogoRefresh() {
@@ -221,7 +152,6 @@ if (hamburger) {
   let notifications = JSON.parse(localStorage.getItem(KEY.NOTIFS) || 'null') || [{ id:1, text:'Welcome to your feed!', createdAt: Date.now()-3600*1000, avatar:'https://i.pravatar.cc/36?img=10' }];
   const friends = seedFriends.slice();
   let anonymousPosts = JSON.parse(localStorage.getItem(KEY.ANON) || 'null') || [];
-  let users = JSON.parse(localStorage.getItem(KEY.USERS) || 'null') || sampleUsers.slice();
   let communities = JSON.parse(localStorage.getItem(KEY.COMMUNITIES) || 'null') || [
     { id:1, name:'UI/UX Designers', members:54, description:'Designers sharing UI patterns' },
     { id:2, name:'Frontend Developers', members:16, description:'Frontend tips & discussion' }
@@ -275,13 +205,6 @@ if (hamburger) {
 
   // keep anonymous preview data in outer scope
   let anonPreviewData = null;
-  function saveUsers() {
-  try {
-    localStorage.setItem(KEY.USERS, JSON.stringify(users));
-  } catch (e) {
-    console.warn('saveUsers() failed', e);
-  }
-}
 
   // helpers
   function saveState(){
@@ -1960,8 +1883,7 @@ function renderEditProfileForm(cont, currentUser) {
     mystories: 'tab-mystories',
     categories: 'tab-categories',
     trending: 'tab-trending',
-    anonymous: 'tab-anonymous',
-     findpeople: 'tab-findpeople'
+    anonymous: 'tab-anonymous'
   };
 
   function initNavAccessibility(){
@@ -1994,7 +1916,6 @@ function renderEditProfileForm(cont, currentUser) {
       li.classList.toggle('active', is);
       li.setAttribute('aria-selected', is ? 'true' : 'false');
       li.setAttribute('tabindex', is ? '0' : '-1');
-      if (tab === 'findpeople') renderFindPeople();
     });
 
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
@@ -2643,37 +2564,8 @@ function attachDelegatedLogout() {
     renderTopStories,
     renderNews,
     openProfileView,
-    openPostDetail, 
-    viewUserProfile: function(userId) {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-    
-    // Open the user's profile view
-    openProfileView({ 
-      name: user.name, 
-      avatar: user.avatar,
-      bio: user.bio,
-      followers: user.followers,
-      following: user.following,
-      postsCount: user.postsCount
-    });
-  },
-  
-  searchUsers: function(query) {
-    // Switch to Find People tab and trigger search
-    setActiveTab('findpeople');
-    setTimeout(() => {
-      const searchInput = document.getElementById('search-users-input');
-      if (searchInput) {
-        searchInput.value = query;
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-        searchInput.focus();
-      }
-    }, 100);
-  },
-  
+    openPostDetail // <--- THIS is required for the new profile grid to work
   };
-   
   // initialization
   function initScrollTracking() {
   const topbar = document.querySelector('.topbar');
@@ -2741,268 +2633,7 @@ function initMobileSearch() {
       }
     });
   }
-  // Add this function to render the user search interface
-function renderFindPeople() {
-  const cont = document.getElementById('findpeople-content');
-  if (!cont) return;
-  
-  cont.innerHTML = `
-    <div style="margin-bottom: 16px;">
-      <div style="position: relative; display: flex; gap: 8px;">
-        <div style="flex: 1; position: relative;">
-          <input type="text" id="search-users-input" 
-            placeholder="Search by name, username, or bio..." 
-            style="width: 100%; padding: 12px 16px; padding-left: 40px; 
-                   border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); 
-                   background: rgba(255,255,255,0.03); color: inherit;">
-          <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); 
-                width: 20px; height: 20px; opacity: 0.6;" 
-                viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-        </div>
-        <button id="clear-user-search" class="btn small" style="white-space: nowrap;">
-          Clear
-        </button>
-      </div>
-      <div class="muted" style="font-size: 12px; margin-top: 8px; padding-left: 4px;">
-        Search among ${users.length} users on the platform
-      </div>
-    </div>
-    
-    <div id="users-list-container" style="margin-top: 16px;">
-      <div id="users-list" style="display: flex; flex-direction: column; gap: 12px;">
-        <!-- Users will be rendered here -->
-      </div>
-    </div>
-    
-    <div id="no-users-found" class="hidden" style="text-align: center; padding: 40px 0;">
-      <div style="font-size: 16px; margin-bottom: 8px;">No users found</div>
-      <div class="muted">Try different search terms</div>
-    </div>
-  `;
-  
-  // Initial render of all users
-  renderUsersList(users);
-  
-  // Set up search functionality
-  const searchInput = document.getElementById('search-users-input');
-  const clearBtn = document.getElementById('clear-user-search');
-  const noUsersFound = document.getElementById('no-users-found');
-  
-  if (searchInput) {
-    searchInput.addEventListener('input', debounce((e) => {
-      const query = e.target.value.toLowerCase().trim();
-      filterUsers(query);
-    }, 200));
-    
-    searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        searchInput.value = '';
-        filterUsers('');
-      }
-    });
-  }
-  
-  if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      if (searchInput) {
-        searchInput.value = '';
-        searchInput.focus();
-      }
-      filterUsers('');
-    });
-  }
-  
-  function filterUsers(query) {
-    if (!query) {
-      renderUsersList(users);
-      if (noUsersFound) noUsersFound.classList.add('hidden');
-      return;
-    }
-    
-    const filtered = users.filter(user => {
-      const searchable = `
-        ${user.name || ''} 
-        ${user.username || ''} 
-        ${user.bio || ''}
-      `.toLowerCase();
-      
-      return searchable.includes(query);
-    });
-    
-    renderUsersList(filtered);
-    
-    if (noUsersFound) {
-      if (filtered.length === 0) {
-        noUsersFound.classList.remove('hidden');
-      } else {
-        noUsersFound.classList.add('hidden');
-      }
-    }
-  }
-  
-  function renderUsersList(userList) {
-    const container = document.getElementById('users-list');
-    if (!container) return;
-    
-    if (userList.length === 0) {
-      container.innerHTML = '';
-      return;
-    }
-    
-    container.innerHTML = userList.map(user => {
-      const friendStatus = user.isFriend ? 'friend' : (user.isFollowing ? 'following' : 'not-following');
-      
-      return `
-        <div class="card" style="padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.02);">
-          <div style="display: flex; gap: 12px; align-items: flex-start;">
-            <!-- Avatar -->
-            <div style="flex-shrink: 0;">
-              <img src="${escapeHtml(user.avatar)}" 
-                   alt="${escapeHtml(user.name)}" 
-                   style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; cursor: pointer;"
-                   onclick="window.feedApp.viewUserProfile(${user.id})">
-            </div>
-            
-            <!-- User Info -->
-            <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-                <div>
-                  <div style="font-weight: 700; font-size: 15px; margin-bottom: 2px; cursor: pointer;" 
-                       onclick="window.feedApp.viewUserProfile(${user.id})">
-                    ${escapeHtml(user.name)}
-                  </div>
-                  <div class="muted" style="font-size: 13px; margin-bottom: 6px;">
-                    @${escapeHtml(user.username)}
-                  </div>
-                </div>
-                
-                <!-- Action Button -->
-                ${renderUserActionButton(user)}
-              </div>
-              
-              <!-- Bio -->
-              <div style="font-size: 13px; line-height: 1.4; margin-bottom: 8px; color: inherit;">
-                ${escapeHtml(user.bio || 'No bio yet')}
-              </div>
-              
-              <!-- Stats -->
-              <div style="display: flex; gap: 16px; font-size: 12px;">
-                <div>
-                  <span style="font-weight: 600;">${user.postsCount}</span>
-                  <span class="muted"> posts</span>
-                </div>
-                <div>
-                  <span style="font-weight: 600;">${user.followers}</span>
-                  <span class="muted"> followers</span>
-                </div>
-                <div>
-                  <span style="font-weight: 600;">${user.following}</span>
-                  <span class="muted"> following</span>
-                </div>
-                ${user.mutualFriends > 0 ? `
-                  <div class="muted">
-                    ${user.mutualFriends} mutual friend${user.mutualFriends === 1 ? '' : 's'}
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-    
-    // Attach event listeners to action buttons
-    container.querySelectorAll('.user-action-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const userId = parseInt(this.dataset.userId);
-        handleUserAction(userId, this.dataset.action);
-      });
-    });
-  }
-  
-  function renderUserActionButton(user) {
-    if (user.isFriend) {
-      return `
-        <button class="btn small user-action-btn" data-user-id="${user.id}" data-action="remove-friend" 
-                style="background: rgba(255, 75, 75, 0.1); color: #ff7675; border-color: rgba(255, 75, 75, 0.2);">
-          Remove Friend
-        </button>
-      `;
-    } else if (user.isFollowing) {
-      return `
-        <button class="btn small user-action-btn" data-user-id="${user.id}" data-action="unfollow" 
-                style="background: rgba(255, 255, 255, 0.05); color: inherit;">
-          Following
-        </button>
-      `;
-    } else {
-      return `
-        <button class="btn primary small user-action-btn" data-user-id="${user.id}" data-action="follow">
-          Follow
-        </button>
-      `;
-    }
-  }
-  
-  function handleUserAction(userId, action) {
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex === -1) return;
-    
-    const user = users[userIndex];
-    const currentUser = getUserProfile();
-    
-    switch(action) {
-      case 'follow':
-        user.isFollowing = true;
-        user.followers += 1;
-        toast(`You started following ${user.name}`);
-        
-        // Add notification
-        notifications.unshift({
-          id: Date.now(),
-          text: `You started following ${user.name}`,
-          createdAt: Date.now(),
-          avatar: currentUser.avatar
-        });
-        break;
-        
-      case 'unfollow':
-        user.isFollowing = false;
-        user.followers = Math.max(0, user.followers - 1);
-        toast(`You unfollowed ${user.name}`);
-        break;
-        
-      case 'add-friend':
-        user.isFriend = true;
-        toast(`Friend request sent to ${user.name}`);
-        
-        // Add notification
-        notifications.unshift({
-          id: Date.now(),
-          text: `You sent a friend request to ${user.name}`,
-          createdAt: Date.now(),
-          avatar: currentUser.avatar
-        });
-        break;
-        
-      case 'remove-friend':
-        user.isFriend = false;
-        toast(`Removed ${user.name} from friends`);
-        break;
-    }
-    
-    // Update the user in the array
-    users[userIndex] = user;
-    
-    // Save and re-render
-    saveUsers();
-    renderFindPeople();
-    renderNotifications();
-  }
-}
+
   // 3. Event Listener: Click the Cancel Button to CLOSE
   cancelBtn.addEventListener('click', (e) => {
     e.stopPropagation();
