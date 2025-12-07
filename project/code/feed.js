@@ -2197,7 +2197,61 @@ function renderEditProfileForm(cont, currentUser) {
     return now - (1000 * 60 * 60 * (index + 1)); // 1+ hours ago
   }
 
+  // --- NEW: Helper to view full news details ---
+  function openNewsDetail(item, isTopStory = false) {
+    // Normalize data between "School News" and "Top Stories" formats
+    const title = item.title || item.topic;
+    const summary = item.summary;
+    const author = item.author || 'School Admin';
+    // Use large image if available, otherwise use avatar, otherwise fallback
+    const image = item.image || item.avatar || "https://i.pravatar.cc/150?u=school"; 
+    
+    // Simulate full body text since we only have summaries in the data
+    const fullBody = `
+      <p style="font-size:16px; line-height:1.6; color:inherit;">
+        ${escapeHtml(summary)}
+      </p>
+      <p style="margin-top:16px; line-height:1.6; color:var(--muted);">
+        (Full article content simulation) Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+        Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+        quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </p>
+      <p style="margin-top:12px; line-height:1.6; color:var(--muted);">
+        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
+        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      </p>
+    `;
+
+    const html = `
+      <div class="news-detail-modal">
+        ${!isTopStory && item.image ? `<img src="${escapeHtml(image)}" style="width:100%; max-height:300px; object-fit:cover; border-radius:8px; margin-bottom:16px;" />` : ''}
+        
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+           ${isTopStory ? `<img src="${escapeHtml(image)}" style="width:40px; height:40px; border-radius:50%;" />` : ''}
+           <div>
+             <div style="font-weight:700; font-size:14px;">${escapeHtml(author)}</div>
+             <div class="muted" style="font-size:12px;">${escapeHtml(new Date().toLocaleDateString())}</div>
+           </div>
+        </div>
+
+        <h2 style="margin:0 0 12px 0; font-size:22px; line-height:1.3;">${escapeHtml(title)}</h2>
+        
+        <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:16px;">
+          ${fullBody}
+        </div>
+      </div>
+    `;
+
+    openModal({ 
+      title: isTopStory ? 'Top Story' : 'News Article', 
+      html: html, 
+      confirmText: 'Close', 
+      cancelText: '' 
+    });
+  }
+
   // 4. MAIN NEWS RENDERER
+  // 4. MAIN NEWS RENDERER (Updated with Click Events)
   async function renderNews(){
     const el = document.getElementById('news-content');
     if(!el) return;
@@ -2212,11 +2266,10 @@ function renderEditProfileForm(cont, currentUser) {
       </div>
     `;
 
-    // B. Simulate Network Delay (for realism)
+    // B. Simulate Network Delay
     await new Promise(r => setTimeout(r, 600));
 
     // C. Get Data
-    // We shuffle the static pool to make it look "updated" every time the user visits
     const freshNews = shuffleNews([...SCHOOL_NEWS_DATA]); 
 
     // D. Render Layout
@@ -2224,13 +2277,20 @@ function renderEditProfileForm(cont, currentUser) {
         <span>Trending in Education</span>
         <span style="font-size:11px; background:rgba(0,180,216,0.1); color:var(--accent); padding:2px 6px; border-radius:4px;">LIVE</span>
       </div>`;
+    
+    // Create a container for the list to easily append items
+    const listContainer = document.createElement('div');
+    el.appendChild(listContainer);
 
-    el.innerHTML += freshNews.map((item, index) => {
+    freshNews.forEach((item, index) => {
       const realTime = getDynamicTime(index);
       
-      return `
-        <article class="news-item card" style="margin-bottom:12px; padding:10px; display:flex; gap:12px; align-items:start; border:1px solid rgba(255,255,255,0.03);">
-          
+      const article = document.createElement('article');
+      article.className = 'news-item card';
+      // Added cursor pointer and hover effect styles inline for immediate result
+      article.style.cssText = "margin-bottom:12px; padding:10px; display:flex; gap:12px; align-items:start; border:1px solid rgba(255,255,255,0.03); cursor:pointer; transition: background 0.2s;";
+      
+      article.innerHTML = `
           <div style="flex-shrink:0; width:100px; height:70px; border-radius:8px; overflow:hidden; background:#222;">
             <img src="${item.image}" alt="News thumbnail" style="width:100%; height:100%; object-fit:cover;" loading="lazy">
           </div>
@@ -2248,16 +2308,18 @@ function renderEditProfileForm(cont, currentUser) {
               <span>${timeAgo(realTime)}</span>
             </div>
           </div>
-
-        </article>
       `;
-    }).join('');
-  }
 
-  /* =========================================
-     END DYNAMIC SCHOOL NEWS LOGIC
-     ========================================= */
-  // write story
+      // Add Click Event
+      article.addEventListener('click', () => openNewsDetail(item, false));
+      
+      // Add simple hover effect via JS
+      article.onmouseenter = () => article.style.background = "rgba(255,255,255,0.03)";
+      article.onmouseleave = () => article.style.background = "";
+
+      listContainer.appendChild(article);
+    });
+  }
   function renderWrite(){
     const el = document.getElementById('write-content');
     if(!el) return;
@@ -2634,53 +2696,8 @@ document.addEventListener('keydown', (e) => {
     } catch(e){}
   }
 
-  // Top stories
-  async function renderTopStories() {
-    if(!topStoriesList) return;
-    topStoriesList.innerHTML = 'Loading top stories…';
-    try {
-      const items = await fetchNews(50);
-      let schoolToday = items.filter(i => isSchoolRelated(i) && isPublishedToday(i));
-      let schoolRecent = items.filter(i => isSchoolRelated(i) && !isPublishedToday(i));
-      let showItems = schoolToday.length ? schoolToday.slice(0,6) : (schoolRecent.length ? schoolRecent.slice(0,6) : items.slice(0,6));
-
-      if(showItems.length === 0) {
-        showItems = [
-          { title: 'Education update: Scholarships announced for students', url:'#', summary:'New scholarship opportunities for local students.', publishedAt: Date.now(), image: null },
-          { title: 'School safety: New protocols', url:'#', summary:'Updates on school safety measures.', publishedAt: Date.now(), image: null }
-        ];
-      }
-
-      topStoriesList.innerHTML = showItems.map(it => {
-        const thumb = it.image ? `<img src="${escapeHtml(it.image)}" alt="">` : `<img src="${schoolPlaceholderDataUrl(it.title)}" alt="">`;
-        const dateLabel = it.publishedAt ? timeAgo(new Date(it.publishedAt).getTime()) : '';
-        const url = (it.url && String(it.url).startsWith('http')) ? it.url : '#';
-        return `<div class="top-stories-item" role="button" tabindex="0" data-url="${escapeHtml(url)}">
-          <div class="top-stories-thumb">${thumb}</div>
-          <div class="top-stories-meta">
-            <div class="ts-title">${escapeHtml(it.title)}</div>
-            <div class="muted ts-summary">${escapeHtml((it.summary||'').slice(0,120))}</div>
-            <div class="muted ts-time">${escapeHtml(dateLabel)}</div>
-          </div>
-        </div>`;
-      }).join('');
-
-      topStoriesList.querySelectorAll('.top-stories-item').forEach(node => {
-        node.addEventListener('click', () => {
-          const url = node.dataset.url;
-          if(url && url !== '#') window.open(url, '_blank');
-        });
-        node.addEventListener('keydown', (e) => {
-          if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.click(); }
-        });
-      });
-    } catch (err) {
-      topStoriesList.innerHTML = '<div class="muted">Could not load top stories.</div>';
-      console.warn('renderTopStories error', err);
-    }
-  }
-/* --- feed.js (Replace the existing renderTopStories function) --- */
-function renderTopStories() {
+// Updated renderTopStories function
+  function renderTopStories() {
     const list = document.getElementById('top-stories-list');
     if (!list) return;
 
@@ -2689,26 +2706,33 @@ function renderTopStories() {
         return;
     }
 
-    // Render the stories using the new data structure
-    list.innerHTML = topStoriesData.map(story => `
-        <a href="#" class="top-story-item" onclick="return false;" aria-label="Read story about ${escapeHtml(story.topic)}">
-            <div class="story-content">
-                <div class="topic">${escapeHtml(story.topic)}</div>
-                <div class="summary">${escapeHtml(story.summary)}</div>
-            </div>
-            <img src="${escapeHtml(story.avatar)}" class="top-story-avatar" alt="${escapeHtml(story.author)}">
-        </a>
-    `).join('');
-}
-  if(moreNewsBtn) {
-    moreNewsBtn.addEventListener('click', () => {
-      window.newsFilter = 'school-today';
-      setActiveTab('news');
-      renderNews();
+    list.innerHTML = ''; // Clear current content
+
+    topStoriesData.forEach(story => {
+      // Create element via JS to attach event listener properly
+      const link = document.createElement('a');
+      link.className = 'top-story-item';
+      link.href = "#";
+      // Prevent default anchor jump, but allow click processing
+      link.onclick = (e) => e.preventDefault(); 
+      link.setAttribute('aria-label', `Read story about ${story.topic}`);
+      
+      link.innerHTML = `
+          <div class="story-content">
+              <div class="topic">${escapeHtml(story.topic)}</div>
+              <div class="summary">${escapeHtml(story.summary)}</div>
+          </div>
+          <img src="${escapeHtml(story.avatar)}" class="top-story-avatar" alt="${escapeHtml(story.author)}">
+      `;
+
+      // Attach Click Listener to open Modal
+      link.addEventListener('click', () => {
+        openNewsDetail(story, true);
+      });
+
+      list.appendChild(link);
     });
   }
-
-  // Communities: render and actions (join/create)
   function renderCommunities(){
     const el = document.getElementById('communities-list');
     if(!el) return;
