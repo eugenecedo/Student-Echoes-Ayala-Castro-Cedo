@@ -2954,6 +2954,6 @@ function attachDelegatedLogout() {
     }
   });
 }
-
+// 2. Redirect the user back to the login page
   init();
 })();
