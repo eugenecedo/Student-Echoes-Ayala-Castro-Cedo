@@ -1424,6 +1424,7 @@ function toggleFollowUser(targetUsername) {
   renderProfile(false); // Re-render profile to update button state
 }
 /* --- Updated renderProfile function with Back Button --- */
+/* --- Updated renderProfile in feed.js --- */
 function renderProfile(editMode = false) {
   const cont = document.getElementById('profile-content');
   if (!cont) return;
@@ -1468,17 +1469,15 @@ function renderProfile(editMode = false) {
   // --- FOLLOW BUTTON LOGIC ---
   let actionButtonHtml = '';
   
-  // Ensure following array exists for safety
-  currentUser.following = currentUser.following || []; 
+  // Ensure lists exist
+  const myFollowing = currentUser.following || []; 
+  const targetFollowers = profileData.myFollowers || [];
+  const targetFollowing = profileData.following || [];
 
   if (isViewingOwn) {
     actionButtonHtml = `<button class="btn small" id="btn-edit-profile">Edit Profile</button>`;
   } else {
-    const isFollowing = currentUser.following.includes(profileData.name);
-    
-    // Simulating "Follow Back": 
-    // We assume people in the 'friends' list follow the user.
-    // If they are in 'friends' but we don't follow them yet, show "Follow Back".
+    const isFollowing = myFollowing.includes(profileData.name);
     const isFollower = friends.some(f => f.name === profileData.name); 
 
     if (isFollowing) {
@@ -1491,12 +1490,9 @@ function renderProfile(editMode = false) {
   }
 
   // --- STATS LOGIC ---
-  const amIFollowing = currentUser.following.includes(profileData.name) ? 1 : 0;
-  const baseFollowers = isViewingOwn ? 0 : 0; // Fake base numbers
-  const followersCount = baseFollowers + amIFollowing;
-  
-  // For 'Following', we use the real array length if viewing own profile
-  const followingCount = isViewingOwn ? currentUser.following.length : 15; // 15 is fake number for others
+  // If viewing own, use real data. If viewing other, use their data objects (or empty array if undefined)
+  const countFollowers = targetFollowers.length;
+  const countFollowing = targetFollowing.length;
 
   // 1. EDIT MODE
   if (editMode && isViewingOwn) {
@@ -1525,18 +1521,18 @@ function renderProfile(editMode = false) {
         </div>
         
         <div class="profile-stats">
-  <div class="stat-item">
-    <span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span>
-  </div>
-  
-  <div class="stat-item">
-    <span class="stat-value">${followersCount}</span> <span class="stat-label">Followers</span>
-  </div>
-  
-  <div class="stat-item">
-    <span class="stat-value">${followingCount}</span> <span class="stat-label">Following</span>
-  </div>
-</div>
+          <div class="stat-item">
+            <span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span>
+          </div>
+          
+          <div class="stat-item" id="stat-followers">
+            <span class="stat-value">${countFollowers}</span> <span class="stat-label">Followers</span>
+          </div>
+          
+          <div class="stat-item" id="stat-following">
+            <span class="stat-value">${countFollowing}</span> <span class="stat-label">Following</span>
+          </div>
+        </div>
         
         <div style="font-size:14px; margin-top:4px; line-height:1.4;">
           ${escapeHtml(profileData.bio || (isViewingOwn ? "Add a bio in your profile settings" : "No bio available"))}
@@ -1583,14 +1579,79 @@ function renderProfile(editMode = false) {
   if (followBtn) {
     followBtn.onclick = () => toggleFollowUser(profileData.name);
   }
+
+  // --- CLICKABLE STATS LOGIC ---
+  const followersBtn = document.getElementById('stat-followers');
+  if (followersBtn) {
+    followersBtn.onclick = () => openUserList('Followers', targetFollowers);
+  }
+
+  const followingBtn = document.getElementById('stat-following');
+  if (followingBtn) {
+    followingBtn.onclick = () => openUserList('Following', targetFollowing);
+  }
 }
-  /* --- NEW: Helper for Post Detail Modal --- */
-  /* --- feed.js --- */
+ /* --- NEW: Helper to show User List (Followers/Following) --- */
+function openUserList(title, userNames) {
+  if (!userNames || userNames.length === 0) {
+    toast(`No ${title.toLowerCase()} yet.`);
+    return;
+  }
 
-/* FIND the openPostDetail function (usually near the bottom) and REPLACE it with this updated version: */
+  // Helper to find avatar for a username
+  const resolveAvatar = (name) => {
+    // 1. Check friends list
+    const friend = friends.find(f => f.name === name);
+    if (friend) return friend.avatar;
+    
+    // 2. Check recent posts authors
+    const postAuthor = posts.find(p => (p.author && p.author.name === name));
+    if (postAuthor) return postAuthor.author.avatar;
 
-/* --- NEW: Helper for Post Detail Modal --- */
-/* --- NEW: Helper for Post Detail Modal (Updated Fix) --- */
+    // 3. Default
+    return "https://i.pravatar.cc/150?u=" + name; 
+  };
+
+  const html = `
+    <div style="display:flex; flex-direction:column; gap:12px; max-height:60vh; overflow-y:auto;">
+      ${userNames.map(name => {
+        const avatar = resolveAvatar(name);
+        return `
+          <div class="user-list-item" style="display:flex; align-items:center; gap:12px; padding:8px; border-radius:8px; background:rgba(255,255,255,0.03); cursor:pointer;">
+            <img src="${escapeHtml(avatar)}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" alt="${escapeHtml(name)}">
+            <div style="font-weight:600; font-size:15px;">${escapeHtml(name)}</div>
+            <button class="btn small" style="margin-left:auto; pointer-events:none;">View</button>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  openModal({ title: title, html: html, confirmText: 'Close', cancelText: '' });
+
+  // Add click events to navigate to that user's profile
+  setTimeout(() => {
+    const modal = document.getElementById('modal-root');
+    if (!modal) return;
+    
+    const items = modal.querySelectorAll('.user-list-item');
+    items.forEach((item, index) => {
+      item.onclick = () => {
+        const name = userNames[index];
+        const avatar = resolveAvatar(name);
+        
+        // Close modal
+        const closeBtn = modal.querySelector('.modal-close');
+        if (closeBtn) closeBtn.click();
+
+        // Navigate to profile after short delay
+        setTimeout(() => {
+          openProfileView({ name, avatar });
+        }, 200);
+      };
+    });
+  }, 50);
+}
 function openPostDetail(postId) {
   const post = posts.find(p => p.id === postId);
   if (!post) return;
