@@ -518,40 +518,43 @@ if (hamburger) {
     const selectedId = savedAnon.avatarId || ANON_AVATARS[0].id;
 
     // create UI: a card with create-anon-post form and then a feed list of anonymous posts
-    el.innerHTML = `
-      <div class="card" style="margin-bottom:12px">
-        <form id="anon-create-form" style="position:relative;">
-          <textarea id="anon-text" placeholder="Share anonymously..." rows="3" aria-label="Anonymous post text" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;"></textarea>
+    /* --- In feed.js, inside function renderAnonymousRoom() --- */
+// Replace the el.innerHTML assignment with this updated version:
 
-          <div style="display:flex;gap:12px;align-items:flex-start;margin-top:8px;">
-            <div style="flex:1">
-              <div class="anon-avatar-chooser" aria-hidden="false">
-                ${ANON_AVATARS.map(a => `
-                  <button type="button" class="anon-avatar-btn" data-id="${a.id}" title="${escapeHtml(a.name)}" aria-pressed="${a.id===selectedId}">
-                    <img src="${a.src}" alt="${escapeHtml(a.name)}" />
-                  </button>
-                `).join('')}
-              </div>
-            </div>
+el.innerHTML = `
+  <div class="card" style="margin-bottom:12px">
+    <form id="anon-create-form" style="position:relative;">
+      <textarea id="anon-text" placeholder="Share anonymously..." rows="3" aria-label="Anonymous post text" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;"></textarea>
 
-            <div style="width:240px;flex-shrink:0;">
-              <img id="anon-preview" class="anon-preview" alt="preview"/>
-              <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
-                <button class="btn small" type="button" id="anon-add-image">Add image</button>
-                <button class="btn small anon-remove-preview" type="button" id="anon-remove-preview" style="display:none">Remove</button>
-              </div>
-            </div>
+      <div class="anon-row-responsive" style="display:flex;gap:12px;align-items:flex-start;margin-top:8px;">
+        <div style="flex:1">
+          <div class="anon-avatar-chooser" aria-hidden="false">
+            ${ANON_AVATARS.map(a => `
+              <button type="button" class="anon-avatar-btn" data-id="${a.id}" title="${escapeHtml(a.name)}" aria-pressed="${a.id===selectedId}">
+                <img src="${a.src}" alt="${escapeHtml(a.name)}" />
+              </button>
+            `).join('')}
           </div>
+        </div>
 
-          <div style="display:flex;justify-content:flex-end;margin-top:8px">
-            <button class="btn primary" type="submit">Post anonymously</button>
+        <div class="anon-controls-responsive" style="width:240px;flex-shrink:0;">
+          <img id="anon-preview" class="anon-preview" alt="preview"/>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+            <button class="btn small" type="button" id="anon-add-image">Add image</button>
+            <button class="btn small anon-remove-preview" type="button" id="anon-remove-preview" style="display:none">Remove</button>
           </div>
-
-          <input id="anon-image" type="file" accept="image/*" style="display:none">
-        </form>
+        </div>
       </div>
-      <div id="anon-feed-list"></div>
-    `;
+
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="btn primary" type="submit">Post anonymously</button>
+      </div>
+
+      <input id="anon-image" type="file" accept="image/*" style="display:none">
+    </form>
+  </div>
+  <div id="anon-feed-list"></div>
+`;
 
     const feedContainer = document.getElementById('anon-feed-list');
     if(!feedContainer) return;
