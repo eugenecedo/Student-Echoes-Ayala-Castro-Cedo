@@ -416,96 +416,116 @@ const topStoriesData = [
   }
 
   // ---------- Comments modal for regular posts ----------
-  function openComments(postId) {
-    const post = posts.find(p => p.id === postId);
-    if(!post) return;
+  // --- REPLACE openComments in feed.js ---
+function openComments(postId) {
+  const post = posts.find(p => p.id === postId);
+  if(!post) return;
 
-    function renderCommentsHtml(comments) {
-      if(!comments || comments.length === 0) return `<div class="muted">No comments yet.</div>`;
-      return comments.map(c => `
-        <div style="margin-bottom:12px;padding:8px;border-radius:8px;background:transparent;">
-          <div style="display:flex;gap:8px;align-items:flex-start">
-            <img src="${escapeHtml(c.author.avatar)}" style="width:36px;height:36px;border-radius:50%"/>
-            <div style="flex:1">
-              <div style="font-weight:600">${escapeHtml(c.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(c.createdAt))}</span></div>
-              <div style="margin-top:6px">${escapeHtml(c.text)}</div>
-              <div style="margin-top:8px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
-              ${c.replies && c.replies.length ? `<div style="margin-top:8px;margin-left:44px">${c.replies.map(r=>`
-                <div style="margin-bottom:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.01)">
-                  <div style="font-weight:600">${escapeHtml(r.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt))}</span></div>
-                  <div style="margin-top:6px">${escapeHtml(r.text)}</div>
-                  <div style="margin-top:6px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
-                </div>
-              `).join('')}</div>` : ''}
-            </div>
+  function renderCommentsHtml(comments) {
+    if(!comments || comments.length === 0) return `<div class="muted">No comments yet.</div>`;
+    return comments.map(c => `
+      <div style="margin-bottom:12px;padding:8px;border-radius:8px;background:transparent;">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <img src="${escapeHtml(c.author.avatar)}" style="width:36px;height:36px;border-radius:50%"/>
+          <div style="flex:1">
+            <div style="font-weight:600">${escapeHtml(c.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(c.createdAt))}</span></div>
+            <div style="margin-top:6px">${escapeHtml(c.text)}</div>
+            <div style="margin-top:8px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
+            ${c.replies && c.replies.length ? `<div style="margin-top:8px;margin-left:44px">${c.replies.map(r=>`
+              <div style="margin-bottom:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.01)">
+                <div style="font-weight:600">${escapeHtml(r.author.name)} <span class="muted" style="font-weight:400;font-size:12px"> • ${escapeHtml(timeAgo(r.createdAt))}</span></div>
+                <div style="margin-top:6px">${escapeHtml(r.text)}</div>
+                <div style="margin-top:6px"><button class="btn small reply-to-comment" data-cid="${c.id}" data-pid="${postId}">Reply</button></div>
+              </div>
+            `).join('')}</div>` : ''}
           </div>
         </div>
-      `).join('');
-    }
-
-    const html = `
-      <div style="max-height:58vh;overflow:auto;padding-right:8px">
-        ${renderCommentsHtml(post.comments)}
       </div>
-      <div style="margin-top:12px">
-        <strong>Add a comment</strong>
-        <div style="margin-top:8px">
-          <textarea id="__newCommentInput" placeholder="Write a comment..." style="width:100%;min-height:80px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
-          <div style="margin-top:8px"><button class="btn primary" id="__submitNewComment">Post comment</button></div>
-        </div>
+    `).join('');
+  }
+
+  const html = `
+    <div style="max-height:58vh;overflow:auto;padding-right:8px">
+      ${renderCommentsHtml(post.comments)}
+    </div>
+    <div style="margin-top:12px">
+      <strong>Add a comment</strong>
+      <div style="margin-top:8px">
+        <textarea id="__newCommentInput" placeholder="Write a comment..." style="width:100%;min-height:80px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></textarea>
+        <div style="margin-top:8px"><button class="btn primary" id="__submitNewComment">Post comment</button></div>
       </div>
-    `;
+    </div>
+  `;
 
-    openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
+  openModal({ title: `Comments (${post.comments ? post.comments.length : 0})`, html, confirmText: 'Close', cancelText: '' });
 
-    const modal = modalRoot.querySelector('.modal');
-    if(!modal) return;
+  const modal = modalRoot.querySelector('.modal');
+  if(!modal) return;
 
-    const submitBtn = modal.querySelector('#__submitNewComment');
-    const newCommentInput = modal.querySelector('#__newCommentInput');
-    if(submitBtn && newCommentInput) {
-      submitBtn.addEventListener('click', () => {
-        const txt = (newCommentInput.value || '').trim();
-        if(!txt) { toast('Write a comment first'); return; }
-        const u = getUserProfile();
-        const c = { id: Date.now() + Math.floor(Math.random()*99), author: { name: u.name, avatar: u.avatar }, text: txt, createdAt: Date.now(), replies: [] };
-        post.comments = post.comments || [];
-        post.comments.push(c);
-        notifications.unshift({ id: Date.now(), text:'You commented on a post.', createdAt: Date.now(), avatar: u.avatar });
-        saveState(); renderFeed(); renderNotifications();
-        const closeBtn = modal.querySelector('.modal-close');
-        if(closeBtn) closeBtn.click();
-        setTimeout(()=> openComments(postId), 120);
-        toast('Comment added');
+  const submitBtn = modal.querySelector('#__submitNewComment');
+  const newCommentInput = modal.querySelector('#__newCommentInput');
+  
+  // 1. Handle Main Comment Submission
+  if(submitBtn && newCommentInput) {
+    submitBtn.addEventListener('click', () => {
+      const txt = (newCommentInput.value || '').trim();
+      if(!txt) { toast('Write a comment first'); return; }
+      const u = getUserProfile();
+      const c = { id: Date.now() + Math.floor(Math.random()*99), author: { name: u.name, avatar: u.avatar }, text: txt, createdAt: Date.now(), replies: [] };
+      post.comments = post.comments || [];
+      post.comments.push(c);
+      
+      // UPDATE: Added postId property to this notification
+      notifications.unshift({ 
+        id: Date.now(), 
+        text:'You commented on a post.', 
+        createdAt: Date.now(), 
+        avatar: u.avatar,
+        postId: post.id // <--- SAVED HERE
       });
-    }
-
-    modal.querySelectorAll('.reply-to-comment').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const cid = Number(btn.dataset.cid);
-        const pid = Number(btn.dataset.pid);
-        const postObj = posts.find(p=>p.id===pid);
-        if(!postObj) return;
-        const comment = (postObj.comments || []).find(c=>c.id===cid);
-        if(!comment) return;
-        const replyText = await openModal({ title: `Reply to ${escapeHtml(comment.author.name)}`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
-        if(replyText && replyText.trim()) {
-          const u = getUserProfile();
-          const reply = { id: Date.now() + Math.floor(Math.random()*99), author: { name: u.name, avatar: u.avatar }, text: replyText.trim(), createdAt: Date.now() };
-          comment.replies = comment.replies || [];
-          comment.replies.push(reply);
-          notifications.unshift({ id: Date.now(), text:`You replied to ${comment.author.name}`, createdAt: Date.now(), avatar: u.avatar });
-          saveState(); renderFeed(); renderNotifications();
-          const closeBtn = modal.querySelector('.modal-close');
-          if(closeBtn) closeBtn.click();
-          setTimeout(()=> openComments(pid), 120);
-          toast('Reply posted');
-        }
-      });
+      
+      saveState(); renderFeed(); renderNotifications();
+      const closeBtn = modal.querySelector('.modal-close');
+      if(closeBtn) closeBtn.click();
+      setTimeout(()=> openComments(postId), 120);
+      toast('Comment added');
     });
   }
 
-  // ---------- Anonymous Room (with avatar chooser + visible image preview) ----------
+  // 2. Handle Reply Submission
+  modal.querySelectorAll('.reply-to-comment').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const cid = Number(btn.dataset.cid);
+      const pid = Number(btn.dataset.pid);
+      const postObj = posts.find(p=>p.id===pid);
+      if(!postObj) return;
+      const comment = (postObj.comments || []).find(c=>c.id===cid);
+      if(!comment) return;
+      const replyText = await openModal({ title: `Reply to ${escapeHtml(comment.author.name)}`, input:true, placeholder:'Write your reply...', confirmText:'Reply' });
+      if(replyText && replyText.trim()) {
+        const u = getUserProfile();
+        const reply = { id: Date.now() + Math.floor(Math.random()*99), author: { name: u.name, avatar: u.avatar }, text: replyText.trim(), createdAt: Date.now() };
+        comment.replies = comment.replies || [];
+        comment.replies.push(reply);
+        
+        // UPDATE: Added postId property to this notification
+        notifications.unshift({ 
+            id: Date.now(), 
+            text:`You replied to ${comment.author.name}`, 
+            createdAt: Date.now(), 
+            avatar: u.avatar,
+            postId: pid // <--- SAVED HERE
+        });
+        
+        saveState(); renderFeed(); renderNotifications();
+        const closeBtn = modal.querySelector('.modal-close');
+        if(closeBtn) closeBtn.click();
+        setTimeout(()=> openComments(pid), 120);
+        toast('Reply posted');
+      }
+    });
+  });
+}
   function getSavedAnonProfile() {
     try {
       const raw = localStorage.getItem(KEY.ANON_PROFILE);
@@ -885,6 +905,7 @@ el.innerHTML = `
   }
 
   /* --- REPLACE renderNotifications in feed.js --- */
+/* --- REPLACE renderNotifications in feed.js --- */
 function renderNotifications() {
   if (!notifList) return;
   notifList.innerHTML = '';
@@ -895,15 +916,12 @@ function renderNotifications() {
     return;
   }
 
-  // Helper to find an avatar for a specific username (reuse logic)
+  // Helper to find an avatar for a specific username
   const findUserAvatar = (name) => {
-    // 1. Check friends
     const f = friends.find(x => x.name === name);
     if (f) return f.avatar;
-    // 2. Check posts
     const p = posts.find(x => (x.author && x.author.name === name) || x.author_name === name);
     if (p) return (p.author && p.author.avatar) || p.author_avatar;
-    // 3. Default
     return "https://i.pravatar.cc/150?u=" + name;
   };
 
@@ -915,16 +933,25 @@ function renderNotifications() {
     row.onmouseenter = () => row.style.background = 'rgba(255,255,255,0.04)';
     row.onmouseleave = () => row.style.background = 'transparent';
 
-    // 1. Parse Text for "You started following [Name]" pattern
     let displayHtml = escapeHtml(n.text);
     let targetUser = null;
-    const followMatch = n.text.match(/You started following (.+)/);
+    let isClickableName = false;
 
+    // --- CASE 1: Following Notification ---
+    const followMatch = n.text.match(/You started following (.+)/);
     if (followMatch && followMatch[1]) {
       targetUser = followMatch[1];
-      // Wrap the name in a span we can click separately
-      // We use a distinctive color (var(--accent)) and make it bold
+      isClickableName = true;
       displayHtml = `You started following <strong class="notif-target-user" style="color:var(--accent); cursor:pointer; position:relative; z-index:2;">${escapeHtml(targetUser)}</strong>`;
+    }
+
+    // --- CASE 2: Reply Notification ---
+    // Example text: "You replied to Emily"
+    const replyMatch = n.text.match(/You replied to (.+)/);
+    if (replyMatch && replyMatch[1]) {
+      targetUser = replyMatch[1];
+      isClickableName = true;
+      displayHtml = `You replied to <strong class="notif-target-user" style="color:var(--accent); cursor:pointer; position:relative; z-index:2;">${escapeHtml(targetUser)}</strong>`;
     }
 
     row.innerHTML = `
@@ -935,25 +962,33 @@ function renderNotifications() {
       </div>
     `;
 
-    // 2. Handle "Name" Click (Go to THEIR profile)
-    const targetLink = row.querySelector('.notif-target-user');
-    if (targetLink && targetUser) {
-      targetLink.addEventListener('click', (e) => {
-        e.stopPropagation(); // PREVENT the row click from firing
-        const avatar = findUserAvatar(targetUser);
-        openProfileView({ name: targetUser, avatar: avatar });
-      });
+    // 1. Handle "Name" Click (Go to THEIR profile)
+    if (isClickableName && targetUser) {
+      const targetLink = row.querySelector('.notif-target-user');
+      if (targetLink) {
+        targetLink.addEventListener('click', (e) => {
+          e.stopPropagation(); // Stop row click
+          const avatar = findUserAvatar(targetUser);
+          openProfileView({ name: targetUser, avatar: avatar });
+        });
+      }
     }
 
-    // 3. Handle "Row" Click
+    // 2. Handle "Row" Click
     row.addEventListener('click', () => {
-      // Scenario A: It is a "Following" notification -> Go to MY Profile
+      // A. Following -> Go to MY Profile
       if (n.text.includes('You started following')) {
-        viewedProfileUser = null; // Ensure we view our own profile
+        viewedProfileUser = null; 
         setActiveTab('profile');
-        renderProfile(false); // Switch to profile tab
+        renderProfile(false);
       } 
-      // Scenario B: Any other notification -> Show Exact Detail Modal
+      // B. Comment or Reply -> Open Specific Post Comments
+      // (This requires the postId we added in openComments)
+      else if ((n.text.includes('commented') || n.text.includes('replied')) && n.postId) {
+        // Open the comments modal for that specific post
+        openComments(n.postId);
+      }
+      // C. Fallback -> Show Generic Modal
       else {
         openModal({
           title: 'Notification Detail',
@@ -967,8 +1002,7 @@ function renderNotifications() {
                </div>
             </div>
           `,
-          confirmText: '', // Hide default confirm
-          cancelText: ''   // Hide default cancel
+          confirmText: '', cancelText: ''
         });
       }
     });
@@ -978,7 +1012,6 @@ function renderNotifications() {
 
   updateSideBadges();
 }
-
   function getCategoryName(id){ if(!id) return 'Uncategorized'; const c = categories.find(x=>x.id===id); return c ? c.name : 'Uncategorized'; }
 
   function renderPostCategoryOptions(){
