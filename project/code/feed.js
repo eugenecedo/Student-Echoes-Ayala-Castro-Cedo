@@ -199,6 +199,13 @@ if (hamburger) {
   const topStoriesList = document.getElementById('top-stories-list');
   const moreNewsBtn = document.getElementById('more-news-btn');
 
+  /* --- feed.js (Add this new data structure) --- */
+const topStoriesData = [
+  { id: 1, topic: 'Student Government Elections', summary: 'Candidates for President announced. Voting starts next week!', author: 'Echo News', avatar: 'https://i.pravatar.cc/30?img=50' },
+  { id: 2, topic: 'New Campus Cafe Menu', summary: 'Try the limited edition "Midnight Mocha" before finals week.', author: 'Cafeteria Crew', avatar: 'https://i.pravatar.cc/30?img=51' },
+  { id: 3, topic: 'Library Silent Zones', summary: 'New policy enforces quiet study areas after 8 PM starting Monday.', author: 'Campus Admin', avatar: 'https://i.pravatar.cc/30?img=52' },
+  { id: 4, topic: 'Hackathon Registration Open', summary: 'Form teams for the annual coding competition. Prizes for top 3!', author: 'Tech Club', avatar: 'https://i.pravatar.cc/30?img=53' },
+];
   // settings menu buttons
   const settingsBtn = document.getElementById('settings-btn');
   const settingsMenu = document.getElementById('settings-menu');
@@ -2672,7 +2679,27 @@ document.addEventListener('keydown', (e) => {
       console.warn('renderTopStories error', err);
     }
   }
+/* --- feed.js (Replace the existing renderTopStories function) --- */
+function renderTopStories() {
+    const list = document.getElementById('top-stories-list');
+    if (!list) return;
 
+    if (topStoriesData.length === 0) {
+        list.innerHTML = `<div class="muted" style="padding: 10px;">No new stories right now.</div>`;
+        return;
+    }
+
+    // Render the stories using the new data structure
+    list.innerHTML = topStoriesData.map(story => `
+        <a href="#" class="top-story-item" onclick="return false;" aria-label="Read story about ${escapeHtml(story.topic)}">
+            <div class="story-content">
+                <div class="topic">${escapeHtml(story.topic)}</div>
+                <div class="summary">${escapeHtml(story.summary)}</div>
+            </div>
+            <img src="${escapeHtml(story.avatar)}" class="top-story-avatar" alt="${escapeHtml(story.author)}">
+        </a>
+    `).join('');
+}
   if(moreNewsBtn) {
     moreNewsBtn.addEventListener('click', () => {
       window.newsFilter = 'school-today';
