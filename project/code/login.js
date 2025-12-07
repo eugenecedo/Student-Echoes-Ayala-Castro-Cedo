@@ -27,6 +27,9 @@ function showSuccess(msg) {
         `<p class="success-message">${msg}</p>`;
 }
 
+// --- KEY CONSTANTS ---
+const DB_KEY = 'amu_users_db'; // Stores the array of all registered accounts
+
 // LOGIN FORM EVENT
 document.getElementById('login-form').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -39,29 +42,40 @@ document.getElementById('login-form').addEventListener('submit', function (e) {
         return showError("Please enter both email and password.");
     }
 
-    // Get user profile if exists, or create one
-    let userProfile = JSON.parse(localStorage.getItem("userProfile") || 'null');
-    
-    if (!userProfile) {
-        // Create new profile with default avatar
-        const name = localStorage.getItem("registeredName") || email.split('@')[0];
-        userProfile = {
-            name: name,
-            avatar: "https://i.pravatar.cc/80?img=" + Math.floor(Math.random() * 70), // Random but consistent avatar
-            bio: "",
-            joined: new Date().toLocaleDateString(),
-            communitiesJoined: 0,
-            joinedCommunities: []
-        };
-        localStorage.setItem("userProfile", JSON.stringify(userProfile));
-    }
-    
-    localStorage.setItem("loggedInUser", email);
-    showSuccess("Logged in successfully! Redirecting...");
+    // 1. Retrieve the list of registered users
+    const users = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
 
-    setTimeout(() => {
-        window.location.href = "feed.html";
-    }, 1000);
+    // 2. Find the user with matching email AND password
+    const foundUser = users.find(u => u.email === email && u.password === pass);
+
+    if (foundUser) {
+        // 3. MATCH FOUND: Set the session data using this user's specific info
+        
+        // Update the active profile used by feed.js
+        const sessionProfile = {
+            name: foundUser.name,
+            avatar: foundUser.avatar,
+            bio: foundUser.bio || "",
+            joined: foundUser.joined,
+            communitiesJoined: foundUser.communitiesJoined || 0,
+            joinedCommunities: foundUser.joinedCommunities || [],
+            following: foundUser.following || [],
+            myFollowers: foundUser.myFollowers || []
+        };
+
+        localStorage.setItem("userProfile", JSON.stringify(sessionProfile));
+        localStorage.setItem("loggedInUser", foundUser.email);
+
+        showSuccess(`Welcome back, ${foundUser.name}! Redirecting...`);
+
+        setTimeout(() => {
+            window.location.href = "feed.html";
+        }, 1000);
+
+    } else {
+        // 4. NO MATCH FOUND
+        showError("Invalid email or password. Please try again or register.");
+    }
 });
 
 
@@ -75,27 +89,49 @@ document.getElementById('register-form').addEventListener('submit', function (e)
     const p1 = document.getElementById('reg-password').value;
     const p2 = document.getElementById('reg-password2').value;
 
-    if (!name || !email || p1.length < 6 || p1 !== p2) {
-        return showError("Please fill up all fields correctly.");
+    if (!name || !email || p1.length < 6) {
+        return showError("Please fill up all fields. Password must be at least 6 characters.");
+    }
+    
+    if (p1 !== p2) {
+        return showError("Passwords do not match.");
     }
 
-    // Create user profile with consistent avatar
-    const avatarNumber = Math.floor(Math.random() * 70); // Random number 0-69
-    const userProfile = {
+    // 1. Retrieve existing users
+    const users = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+
+    // 2. Check if email already exists
+    if (users.some(u => u.email === email)) {
+        return showError("This email is already registered. Please log in.");
+    }
+
+    // 3. Create the new user object
+    const avatarNumber = Math.floor(Math.random() * 70);
+    const newUser = {
+        id: Date.now(),
         name: name,
+        email: email,
+        password: p1, // Storing password to allow login check
         avatar: "https://i.pravatar.cc/80?img=" + avatarNumber,
-        bio: "",
+        bio: "Just joined!",
         joined: new Date().toLocaleDateString(),
         communitiesJoined: 0,
-        joinedCommunities: []
+        joinedCommunities: [],
+        following: [],
+        myFollowers: []
     };
 
-    localStorage.setItem("userProfile", JSON.stringify(userProfile));
-    localStorage.setItem("registeredName", name);
-    localStorage.setItem("registeredEmail", email);
+    // 4. Save to the array and update localStorage
+    users.push(newUser);
+    localStorage.setItem(DB_KEY, JSON.stringify(users));
 
-    showSuccess("Account created successfully!");
-    showForm("login-form");
+    showSuccess("Account created successfully! Please log in.");
+    
+    // Clear inputs and switch tab
+    document.getElementById('register-form').reset();
+    setTimeout(() => {
+        showForm("login-form");
+    }, 1500);
 });
 
 
