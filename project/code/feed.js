@@ -1575,75 +1575,88 @@ function renderProfile(editMode = false) {
   }
 }
   /* --- NEW: Helper for Post Detail Modal --- */
-  function openPostDetail(postId) {
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
+  /* --- feed.js --- */
 
-    // Generate comments HTML
-    const commentsHtml = (post.comments || []).map(c => `
-      <div style="margin-bottom:8px; font-size:13px; line-height:1.4;">
-        <strong>${escapeHtml(c.author.name)}</strong> ${escapeHtml(c.text)}
-      </div>
-    `).join('');
+/* FIND the openPostDetail function (usually near the bottom) and REPLACE it with this updated version: */
 
-    // Modal Content
-    const html = `
-      <div class="post-detail-modal">
-        ${post.image 
-          ? `<img src="${escapeHtml(post.image)}" class="post-detail-img" />`
-          : `<div style="padding:24px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:16px; line-height:1.5;">${escapeHtml(post.text)}</div>`
-        }
-        
-        ${post.image && post.text 
-          ? `<div style="margin-top:8px; font-size:14px;"><strong>${escapeHtml((post.author && post.author.name) || post.author_name)}</strong> ${escapeHtml(post.text)}</div>` 
-          : ''}
+/* --- NEW: Helper for Post Detail Modal --- */
+/* --- NEW: Helper for Post Detail Modal (Updated Fix) --- */
+function openPostDetail(postId) {
+  const post = posts.find(p => p.id === postId);
+  if (!post) return;
 
-        <div class="actions-row" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
-           <button class="action-inline like-btn ${post.liked?'liked':''}" id="modal-like-btn">
-              ${svgLike(post.liked ? 'currentColor' : 'none')} <span style="margin-left:6px">${post.likes}</span>
-           </button>
-           <button class="action-inline">
-              ${svgComment()} <span style="margin-left:6px">${post.comments ? post.comments.length : 0}</span>
-           </button>
-        </div>
-
-        <div style="max-height:150px; overflow-y:auto; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.05);">
-          ${commentsHtml.length ? commentsHtml : '<div class="muted">No comments yet.</div>'}
-        </div>
-      </div>
-    `;
-
-    openModal({ 
-      title: post.image ? 'Photo' : 'Post', 
-      html: html, 
-      confirmText: 'Close', 
-      cancelText: '' 
-    });
-
-    // Make "Like" button interactive immediately inside modal
-    setTimeout(() => {
-      const likeBtn = document.querySelector('#modal-like-btn');
-      if(likeBtn) {
-        likeBtn.onclick = function() {
-          toggleLike(post.id); // Updates global state
-          
-          // Manually update modal button state to reflect change
-          const updatedPost = posts.find(p => p.id === postId);
-          const icon = likeBtn.querySelector('svg');
-          const count = likeBtn.querySelector('span');
-          
-          if (updatedPost.liked) {
-            likeBtn.classList.add('liked');
-            icon.setAttribute('fill', 'currentColor');
-          } else {
-            likeBtn.classList.remove('liked');
-            icon.setAttribute('fill', 'none');
-          }
-          count.textContent = updatedPost.likes;
-        };
+  // Modal Content
+  const html = `
+    <div class="post-detail-modal">
+      ${post.image 
+        ? `<img src="${escapeHtml(post.image)}" class="post-detail-img" />`
+        : `<div style="padding:24px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:16px; line-height:1.5;">${escapeHtml(post.text)}</div>`
       }
-    }, 50);
-  }
+      
+      ${post.image && post.text 
+        ? `<div style="margin-top:8px; font-size:14px;"><strong>${escapeHtml((post.author && post.author.name) || post.author_name)}</strong> ${escapeHtml(post.text)}</div>` 
+        : ''}
+
+      <div class="actions-row" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
+         <button class="action-inline like-btn ${post.liked?'liked':''}" id="modal-like-btn">
+            ${svgLike(post.liked ? 'currentColor' : 'none')} <span style="margin-left:6px">${post.likes}</span>
+         </button>
+         
+         <button class="action-inline" id="modal-comment-btn">
+            ${svgComment()} <span style="margin-left:6px">${post.comments ? post.comments.length : 0}</span>
+         </button>
+      </div>
+    </div>
+  `;
+
+  openModal({ 
+    title: post.image ? 'Photo' : 'Post', 
+    html: html, 
+    confirmText: 'Close', 
+    cancelText: '' 
+  });
+
+  // Make buttons interactive immediately inside modal
+  setTimeout(() => {
+    // 1. Like Button Logic
+    const likeBtn = document.querySelector('#modal-like-btn');
+    if(likeBtn) {
+      likeBtn.onclick = function() {
+        toggleLike(post.id); 
+        
+        // Manually update modal button state
+        const updatedPost = posts.find(p => p.id === postId);
+        const icon = likeBtn.querySelector('svg');
+        const count = likeBtn.querySelector('span');
+        
+        if (updatedPost.liked) {
+          likeBtn.classList.add('liked');
+          icon.setAttribute('fill', 'currentColor');
+        } else {
+          likeBtn.classList.remove('liked');
+          icon.setAttribute('fill', 'none');
+        }
+        count.textContent = updatedPost.likes;
+      };
+    }
+
+    // 2. Comment Button Logic
+    const commentBtn = document.querySelector('#modal-comment-btn');
+    if(commentBtn) {
+      commentBtn.onclick = function() {
+        // Close the current detail modal
+        const closeBtn = document.querySelector('.modal-close');
+        if(closeBtn) closeBtn.click();
+
+        // WAIT 350ms (Critical Fix): Ensures the old modal is fully gone 
+        // before opening the comments, so the code attaches to the correct window.
+        setTimeout(() => {
+          openComments(post.id);
+        }, 350);
+      };
+    }
+  }, 50);
+}
 
   /* --- NEW: Helper for Edit Form --- */
   /* --- REPLACE renderEditProfileForm in feed.js with this --- */
