@@ -9,7 +9,8 @@
     LAST_TAB: 'amu_last_tab',
     SETTINGS: 'amu_settings',
     COMMUNITIES: 'amu_communities',
-    ANON_PROFILE: 'amu_anon_profile'
+    ANON_PROFILE: 'amu_anon_profile',
+    USER_FOLLOWERS: 'amu_user_followers'
   };
 
   // seed/default data (comments are arrays with replies)
@@ -1508,22 +1509,46 @@ function getUserProfile() {
 
  /* --- feed.js (Add this helper function) --- */
 
+/* --- REPLACE toggleFollowUser in feed.js --- */
 function toggleFollowUser(targetUsername) {
   const currentUser = getUserProfile();
+  const myName = currentUser.name;
   
-  // Ensure following array exists
+  // 1. Update MY "following" list
   if (!currentUser.following) currentUser.following = [];
-  
   const index = currentUser.following.indexOf(targetUsername);
-  
-  if (index > -1) {
-    // Already following -> Unfollow
+  const isFollowing = index > -1;
+
+  // 2. Load the GLOBAL followers map (stores who follows whom)
+  let followersMap = {};
+  try {
+    followersMap = JSON.parse(localStorage.getItem(KEY.USER_FOLLOWERS) || '{}');
+  } catch(e) {}
+
+  // Ensure target has an entry array
+  if (!followersMap[targetUsername]) followersMap[targetUsername] = [];
+
+  if (isFollowing) {
+    // --- UNFOLLOW LOGIC ---
+    
+    // Remove from my list
     currentUser.following.splice(index, 1);
+    
+    // Remove ME from THEIR followers list
+    followersMap[targetUsername] = followersMap[targetUsername].filter(n => n !== myName);
+    
     toast(`Unfollowed ${targetUsername}`);
   } else {
-    // Not following -> Follow
+    // --- FOLLOW LOGIC ---
+    
+    // Add to my list
     currentUser.following.push(targetUsername);
     
+    // Add ME to THEIR followers list (if not already there)
+    if (!followersMap[targetUsername].includes(myName)) {
+      followersMap[targetUsername].push(myName);
+    }
+
     // Check if we just followed back a friend
     const isFriend = friends.some(f => f.name === targetUsername);
     if(isFriend) {
@@ -1532,22 +1557,31 @@ function toggleFollowUser(targetUsername) {
       toast(`Following ${targetUsername}`);
     }
     
-    // Add a notification for simulation purposes
+    // Notification
     notifications.unshift({
         id: Date.now(), 
         text: `You started following ${targetUsername}`, 
         createdAt: Date.now(), 
-        avatar: getUserProfile().avatar
+        avatar: currentUser.avatar
     });
     renderNotifications();
   }
   
-  // Save and Refresh UI
-  setUserProfile(currentUser);
-  renderProfile(false); // Re-render profile to update button state
+  // 3. SAVE DATA
+  localStorage.setItem(KEY.USER_FOLLOWERS, JSON.stringify(followersMap)); // Save target's followers
+  setUserProfile(currentUser); // Save my following list
+
+  // 4. Refresh UI
+  // If we are currently looking at that profile, we need to reload it to see the count change from 0 to 1
+  if (viewedProfileUser && viewedProfileUser.name === targetUsername) {
+     // Update the viewed object with new counts before rendering
+     viewedProfileUser.myFollowers = followersMap[targetUsername]; 
+     renderProfile(false); 
+  } else {
+     renderProfile(false);
+  }
 }
-/* --- Updated renderProfile function with Back Button --- */
-/* --- Updated renderProfile in feed.js --- */
+/* --- REPLACE renderProfile in feed.js --- */
 function renderProfile(editMode = false) {
   const cont = document.getElementById('profile-content');
   if (!cont) return;
@@ -1559,6 +1593,16 @@ function renderProfile(editMode = false) {
   // Determine correct user data to show
   let profileData = isViewingOwn ? currentUser : viewed;
 
+  // --- NEW LOGIC: FETCH REAL FOLLOWERS ---
+  // We load the global map to see who follows this specific user
+  let followersMap = {};
+  try {
+    followersMap = JSON.parse(localStorage.getItem(KEY.USER_FOLLOWERS) || '{}');
+  } catch(e) {}
+  
+  // Overwrite the displayed user's followers list with the real data
+  profileData.myFollowers = followersMap[profileData.name] || [];
+
   // Logic to find a better avatar if viewing a stranger
   if (!isViewingOwn) {
     const p = posts.find(pp => {
@@ -1567,7 +1611,10 @@ function renderProfile(editMode = false) {
     });
     if (p) {
       const foundAvatar = (p.author && p.author.avatar) || p.author_avatar;
+      // Preserve the followers list we just fetched
+      const currentFollowers = profileData.myFollowers;
       profileData = { ...viewed, avatar: foundAvatar || viewed.avatar, bio: viewed.bio || "Community Member" };
+      profileData.myFollowers = currentFollowers;
     }
   }
 
@@ -1594,7 +1641,7 @@ function renderProfile(editMode = false) {
   
   // Ensure lists exist
   const myFollowing = currentUser.following || []; 
-  const targetFollowers = profileData.myFollowers || [];
+  const targetFollowers = profileData.myFollowers || []; // This now contains "You" (Current User Name)
   const targetFollowing = profileData.following || [];
 
   if (isViewingOwn) {
@@ -1613,7 +1660,6 @@ function renderProfile(editMode = false) {
   }
 
   // --- STATS LOGIC ---
-  // If viewing own, use real data. If viewing other, use their data objects (or empty array if undefined)
   const countFollowers = targetFollowers.length;
   const countFollowing = targetFollowing.length;
 
@@ -1706,6 +1752,7 @@ function renderProfile(editMode = false) {
   // --- CLICKABLE STATS LOGIC ---
   const followersBtn = document.getElementById('stat-followers');
   if (followersBtn) {
+    // This will now open the list containing "You" (Current User)
     followersBtn.onclick = () => openUserList('Followers', targetFollowers);
   }
 
