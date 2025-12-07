@@ -1325,18 +1325,18 @@ function setActiveTab(tab) {
  /* --- In feed.js, REPLACE the entire getUserProfile function with this: --- */
 
 function getUserProfile() {
-  // 1. Try to get the user profile from localStorage
   const raw = localStorage.getItem(KEY.PROFILE);
   
+  // 1. Existing Profile / Parsed
   if (raw) {
     try {
       const profile = JSON.parse(raw);
-      // Ensure we have valid name and avatar
       if (profile && profile.name) {
         return {
           name: profile.name,
-          following: profile.following || [] ,
-          catch (e) { console.warn('Error parsing user profile', e); },
+          // Ensures existing users who never had this property get an empty array
+          myFollowers: profile.myFollowers || [], 
+          following: profile.following || [],
           avatar: profile.avatar || "https://i.pravatar.cc/80?img=12", 
           bio: profile.bio || "",
           joined: profile.joined || new Date().toLocaleDateString(),
@@ -1349,26 +1349,24 @@ function getUserProfile() {
     }
   }
 
-  // 2. Try to get registration data (legacy support)
-  const savedName = localStorage.getItem("registeredName") || localStorage.getItem("userName");
-  const savedAvatar = localStorage.getItem("registeredAvatar") || localStorage.getItem("userAvatar");
+  // 2. Legacy Fallback (Registered Name)
+  const savedName = localStorage.getItem("registeredName");
   
   if (savedName) {
-    const newProfile = {
+    return {
       name: savedName,
-      // FIX: Use static ID if savedAvatar is missing
-      avatar: savedAvatar || "https://i.pravatar.cc/80?img=12", 
+      avatar: "https://i.pravatar.cc/80?img=12", 
       bio: "",
       joined: new Date().toLocaleDateString(),
       communitiesJoined: 0,
-      joinedCommunities: []
+      joinedCommunities: [],
+      // NEW ACCOUNTS START HERE: 0 Followers and 0 Following
+      following: [],
+      myFollowers: [] 
     };
-    
-    localStorage.setItem(KEY.PROFILE, JSON.stringify(newProfile));
-    return newProfile;
   }
 
-  // Default fallback (Guest)
+  // 3. Guest Fallback (Brand New User)
   return {
     name: "Guest User",
     avatar: "https://i.pravatar.cc/80?img=12",
@@ -1376,7 +1374,9 @@ function getUserProfile() {
     joined: new Date().toLocaleDateString(),
     communitiesJoined: 0,
     joinedCommunities: [],
-    following: [] // <--- Add this
+    // NEW ACCOUNTS START HERE: 0 Followers and 0 Following
+    following: [],
+    myFollowers: []
   };
 }
 // Replace the existing getUserProfile function with this corrected version:
@@ -1492,7 +1492,7 @@ function renderProfile(editMode = false) {
 
   // --- STATS LOGIC ---
   const amIFollowing = currentUser.following.includes(profileData.name) ? 1 : 0;
-  const baseFollowers = isViewingOwn ? 120 : 45; // Fake base numbers
+  const baseFollowers = isViewingOwn ? 0 : 0; // Fake base numbers
   const followersCount = baseFollowers + amIFollowing;
   
   // For 'Following', we use the real array length if viewing own profile
@@ -1525,10 +1525,18 @@ function renderProfile(editMode = false) {
         </div>
         
         <div class="profile-stats">
-          <div class="stat-item"><span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span></div>
-          <div class="stat-item"><span class="stat-value">${followersCount}</span> <span class="stat-label">Followers</span></div>
-          <div class="stat-item"><span class="stat-value">${followingCount}</span> <span class="stat-label">Following</span></div>
-        </div>
+  <div class="stat-item">
+    <span class="stat-value">${userPosts.length}</span> <span class="stat-label">Posts</span>
+  </div>
+  
+  <div class="stat-item">
+    <span class="stat-value">${followersCount}</span> <span class="stat-label">Followers</span>
+  </div>
+  
+  <div class="stat-item">
+    <span class="stat-value">${followingCount}</span> <span class="stat-label">Following</span>
+  </div>
+</div>
         
         <div style="font-size:14px; margin-top:4px; line-height:1.4;">
           ${escapeHtml(profileData.bio || (isViewingOwn ? "Add a bio in your profile settings" : "No bio available"))}
