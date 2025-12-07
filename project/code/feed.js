@@ -884,17 +884,100 @@ el.innerHTML = `
     });
   }
 
-  function renderNotifications(){
-    if(!notifList) return;
-    notifList.innerHTML = '';
-    if(notifications.length===0){ notifList.innerHTML='<div class="muted">No notifications</div>'; updateSideBadges(); return; }
-    notifications.forEach(n=>{
-      const row = document.createElement('div'); row.style.display='flex'; row.style.gap='8px'; row.style.marginBottom='8px';
-      row.innerHTML = `<img src="${escapeHtml(n.avatar)}" style="width:36px;height:36px;border-radius:50%"/><div><div style="font-weight:600">${escapeHtml(n.text)}</div><div class="muted" style="font-size:12px">${escapeHtml(timeAgo(n.createdAt||Date.now()))}</div></div>`;
-      notifList.appendChild(row);
-    });
+  /* --- REPLACE renderNotifications in feed.js --- */
+function renderNotifications() {
+  if (!notifList) return;
+  notifList.innerHTML = '';
+
+  if (notifications.length === 0) {
+    notifList.innerHTML = '<div class="muted">No notifications</div>';
     updateSideBadges();
+    return;
   }
+
+  // Helper to find an avatar for a specific username (reuse logic)
+  const findUserAvatar = (name) => {
+    // 1. Check friends
+    const f = friends.find(x => x.name === name);
+    if (f) return f.avatar;
+    // 2. Check posts
+    const p = posts.find(x => (x.author && x.author.name === name) || x.author_name === name);
+    if (p) return (p.author && p.author.avatar) || p.author_avatar;
+    // 3. Default
+    return "https://i.pravatar.cc/150?u=" + name;
+  };
+
+  notifications.forEach(n => {
+    const row = document.createElement('div');
+    
+    // Base styles
+    row.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; cursor:pointer; padding:10px; border-radius:8px; transition: background 0.2s ease; position: relative;';
+    row.onmouseenter = () => row.style.background = 'rgba(255,255,255,0.04)';
+    row.onmouseleave = () => row.style.background = 'transparent';
+
+    // 1. Parse Text for "You started following [Name]" pattern
+    let displayHtml = escapeHtml(n.text);
+    let targetUser = null;
+    const followMatch = n.text.match(/You started following (.+)/);
+
+    if (followMatch && followMatch[1]) {
+      targetUser = followMatch[1];
+      // Wrap the name in a span we can click separately
+      // We use a distinctive color (var(--accent)) and make it bold
+      displayHtml = `You started following <strong class="notif-target-user" style="color:var(--accent); cursor:pointer; position:relative; z-index:2;">${escapeHtml(targetUser)}</strong>`;
+    }
+
+    row.innerHTML = `
+      <img src="${escapeHtml(n.avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;"/>
+      <div style="flex:1;">
+        <div style="font-weight:600; line-height:1.4;">${displayHtml}</div>
+        <div class="muted" style="font-size:12px; margin-top:2px;">${escapeHtml(timeAgo(n.createdAt || Date.now()))}</div>
+      </div>
+    `;
+
+    // 2. Handle "Name" Click (Go to THEIR profile)
+    const targetLink = row.querySelector('.notif-target-user');
+    if (targetLink && targetUser) {
+      targetLink.addEventListener('click', (e) => {
+        e.stopPropagation(); // PREVENT the row click from firing
+        const avatar = findUserAvatar(targetUser);
+        openProfileView({ name: targetUser, avatar: avatar });
+      });
+    }
+
+    // 3. Handle "Row" Click
+    row.addEventListener('click', () => {
+      // Scenario A: It is a "Following" notification -> Go to MY Profile
+      if (n.text.includes('You started following')) {
+        viewedProfileUser = null; // Ensure we view our own profile
+        setActiveTab('profile');
+        renderProfile(false); // Switch to profile tab
+      } 
+      // Scenario B: Any other notification -> Show Exact Detail Modal
+      else {
+        openModal({
+          title: 'Notification Detail',
+          html: `
+            <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding: 20px 0;">
+               <img src="${escapeHtml(n.avatar)}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; margin-bottom:16px; border: 3px solid var(--accent);">
+               <h3 style="margin:0 0 10px 0; line-height:1.4;">${escapeHtml(n.text)}</h3>
+               <div class="muted" style="font-size:14px;">Received ${escapeHtml(timeAgo(n.createdAt))}</div>
+               <div style="margin-top:20px; width:100%;">
+                 <button class="btn primary" style="width:100%" onclick="document.querySelector('.modal-close').click()">Dismiss</button>
+               </div>
+            </div>
+          `,
+          confirmText: '', // Hide default confirm
+          cancelText: ''   // Hide default cancel
+        });
+      }
+    });
+
+    notifList.appendChild(row);
+  });
+
+  updateSideBadges();
+}
 
   function getCategoryName(id){ if(!id) return 'Uncategorized'; const c = categories.find(x=>x.id===id); return c ? c.name : 'Uncategorized'; }
 
