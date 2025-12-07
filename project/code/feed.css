@@ -961,7 +961,7 @@ body.theme-light .toast { background: #fff; color: var(--text-light); border:1px
   .left.sidebar { display:none; }
 
   /* Hide heavy right news and top-stories on mobile to keep the UI clean */
-  .right .top-stories, #tab-news { display:none !important; }
+  .right .top-stories { display:none !important; }
 
   /* Show the minimalist logo in the right column area on mobile (keeps branding) */
   .mobile-mini-logo { display:flex !important; margin-bottom:12px; justify-content:center; }
