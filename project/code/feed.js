@@ -1514,7 +1514,7 @@ function renderProfile(editMode = false) {
       <img src="${escapeHtml(profileData.avatar || defaultAvatar)}" class="profile-avatar-large" alt="Profile">
       
       <div class="profile-info">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="profile-identity-row">
           <div>
             <h2 style="margin:0; font-size:22px; font-weight:700;">
               ${escapeHtml(profileData.name)}
@@ -1535,7 +1535,6 @@ function renderProfile(editMode = false) {
         </div>
       </div>
     </div>
-
     <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:2px;"></div>
     <div class="insta-grid">
       ${userPosts.length === 0 

@@ -1898,3 +1898,37 @@ body.theme-light .back-to-profile-btn:hover {
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
+
+/* Default Desktop: Name Left, Button Right */
+.profile-identity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* Mobile: Center Everything */
+@media (max-width: 600px) {
+  .profile-identity-row {
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    text-align: center;
+  }
+  
+  /* Force the name container to be centered */
+  .profile-identity-row > div:first-child {
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Ensure the Edit/Follow button is nicely sized */
+  .profile-identity-row .btn {
+    width: auto;
+    min-width: 120px;
+    justify-content: center;
+  }
+}
