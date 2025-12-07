@@ -1945,7 +1945,6 @@ function renderEditProfileForm(cont, currentUser) {
     write: 'tab-write',
     mystories: 'tab-mystories',
     categories: 'tab-categories',
-    trending: 'tab-trending',
     anonymous: 'tab-anonymous'
   };
 
@@ -2010,7 +2009,6 @@ function renderEditProfileForm(cont, currentUser) {
   if (tab === 'news') renderNews();
   if (tab === 'write') renderWrite();
   if (tab === 'mystories') renderMyStories();
-  if (tab === 'trending') renderTrending();
   if (tab === 'anonymous') renderAnonymousRoom();
   if (tab === 'findpeople') renderFindPeople(); // Add this if you have findpeople tab
 
@@ -2258,16 +2256,7 @@ function renderEditProfileForm(cont, currentUser) {
     });
   }
 
-  // trending
-  function renderTrending(){
-    const el = document.getElementById('trending-content');
-    if(!el) return;
-    const byScore = posts.slice().sort((a,b)=> ((b.likes||0)+( (b.comments && b.comments.length) || 0 )) - ((a.likes||0)+((a.comments && a.comments.length) || 0))).slice(0,5);
-    const catCounts = {};
-    posts.forEach(p => { const id = p.categoryId || 0; catCounts[id] = (catCounts[id] || 0) + 1; });
-    const topCats = Object.keys(catCounts).map(k=>({ id: Number(k), count: catCounts[k]})).sort((a,b)=>b.count-a.count).slice(0,5);
-    el.innerHTML = `<div style="display:flex;gap:12px"><div style="flex:1"><strong>Top posts</strong><div style="margin-top:8px">${byScore.map(p=>`<div style="margin-bottom:8px"><div style="font-weight:600">${escapeHtml((p.text||'').slice(0,80))}</div><div class="muted">${escapeHtml(getCategoryName(p.categoryId))} • ${escapeHtml(String(p.likes))} likes</div></div>`).join('')}</div></div><div style="width:220px"><strong>Top categories</strong><div class="muted" style="margin-top:8px">${topCats.map(c=>`${escapeHtml(getCategoryName(c.id))} — ${c.count} posts`).join('<br>')}</div></div></div>`;
-  }
+
 
   // populate writer selects quickly
   function renderPostCategoryOptionsForSelect(selectEl){
